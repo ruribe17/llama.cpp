@@ -87,7 +87,7 @@ The project is under active development, and we are [looking for feedback and co
 | `-ctk, --cache-type-k TYPE` | KV cache data type for K (default: f16) |
 | `-ctv, --cache-type-v TYPE` | KV cache data type for V (default: f16) |
 | `-dt, --defrag-thold N` | KV cache defragmentation threshold (default: -1.0, < 0 - disabled)<br/>(env: LLAMA_ARG_DEFRAG_THOLD) |
-| `-np, --parallel N` | number of parallel sequences to decode (default: 1) |
+| `-np, --parallel N` | number of parallel sequences to decode (default: 1)<br/>(env:  LLAMA_ARG_N_PARALLEL) |
 | `-cb, --cont-batching` | enable continuous batching (a.k.a dynamic batching) (default: enabled)<br/>(env: LLAMA_ARG_CONT_BATCHING) |
 | `-nocb, --no-cont-batching` | disable continuous batching<br/>(env: LLAMA_ARG_NO_CONT_BATCHING) |
 | `--mlock` | force system to keep model in RAM rather than swapping or compressing |
@@ -121,7 +121,6 @@ The project is under active development, and we are [looking for feedback and co
 | `-to, --timeout N` | server read/write timeout in seconds (default: 600) |
 | `--threads-http N` | number of threads used to process HTTP requests (default: -1)<br/>(env: LLAMA_ARG_THREADS_HTTP) |
 | `-spf, --system-prompt-file FNAME` | set a file to load a system prompt (initial prompt of all slots), this is useful for chat applications |
-| `--log-format {text, json}` | log output format: json or text (default: json) |
 | `--metrics` | enable prometheus compatible metrics endpoint (default: disabled)<br/>(env: LLAMA_ARG_ENDPOINT_METRICS) |
 | `--no-slots` | disables slots monitoring endpoint (default: enabled)<br/>(env: LLAMA_ARG_NO_ENDPOINT_SLOTS) |
 | `--slot-save-path PATH` | path to save slot kv cache (default: disabled) |
@@ -407,9 +406,44 @@ Notice that each `probs` is an array of length `n_probs`.
 
     *Options:*
 
-    `content`: Set the text to tokenize.
+    `content`: (Required) The text to tokenize.
 
-    `add_special`: Boolean indicating if special tokens, i.e. `BOS`, should be inserted.  Default: `false`
+    `add_special`: (Optional) Boolean indicating if special tokens, i.e. `BOS`, should be inserted.  Default: `false`
+
+    `with_pieces`: (Optional) Boolean indicating whether to return token pieces along with IDs.  Default: `false`
+
+**Response:**
+
+Returns a JSON object with a `tokens` field containing the tokenization result. The `tokens` array contains either just token IDs or objects with `id` and `piece` fields, depending on the `with_pieces` parameter. The piece field is a string if the piece is valid unicode or a list of bytes otherwise.
+
+
+If `with_pieces` is `false`:
+```json
+{
+  "tokens": [123, 456, 789]
+}
+```
+
+If `with_pieces` is `true`:
+```json
+{
+  "tokens": [
+    {"id": 123, "piece": "Hello"},
+    {"id": 456, "piece": " world"},
+    {"id": 789, "piece": "!"}
+  ]
+}
+```
+
+With input 'á' (utf8 hex: C3 A1) on tinyllama/stories260k
+```json
+{
+  "tokens": [
+    {"id": 198, "piece": [195]}, // hex C3
+    {"id": 164, "piece": [161]} // hex A1
+  ]
+}
+```
 
 ### POST `/detokenize`: Convert tokens to text
 
