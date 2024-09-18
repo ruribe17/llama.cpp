@@ -29,6 +29,7 @@
 #include <vector>
 
 #include "ggml-backend-impl.h"
+#include "ggml-impl.h"
 
 #include "ggml-qnn/backend-ops.hpp"
 #include "ggml-qnn/backend.hpp"
