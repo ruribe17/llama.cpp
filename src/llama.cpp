@@ -3430,8 +3430,6 @@ static int llama_get_device_count(const llama_model & model) {
     count += ggml_backend_vk_get_device_count();
 #elif defined(GGML_USE_CANN)
     count += ggml_backend_cann_get_device_count();
-#elif defined(GGML_USE_QNN)
-    count = ggml_backend_qnn_get_device_count();
 #endif
 
     return count;
@@ -3465,8 +3463,6 @@ static ggml_backend_buffer_type_t llama_default_buffer_type_cpu(const llama_mode
     if (host_buffer) {
         buft = ggml_backend_vk_host_buffer_type();
     }
-#elif defined(GGML_USE_QNN)
-    buft = ggml_backend_qnn_buffer_type(gpu);
 #endif
 
     if (buft == nullptr) {
