@@ -44,21 +44,6 @@ bool qnn_is_valid_params(ggml_backend_qnn_device_context *ctx, const ggml_tensor
     return true;
 }
 
-bool is_tensor_dimensions_equal(const ggml_tensor *l, const ggml_tensor *r) {
-    const auto dim_l = ggml_n_dims(l);
-    if (dim_l != ggml_n_dims(r)) {
-        return false;
-    }
-
-    for (int i = 0; i < dim_l; i++) {
-        if (l->ne[i] != r->ne[i]) {
-            return false;
-        }
-    }
-
-    return true;
-}
-
 void print_ggml_tensor(const ggml_tensor *tensor) {
     QNN_LOG_DEBUG("%s: type:%s ne: %ldx%ldx%ldx%ld, nb: %ldx%ldx%ldx%ld\n", tensor->name, ggml_type_name(tensor->type),
                   (long)tensor->ne[0], (long)tensor->ne[1], (long)tensor->ne[2], (long)tensor->ne[3],
@@ -77,6 +62,21 @@ void print_ggml_tensor(const ggml_tensor *tensor) {
 #endif
 
 namespace {
+
+bool is_tensor_dimensions_equal(const ggml_tensor *l, const ggml_tensor *r) {
+    const auto dim_l = ggml_n_dims(l);
+    if (dim_l != ggml_n_dims(r)) {
+        return false;
+    }
+
+    for (int i = 0; i < dim_l; i++) {
+        if (l->ne[i] != r->ne[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
 
 typedef bool (*ggml_qnn_unary_op_t)(ggml_backend_qnn_device_context *ctx, ggml_tensor *src, ggml_tensor *dst);
 typedef bool (*ggml_qnn_binary_op_t)(ggml_backend_qnn_device_context *ctx, ggml_tensor *src0, ggml_tensor *src1,
