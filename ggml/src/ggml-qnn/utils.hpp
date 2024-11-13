@@ -11,6 +11,8 @@
 
 #include "ggml.h"
 
+#include "ggml-qnn.h"
+
 #include "QnnTypes.h"
 #include "logger.hpp"
 
@@ -25,7 +27,7 @@ qnn_dimension_array_t get_internal_dimension(const ggml_dimension_array_t &dims,
 
 uint32_t get_ggml_tensor_rank(const ggml_tensor *tensor);
 const char *get_ggml_type_name(ggml_type type);
-const char *get_backend_name(size_t device_index);
+const char *get_backend_name(QNNBackend device_index);
 const char *get_chipset_desc(uint32_t chipset_id);
 const char *get_htparch_desc(size_t htp_arch);
 intptr_t align_to(size_t alignment, intptr_t offset);
@@ -198,6 +200,8 @@ Qnn_DataType_t qnn_datatype_from_ggml_datatype(ggml_type ggml_type);
 ggml_type ggml_datatype_from_qnn_datatype(Qnn_DataType_t qnn_type);
 size_t qnn_datatype_size(Qnn_DataType_t qnn_type);
 const char *qnn_datatype_to_string(Qnn_DataType_t qnn_type);
+size_t get_system_total_memory_in_bytes();
+size_t get_system_free_memory_in_bytes();
 
 #if ENABLE_QNNBACKEND_PERF
 class qnn_perf {

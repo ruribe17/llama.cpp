@@ -7,6 +7,10 @@
 
 #include "qnn-types.hpp"
 
+#ifdef __linux__
+#include <unistd.h>
+#endif
+
 namespace qnn {
 
 qnn_dimension_array_t get_internal_dimension(const ggml_dimension_array_t &dims, uint32_t rank) {
@@ -141,7 +145,7 @@ const char *get_ggml_type_name(ggml_type type) {
     return traits->type_name;
 }
 
-const char *get_backend_name(size_t device_index) {
+const char *get_backend_name(QNNBackend device_index) {
     switch (device_index) {
         case QNN_BACKEND_CPU:
             return "QNN-CPU";
@@ -149,8 +153,7 @@ const char *get_backend_name(size_t device_index) {
             return "QNN-GPU";
         case QNN_BACKEND_NPU:
             return "QNN-NPU";
-        case QNN_BACKEND_GGML:
-            return "ggml"; //"fake" QNN backend, used for compare performance between QNN backend and original GGML
+        case QNN_BACKEND_COUNT:
         default:
             return "unknown";
     }
@@ -294,5 +297,21 @@ const char *get_qnn_error_string(Qnn_ErrorHandle_t error) {
             return nullptr;
     }
 }
+
+#ifdef __linux__
+
+size_t get_system_total_memory_in_bytes() {
+    auto pages = (size_t)sysconf(_SC_PHYS_PAGES);
+    auto page_size = (size_t)sysconf(_SC_PAGE_SIZE);
+    return pages * page_size;
+}
+
+size_t get_system_free_memory_in_bytes() {
+    auto avail_pages = (size_t)sysconf(_SC_AVPHYS_PAGES);
+    auto page_size = (size_t)sysconf(_SC_PAGE_SIZE);
+    return avail_pages * page_size;
+}
+
+#endif
 
 } // namespace qnn
