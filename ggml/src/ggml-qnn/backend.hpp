@@ -1,6 +1,10 @@
 
 #pragma once
 
+#ifndef NDEBUG
+#include <atomic>
+#endif
+
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -25,7 +29,7 @@ struct ggml_backend_qnn_device_context {
     std::string name;
     std::string lib_name;
 
-    // initialize in init
+    // initialize in qnn init
     qnn::qcom_socinfo socinfo = {};
     uint64_t supported_types;
     std::shared_ptr<qnn::qnn_instance> instance;
@@ -33,7 +37,12 @@ struct ggml_backend_qnn_device_context {
 
     qnn::ggml_qnn_graph_cache_t qnn_graph_cache;
 
-    explicit ggml_backend_qnn_device_context(QNNBackend device, size_t threads, const char *name,
-                                             const char *lib_name) :
-        device(device), threads(threads), name(name), lib_name(lib_name) {}
+#ifndef NDEBUG
+    std::atomic_uint32_t support_op_count = 0;
+    std::atomic_uint32_t unsupported_op_count = 0;
+#endif
+
+    explicit ggml_backend_qnn_device_context(QNNBackend device, size_t threads, const char *name, const char *lib_name,
+                                             uint64_t supported_types)
+        : device(device), threads(threads), name(name), lib_name(lib_name), supported_types(supported_types) {}
 };

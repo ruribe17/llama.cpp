@@ -543,14 +543,17 @@ bool ggml_qnn_supports_tensor(ggml_backend_qnn_device_context *ctx, const ggml_t
         return false;
     }
 
+#ifndef NDEBUG
     auto *type_name = ggml_get_type_traits(tensor->type)->type_name;
+#endif
     switch (tensor->type) {
         case GGML_TYPE_F32:
         case GGML_TYPE_F16:
         case GGML_TYPE_Q8_0:
         case GGML_TYPE_Q4_0:
             if (!(ctx->supported_types & (1 << tensor->type))) {
-                QNN_LOG_DEBUG("unsupported data type %s for backend %d", type_name, (int)ctx->device);
+                QNN_LOG_DEBUG("unsupported data type %s for backend %s, supported_types: 0x%x", type_name,
+                              qnn::get_backend_name(ctx->device), ctx->supported_types);
                 return false;
             }
             break;
@@ -563,25 +566,42 @@ bool ggml_qnn_supports_tensor(ggml_backend_qnn_device_context *ctx, const ggml_t
 }
 
 bool ggml_qnn_supports_matmul_op(ggml_backend_qnn_device_context *ctx, const ggml_tensor *op) {
-    GGML_UNUSED(ctx);
-
     auto *src0 = op->src[0];
     auto *src1 = op->src[1];
-    if (src0->type != src1->type || src0->type != op->type) {
-        // current qnn implementation only supports the same type for src0 and src1
-        QNN_LOG_DEBUG("src0 type %d and src1 type %d and op type %d are not equal", src0->type, src1->type, op->type);
+    switch (ctx->device) {
+        case QNN_BACKEND_NPU:
+            if (src1->ne[2] != src0->ne[2] || src1->ne[3] != src0->ne[3]) {
+                /*
+                 * TODO: remove the blocker here when NPU backend supports mul_mat like this:
+                 *   [ne03, ne02, n, k] * [ne03 * x, ne02 * y, m, k] -> [ne03 * x, ne02 * y, m, n]
+                 */
+                QNN_LOG_DEBUG("[qnn-npu] src0 and src1 dimensions are not equal, support/unsupported: %d/%d",
+                              ctx->support_op_count.load(), ++(ctx->unsupported_op_count));
+                return false;
+            }
+            // fall through, from test here, the convert op is super slow on NPU:
+            //   https://github.com/usefulsensors/qc_npu_benchmark
+        case QNN_BACKEND_GPU:
+            if (src0->type != src1->type || src0->type != op->type) {
+                // there's no convert op for GPU.
+                QNN_LOG_DEBUG("[qnn-gpu]type src0(%d), src1(%d) and op(%d) are not equal, support/unsupported: %d/%d",
+                              src0->type, src1->type, op->type, ctx->support_op_count.load(),
+                              ++(ctx->unsupported_op_count));
+                return false;
+            }
+            break;
+        default:
+            break;
+    }
+
+    if ((src1->ne[2] % src0->ne[2]) != 0 || (src1->ne[3] % src0->ne[3]) != 0) {
+        QNN_LOG_DEBUG("[%s] src0 and src1 dimensions are not equal, support/unsupported: %d/%d",
+                      qnn::get_backend_name(ctx->device), ctx->support_op_count.load(), ++(ctx->unsupported_op_count));
         return false;
     }
 
-    if (src0->ne[2] != src1->ne[2] || src0->ne[3] != src1->ne[3]) {
-        /*
-         * TODO: remove the blocker here when qnn backend supports mul_mat like this:
-         *   [ne03, ne02, n, k] * [ne03 * x, ne02 * y, m, k] -> [ne03 * x, ne02 * y, m, n]
-         */
-        QNN_LOG_DEBUG("src0 and src1 dimensions are not equal");
-        return false;
-    }
-
+    QNN_LOG_DEBUG("[%s] supported matmul op, support/unsupported: %d/%d", qnn::get_backend_name(ctx->device),
+                  ++(ctx->support_op_count), ctx->unsupported_op_count.load());
     return true;
 }
 
@@ -590,6 +610,7 @@ bool ggml_qnn_supports_matmul_op(ggml_backend_qnn_device_context *ctx, const ggm
 namespace qnn {
 
 bool ggml_qnn_supports_op(ggml_backend_qnn_device_context *ctx, const ggml_tensor *op) {
+    // Note that this function could be called before the device context is initialized
     if (op->op == GGML_OP_NONE) {
         return true;
     }

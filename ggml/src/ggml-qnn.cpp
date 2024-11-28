@@ -226,9 +226,8 @@ size_t ggml_backend_qnn_buffer_type_get_alignment(ggml_backend_buffer_type_t buf
 
 size_t ggml_backend_qnn_buffer_type_get_max_size(ggml_backend_buffer_type_t buft) {
     GGML_UNUSED(buft);
-    // TODO: this value is an experimental value, works fine with
-    // whisper/llm/minicpm-v inference on Android
-    return (96 * 1024 * 1024);
+    // TODO: get the max size from device
+    return (1024 * 1024 * 1024);
 }
 
 bool ggml_backend_qnn_buffer_is_host(ggml_backend_buffer_type_t buft) {
@@ -339,6 +338,7 @@ void ggml_backend_qnn_device_get_memory(ggml_backend_dev_t dev, size_t *free, si
     GGML_UNUSED(dev);
     *free = qnn::get_system_free_memory_in_bytes();
     *total = qnn::get_system_total_memory_in_bytes();
+    QNN_LOG_DEBUG("free memory: %ldMB, total memory: %ldMB", (*free / 1048576), (*total) / 1048576);
 }
 
 enum ggml_backend_dev_type ggml_backend_qnn_device_get_type(ggml_backend_dev_t dev) {
@@ -374,7 +374,7 @@ ggml_backend_t ggml_backend_qnn_init_with_device_context(ggml_backend_dev_t dev,
 
     auto *dev_ctx = get_device_context(dev);
     const auto device = dev_ctx->device;
-    QNN_LOG_DEBUG("device %d", device);
+    QNN_LOG_DEBUG("device %s", qnn::get_backend_name(device));
     QNN_LOG_DEBUG("extend_lib_search_path %s", extend_lib_search_path);
     std::string path = extend_lib_search_path;
 
@@ -386,7 +386,7 @@ ggml_backend_t ggml_backend_qnn_init_with_device_context(ggml_backend_dev_t dev,
                            "dsp:/vendor/dsp/images")
                        .c_str(),
                    1) == 0) {
-            QNN_LOG_INFO("QNN NPU backend setenv successfully");
+            QNN_LOG_DEBUG("QNN NPU backend setenv successfully");
         } else {
             QNN_LOG_ERROR("QNN NPU backend setenv failure");
         }
@@ -395,13 +395,13 @@ ggml_backend_t ggml_backend_qnn_init_with_device_context(ggml_backend_dev_t dev,
                            "rfsa/adsp;/vendor/dsp/dsp;/vendor/dsp/images;/dsp")
                        .c_str(),
                    1) == 0) {
-            QNN_LOG_INFO("QNN NPU backend setenv successfully");
+            QNN_LOG_DEBUG("QNN NPU backend setenv successfully");
         } else {
             QNN_LOG_ERROR("QNN NPU backend setenv failure");
         }
     } else {
         if (setenv("LD_LIBRARY_PATH", path.c_str(), 1) == 0) {
-            QNN_LOG_INFO("%s backend setenv successfully\n", qnn::get_backend_name(device));
+            QNN_LOG_DEBUG("%s backend setenv successfully\n", qnn::get_backend_name(device));
         } else {
             QNN_LOG_ERROR("%s backend setenv failure\n", qnn::get_backend_name(device));
         }
@@ -454,6 +454,7 @@ ggml_backend_buffer_t ggml_backend_qnn_device_buffer_from_ptr(ggml_backend_dev_t
 }
 
 bool ggml_backend_qnn_device_supports_op(ggml_backend_dev_t dev, const struct ggml_tensor *op) {
+    // Note that this function could be called before the device context is initialized
     auto *device_ctx = get_device_context(dev);
     return qnn::ggml_qnn_supports_op(device_ctx, op);
 }
@@ -495,13 +496,15 @@ struct ggml_backend_qnn_reg_impl : ggml_backend_reg {
         context = this;
         iface = interface;
 
+        QNN_LOG_DEBUG("qnn backend registry init");
         for (int i = 0; i < GGML_QNN_MAX_DEVICES; i++) {
             const auto device_enum = (QNNBackend)(GGML_QNN_MAX_DEVICES - 1 - i); // init from the last device, i.e. NPU
             device_contexts[i] = std::make_unique<ggml_backend_qnn_device_context>(
                 /* .device   = */ device_enum, // init from the last device, i.e. NPU
                 /* .threads  = */ 1,
                 /* .name     = */ qnn::get_backend_name(device_enum),
-                /* .lib_name = */ kDeviceCaps[device_enum].lib_name);
+                /* .lib_name = */ kDeviceCaps[device_enum].lib_name,
+                /* .supported_types = */ kDeviceCaps[device_enum].supported_types);
 
             auto &device = devices[i];
             device.iface = ggml_backend_qnn_device_interface;

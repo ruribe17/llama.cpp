@@ -5,9 +5,11 @@
 
 #include "ggml-qnn.h"
 
+#include "QnnGraph.h"
 #include "qnn-types.hpp"
 
 #ifdef __linux__
+#include <sys/sysinfo.h>
 #include <unistd.h>
 #endif
 
@@ -148,11 +150,11 @@ const char *get_ggml_type_name(ggml_type type) {
 const char *get_backend_name(QNNBackend device_index) {
     switch (device_index) {
         case QNN_BACKEND_CPU:
-            return "QNN-CPU";
+            return "qnn-cpu";
         case QNN_BACKEND_GPU:
-            return "QNN-GPU";
+            return "qnn-gpu";
         case QNN_BACKEND_NPU:
-            return "QNN-NPU";
+            return "qnn-npu";
         case QNN_BACKEND_COUNT:
         default:
             return "unknown";
@@ -195,18 +197,7 @@ intptr_t align_to(size_t alignment, intptr_t offset) {
                : offset + (static_cast<intptr_t>(alignment) - (offset % static_cast<intptr_t>(alignment)));
 }
 
-uint32_t get_ggml_tensor_data_size(const ggml_tensor *tensor) {
-    /*
-    size_t data_size = ggml_row_size(tensor->type, tensor->ne[0]);
-    size_t n_dims = qnn_get_ggml_tensor_rank(tensor);
-    for (int i = 1; i < n_dims; i++) {
-        data_size *= tensor->ne[i];
-    }
-
-    return data_size;
-    */
-    return ggml_nbytes(tensor);
-}
+uint32_t get_ggml_tensor_data_size(const ggml_tensor *tensor) { return ggml_nbytes(tensor); }
 
 void *align_alloc(size_t alignment, size_t size) {
     size_t size_aligned = size;
@@ -248,6 +239,7 @@ const char *opname_from_ggmlop(enum ggml_op ggmlop) {
 const char *get_qnn_error_string(Qnn_ErrorHandle_t error) {
     // A complete list of error codes can be found at here:
     // https://docs.qualcomm.com/bundle/publicresource/topics/80-63442-50/api_error_codes.html
+    thread_local static char error_code[128] = {};
     switch (error) {
         case QNN_SUCCESS:
             return "QNN_SUCCESS";
@@ -277,6 +269,36 @@ const char *get_qnn_error_string(Qnn_ErrorHandle_t error) {
             return "QNN_GRAPH_ERROR_UNCONNECTED_NODE";
         case QNN_GRAPH_ERROR_CREATE_FAILED:
             return "QNN_GRAPH_ERROR_CREATE_FAILED";
+        case QNN_GRAPH_ERROR_OPTIMIZATION_FAILED:
+            return "QNN_GRAPH_ERROR_OPTIMIZATION_FAILED";
+        case QNN_GRAPH_ERROR_FINALIZE_FAILED:
+            return "QNN_GRAPH_ERROR_FINALIZE_FAILED";
+        case QNN_GRAPH_ERROR_GRAPH_NOT_FINALIZED:
+            return "QNN_GRAPH_ERROR_GRAPH_NOT_FINALIZED";
+        case QNN_GRAPH_ERROR_GRAPH_FINALIZED:
+            return "QNN_GRAPH_ERROR_GRAPH_FINALIZED";
+        case QNN_GRAPH_ERROR_EXECUTION_ASYNC_FIFO_FULL:
+            return "QNN_GRAPH_ERROR_EXECUTION_ASYNC_FIFO_FULL";
+        case QNN_GRAPH_ERROR_SIGNAL_IN_USE:
+            return "QNN_GRAPH_ERROR_SIGNAL_IN_USE";
+        case QNN_GRAPH_ERROR_ABORTED:
+            return "QNN_GRAPH_ERROR_ABORTED";
+        case QNN_GRAPH_ERROR_PROFILE_IN_USE:
+            return "QNN_GRAPH_ERROR_PROFILE_IN_USE";
+        case QNN_GRAPH_ERROR_TIMED_OUT:
+            return "QNN_GRAPH_ERROR_TIMED_OUT";
+        case QNN_GRAPH_ERROR_SUBGRAPH:
+            return "QNN_GRAPH_ERROR_SUBGRAPH";
+        case QNN_GRAPH_ERROR_DISABLED:
+            return "QNN_GRAPH_ERROR_DISABLED";
+        case QNN_GRAPH_ERROR_DYNAMIC_TENSOR_SHAPE:
+            return "QNN_GRAPH_ERROR_DYNAMIC_TENSOR_SHAPE";
+        case QNN_GRAPH_ERROR_TENSOR_SPARSITY:
+            return "QNN_GRAPH_ERROR_TENSOR_SPARSITY";
+        case QNN_GRAPH_ERROR_EARLY_TERMINATION:
+            return "QNN_GRAPH_ERROR_EARLY_TERMINATION";
+        case QNN_GRAPH_ERROR_INVALID_CONTEXT:
+            return "QNN_GRAPH_ERROR_INVALID_CONTEXT";
 
         // QnnOpPackage_Error_t
         case QNN_OP_PACKAGE_ERROR_LIBRARY_ALREADY_INITIALIZED:
@@ -294,19 +316,34 @@ const char *get_qnn_error_string(Qnn_ErrorHandle_t error) {
         case QNN_OP_PACKAGE_ERROR_INVALID_ARGUMENT:
             return "QNN_OP_PACKAGE_ERROR_INVALID_ARGUMENT";
         default:
-            return nullptr;
+            if (error >= QNN_GRAPH_MIN_ERROR && error < QNN_GRAPH_MAX_ERROR) {
+                snprintf(error_code, sizeof(error_code), "UNKNOWN_GRAPH_ERROR_%d", int(error - QNN_GRAPH_MIN_ERROR));
+            } else {
+                snprintf(error_code, sizeof(error_code), "%d", int(error));
+            }
+            return error_code;
     }
 }
 
 #ifdef __linux__
 
 size_t get_system_total_memory_in_bytes() {
+    struct sysinfo info = {};
+    if (sysinfo(&info) == 0) {
+        return (info.totalram + info.totalswap) * info.mem_unit;
+    }
+
     auto pages = (size_t)sysconf(_SC_PHYS_PAGES);
     auto page_size = (size_t)sysconf(_SC_PAGE_SIZE);
     return pages * page_size;
 }
 
 size_t get_system_free_memory_in_bytes() {
+    struct sysinfo info = {};
+    if (sysinfo(&info) == 0) {
+        return (info.freeram + info.freeswap) * info.mem_unit;
+    }
+
     auto avail_pages = (size_t)sysconf(_SC_AVPHYS_PAGES);
     auto page_size = (size_t)sysconf(_SC_PAGE_SIZE);
     return avail_pages * page_size;
