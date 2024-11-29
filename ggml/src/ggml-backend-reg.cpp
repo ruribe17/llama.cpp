@@ -61,6 +61,14 @@
 #include "ggml-kompute.h"
 #endif
 
+#ifdef GGML_USE_KOMPUTE
+#include "ggml-kompute.h"
+#endif
+
+#ifdef GGML_USE_QNN
+#include "ggml-qnn.h"
+#endif
+
 struct ggml_backend_reg_entry {
     ggml_backend_reg_t reg;
     void * handle;
@@ -97,6 +105,9 @@ struct ggml_backend_registry {
 #endif
 #ifdef GGML_USE_KOMPUTE
         register_backend(ggml_backend_kompute_reg());
+#endif
+#ifdef GGML_USE_QNN
+        register_backend(ggml_backend_qnn_reg());
 #endif
 #ifdef GGML_USE_CPU
         register_backend(ggml_backend_cpu_reg());
