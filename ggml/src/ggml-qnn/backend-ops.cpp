@@ -566,6 +566,10 @@ bool ggml_qnn_supports_tensor(ggml_backend_qnn_device_context *ctx, const ggml_t
 }
 
 bool ggml_qnn_supports_matmul_op(ggml_backend_qnn_device_context *ctx, const ggml_tensor *op) {
+    constexpr const auto get_tensor_size = [](const ggml_tensor *tensor) -> size_t {
+        return tensor->ne[0] * tensor->ne[1] * tensor->ne[2] * tensor->ne[3];
+    };
+
     auto *src0 = op->src[0];
     auto *src1 = op->src[1];
     switch (ctx->device) {
@@ -576,6 +580,11 @@ bool ggml_qnn_supports_matmul_op(ggml_backend_qnn_device_context *ctx, const ggm
                  *   [ne03, ne02, n, k] * [ne03 * x, ne02 * y, m, k] -> [ne03 * x, ne02 * y, m, n]
                  */
                 QNN_LOG_DEBUG("[qnn-npu] src0 and src1 dimensions are not equal, support/unsupported: %d/%d",
+                              ctx->support_op_count.load(), ++(ctx->unsupported_op_count));
+                return false;
+            } else if (get_tensor_size(src0) + get_tensor_size(src1) + get_tensor_size(op) >=
+                       (8192 * 2048 + 8192 * 512 + 2048 * 512)) {
+                QNN_LOG_DEBUG("[qnn-npu] tensor size is too large, support/unsupported: %d/%d",
                               ctx->support_op_count.load(), ++(ctx->unsupported_op_count));
                 return false;
             }
