@@ -666,8 +666,6 @@ bool ggml_qnn_supports_op(ggml_backend_qnn_device_context *ctx, const ggml_tenso
             case GGML_OP_MUL_MAT:
                 return ggml_qnn_supports_matmul_op(ctx, op);
 
-            case GGML_OP_VIEW:
-                return true;
             default:
                 return false;
         }
