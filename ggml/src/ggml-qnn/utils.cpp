@@ -1,6 +1,8 @@
 
 #include "utils.hpp"
 
+#include <unistd.h>
+
 #include <cstdlib>
 
 #include "ggml-qnn.h"
@@ -35,6 +37,28 @@ qnn_dimension_array_t get_internal_dimension(const ggml_dimension_array_t &dims,
     }
 
     return internal_dims;
+}
+
+qnn_dimension_array_t get_view_internal_dimension(const ggml_tensor *tensor, size_t &element_offset_out) {
+
+    element_offset_out = 0;
+
+    auto *parent_tensor = tensor;
+    while (parent_tensor->view_src) {
+        element_offset_out += parent_tensor->view_offs;
+        parent_tensor = parent_tensor->view_src;
+    }
+
+    const auto rank = get_ggml_tensor_rank(tensor);
+    const auto parent_rank = get_ggml_tensor_rank(parent_tensor);
+    GGML_ASSERT(parent_tensor->type == tensor->type);
+    GGML_ASSERT(parent_rank == rank);
+
+    const auto block_size = ggml_blck_size(tensor->type);
+    element_offset_out =
+        element_offset_out * block_size / tensor->nb[0]; // calculate the element offset in the view tensor
+
+    return get_internal_dimension(parent_tensor->ne, parent_rank);
 }
 
 // TODO: mapping more ggml data type to QNN data type
@@ -198,6 +222,12 @@ intptr_t align_to(size_t alignment, intptr_t offset) {
 }
 
 uint32_t get_ggml_tensor_data_size(const ggml_tensor *tensor) { return ggml_nbytes(tensor); }
+
+void *page_align_alloc(size_t size) {
+    // TODO: fix this for other platforms
+    const size_t alignment = sysconf(_SC_PAGESIZE);
+    return align_alloc(alignment, size);
+}
 
 void *align_alloc(size_t alignment, size_t size) {
     size_t size_aligned = size;

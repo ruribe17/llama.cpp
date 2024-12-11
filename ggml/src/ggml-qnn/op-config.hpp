@@ -82,21 +82,70 @@ private:
     DISABLE_MOVE(ggml_qnn_single_op_config);
 };
 
-class ggml_qnn_matmul_op_config : public ggml_qnn_op_config {
+class ggml_qnn_aggregate_op_config : public ggml_qnn_op_config {
+public:
+    explicit ggml_qnn_aggregate_op_config(const std::string &name, std::shared_ptr<qnn_instance> qnn_instance)
+        : _name(name), _qnn_instance(qnn_instance) {}
+
+    ~ggml_qnn_aggregate_op_config() {
+        _qnn_tensor_inputs.clear();
+        _qnn_tensor_outputs.clear();
+        _tensor_inputs.clear();
+        _tensor_outputs.clear();
+        _operations.clear();
+    }
+
+    bool add_op_to_graph(Qnn_GraphHandle_t graph_handle) override {
+        for (auto &op : _operations) {
+            if (!op->add_op_to_graph(graph_handle)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool bind_input_tensors(const ggml_tensor_array_t &tensor_inputs) override;
+
+    bool bind_output_tensors(const ggml_tensor_array_t &tensor_outputs) override;
+
+    void unbind_input_tensors() override {
+        for (auto &tensor : _tensor_inputs) {
+            tensor->unbind();
+        }
+    }
+
+    void unbind_output_tensors() override {
+        for (auto &tensor : _tensor_outputs) {
+            tensor->unbind();
+        }
+    }
+
+    std::vector<Qnn_Tensor_t> &get_qnn_input_tensors() override { return _qnn_tensor_inputs; }
+    std::vector<Qnn_Tensor_t> &get_qnn_output_tensors() override { return _qnn_tensor_outputs; }
+
+protected:
+    std::string _name;
+    std::shared_ptr<qnn_instance> _qnn_instance;
+
+    std::vector<qnn_op_config_ptr_t> _operations;
+    qnn_tensor_array_t _tensor_inputs;
+    qnn_tensor_array_t _tensor_outputs;
+    std::vector<Qnn_Tensor_t> _qnn_tensor_inputs;
+    std::vector<Qnn_Tensor_t> _qnn_tensor_outputs;
+
+private:
+    DISABLE_COPY(ggml_qnn_aggregate_op_config);
+    DISABLE_MOVE(ggml_qnn_aggregate_op_config);
+};
+
+class ggml_qnn_matmul_op_config : public ggml_qnn_aggregate_op_config {
 public:
     ggml_qnn_matmul_op_config(const std::string &name, std::shared_ptr<qnn_instance> qnn_instance)
-        : _name(name), _qnn_instance(qnn_instance) {}
+        : ggml_qnn_aggregate_op_config(name, qnn_instance) {}
 
     bool initialize_op_nodes(QNNBackend device, Qnn_GraphHandle_t graph_handle,
                              const ggml_tensor_array_t &tensor_inputs,
                              const ggml_tensor_array_t &tensor_outputs) override;
-    bool add_op_to_graph(Qnn_GraphHandle_t graph_handle) override;
-    bool bind_input_tensors(const ggml_tensor_array_t &tensor_inputs) override;
-    bool bind_output_tensors(const ggml_tensor_array_t &tensor_outputs) override;
-    void unbind_input_tensors() override;
-    void unbind_output_tensors() override;
-    std::vector<Qnn_Tensor_t> &get_qnn_input_tensors() override { return _qnn_tensor_inputs; }
-    std::vector<Qnn_Tensor_t> &get_qnn_output_tensors() override;
 
 private:
     qnn_tensor_ptr_t create_gather_nodes(QNNBackend device, Qnn_GraphHandle_t graph_handle, const int rank,
@@ -105,17 +154,6 @@ private:
                               qnn_tensor_array_t &tensor_inputs, qnn_tensor_array_t &tensor_outputs);
     bool create_mat_mul_nodes(QNNBackend device, Qnn_GraphHandle_t graph_handle, const int rank,
                               qnn_tensor_array_t &tensor_inputs, qnn_tensor_array_t &tensor_outputs);
-
-    std::string _name;
-    std::shared_ptr<qnn_instance> _qnn_instance;
-    qnn_op_config_ptr_t _transpose_out;
-    qnn_op_config_ptr_t _mat_mul;
-    qnn_op_config_ptr_t _gather0;
-    qnn_op_config_ptr_t _gather1;
-    std::vector<qnn_op_config_ptr_t> _input_converts;
-    qnn_op_config_ptr_t _output_convert;
-    qnn_tensor_array_t _tensor_inputs;
-    std::vector<Qnn_Tensor_t> _qnn_tensor_inputs;
 
     DISABLE_COPY(ggml_qnn_matmul_op_config);
     DISABLE_MOVE(ggml_qnn_matmul_op_config);

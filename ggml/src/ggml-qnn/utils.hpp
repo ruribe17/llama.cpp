@@ -21,9 +21,11 @@
 namespace qnn {
 
 using ggml_dimension_array_t = int64_t[GGML_MAX_DIMS];
+using ggml_stride_array_t = size_t[GGML_MAX_DIMS];
 using qnn_dimension_array_t = std::array<uint32_t, GGML_MAX_DIMS>;
 
 qnn_dimension_array_t get_internal_dimension(const ggml_dimension_array_t &dims, uint32_t rank);
+qnn_dimension_array_t get_view_internal_dimension(const ggml_tensor *tensor, size_t &element_offser_out);
 
 uint32_t get_ggml_tensor_rank(const ggml_tensor *tensor);
 const char *get_ggml_type_name(ggml_type type);
@@ -33,6 +35,7 @@ const char *get_htparch_desc(size_t htp_arch);
 intptr_t align_to(size_t alignment, intptr_t offset);
 uint32_t get_ggml_tensor_data_size(const ggml_tensor *tensor);
 
+void *page_align_alloc(size_t size);
 void *align_alloc(size_t alignment, size_t size);
 void align_free(void *ptr);
 

@@ -1,7 +1,5 @@
 #include "ggml-qnn.h"
 
-#include <unistd.h>
-
 #include <cassert>
 #include <chrono>
 #include <condition_variable>
@@ -87,49 +85,18 @@ static_assert(sizeof(kDeviceCaps) / sizeof(kDeviceCaps[0]) == GGML_QNN_MAX_DEVIC
               "The number of qnn devices should be equal to GGML_QNN_MAX_DEVICES");
 static_assert(kDeviceCaps[QNN_BACKEND_NPU].type == GGML_BACKEND_DEVICE_TYPE_ACCEL,
               "The NPU device should be an accelerator device");
+static_assert(kDeviceCaps[QNN_BACKEND_GPU].type == GGML_BACKEND_DEVICE_TYPE_GPU,
+              "The NPU device should be an accelerator device");
 
-class ggml_backend_qnn_buffer_context {
-public:
-    ggml_backend_qnn_buffer_context(QNNBackend device, std::shared_ptr<qnn::qnn_instance> instance, size_t size)
-        : _instance(instance), _name(QNN_BACKEND_NAME + std::to_string(device)) {
-        // TODO: fix this for other platforms
-        size_t size_page = sysconf(_SC_PAGESIZE);
-
-        // TODO: for qnn npu, a better way here is to reuse the buffer allocated by
-        // qnn rpc, will save an extra copy
-        _buffer = qnn::align_alloc(size_page, size);
-
-        if (!_buffer) {
-            QNN_LOG_WARN("failed to allocate %.2f MiB\n", float(size / (1 << 20)));
-            return;
-        }
-
-        _buffer_size = size;
-    }
-
-    ~ggml_backend_qnn_buffer_context() {
-        // the free will do nothing if the _buffer is nullptr
-        qnn::align_free(_buffer);
-    }
-
-    bool is_valid() const { return _buffer != nullptr; }
-
-    void *get_buffer() { return _buffer; }
-    size_t get_buffer_size() { return _buffer_size; }
-
-private:
-    std::shared_ptr<qnn::qnn_instance> _instance;
-    std::string _name;
-    void *_buffer = nullptr;
-    size_t _buffer_size = 0;
-};
-
-struct ggml_backend_qnn_buffer_type_context {
-    std::string name;
-};
+static_assert(kDeviceCaps[QNN_BACKEND_CPU].type == GGML_BACKEND_DEVICE_TYPE_CPU,
+              "The NPU device should be an accelerator device");
 
 ggml_backend_qnn_device_context *get_device_context(ggml_backend_dev_t dev) {
     return reinterpret_cast<ggml_backend_qnn_device_context *>(dev->context);
+}
+
+qnn::qnn_buffer_interface *get_buffer_context(ggml_backend_buffer_t buffer) {
+    return reinterpret_cast<qnn::qnn_buffer_interface *>(buffer->context);
 }
 
 /*
@@ -138,27 +105,24 @@ ggml_backend_qnn_device_context *get_device_context(ggml_backend_dev_t dev) {
  * -----------------------------------------------------------------------------------------------
  */
 void ggml_backend_qnn_buffer_free_buffer(ggml_backend_buffer_t buffer) {
-    ggml_backend_qnn_buffer_context *ctx = (ggml_backend_qnn_buffer_context *)buffer->context;
-
+    auto *ctx = get_buffer_context(buffer);
     delete ctx;
 }
 
 void *ggml_backend_qnn_buffer_get_base(ggml_backend_buffer_t buffer) {
-    ggml_backend_qnn_buffer_context *ctx = (ggml_backend_qnn_buffer_context *)buffer->context;
-
+    auto *ctx = get_buffer_context(buffer);
     return ctx->get_buffer();
 }
 
 void ggml_backend_qnn_buffer_init_tensor(ggml_backend_buffer_t buffer, ggml_tensor *tensor) {
-    // Do nothing here, the qnn tensor will be create along with the graph.
     GGML_UNUSED(buffer);
     GGML_UNUSED(tensor);
+    // TODO: we should create the qnn tensor along with the ggml tensor
 }
 
 void ggml_backend_qnn_buffer_set_tensor(ggml_backend_buffer_t buffer, ggml_tensor *tensor, const void *data,
                                         size_t offset, size_t size) {
     GGML_UNUSED(buffer);
-
     memcpy((char *)tensor->data + offset, data, size);
 }
 
@@ -168,8 +132,7 @@ void ggml_backend_qnn_buffer_get_tensor(ggml_backend_buffer_t buffer, const ggml
     memcpy(data, (const char *)tensor->data + offset, size);
 }
 
-bool ggml_backend_qnn_buffer_cpy_tensor(ggml_backend_buffer_t buffer, const struct ggml_tensor *src,
-                                        struct ggml_tensor *dst) {
+bool ggml_backend_qnn_buffer_cpy_tensor(ggml_backend_buffer_t buffer, const ggml_tensor *src, ggml_tensor *dst) {
     GGML_UNUSED(buffer);
     if (ggml_backend_buffer_is_host(src->buffer)) {
         memcpy(dst->data, src->data, ggml_nbytes(src));
@@ -180,12 +143,11 @@ bool ggml_backend_qnn_buffer_cpy_tensor(ggml_backend_buffer_t buffer, const stru
 }
 
 void ggml_backend_qnn_buffer_clear(ggml_backend_buffer_t buffer, uint8_t value) {
-    ggml_backend_qnn_buffer_context *ctx = (ggml_backend_qnn_buffer_context *)buffer->context;
-
-    memset(ctx->get_buffer(), value, ctx->get_buffer_size());
+    auto *ctx = get_buffer_context(buffer);
+    memset(ctx->get_buffer(), value, ctx->get_size());
 }
 
-ggml_backend_buffer_i ggml_backend_qnn_buffer_interface = {
+constexpr const ggml_backend_buffer_i ggml_backend_qnn_buffer_interface = {
     /* .free_buffer     = */ ggml_backend_qnn_buffer_free_buffer,
     /* .get_base        = */ ggml_backend_qnn_buffer_get_base,
     /* .init_tensor     = */ ggml_backend_qnn_buffer_init_tensor,
@@ -208,13 +170,13 @@ const char *ggml_backend_qnn_buffer_type_name(ggml_backend_buffer_type_t buft) {
 }
 
 ggml_backend_buffer_t ggml_backend_qnn_buffer_type_alloc_buffer(ggml_backend_buffer_type_t buft, size_t size) {
-    auto *dev_ctx = get_device_context(buft->device);
-    ggml_backend_qnn_buffer_context *ctx =
-        new ggml_backend_qnn_buffer_context((QNNBackend)dev_ctx->device, dev_ctx->instance, size);
+    qnn::qnn_buffer_interface *ctx = new qnn::qnn_mem_buffer(size);
     if (!ctx->is_valid()) {
         return nullptr;
     }
 
+    QNN_LOG_DEBUG("[%s]alloc buffer: %p, size: %ld", qnn::get_backend_name(get_device_context(buft->device)->device),
+                  ctx->get_buffer(), size);
     return ggml_backend_buffer_init(buft, ggml_backend_qnn_buffer_interface, ctx, size);
 }
 
@@ -227,7 +189,7 @@ size_t ggml_backend_qnn_buffer_type_get_alignment(ggml_backend_buffer_type_t buf
 size_t ggml_backend_qnn_buffer_type_get_max_size(ggml_backend_buffer_type_t buft) {
     GGML_UNUSED(buft);
     // TODO: get the max size from device
-    return 1024 * 1024 * 1024;
+    return 1024L * 1024 * 1024;
 }
 
 bool ggml_backend_qnn_buffer_is_host(ggml_backend_buffer_type_t buft) {
@@ -254,61 +216,52 @@ void ggml_backend_qnn_free(ggml_backend_t backend) {
     }
 }
 
+bool ggml_backend_qnn_cpy_tensor_async(ggml_backend_t backend_src, ggml_backend_t backend_dst, const ggml_tensor *src,
+                                       ggml_tensor *dst) {
+    GGML_UNUSED(backend_src);
+    GGML_UNUSED(backend_dst);
+    GGML_UNUSED(src);
+    GGML_UNUSED(dst);
+    return false;
+}
+
 ggml_backend_buffer_type_t ggml_backend_qnn_buffer_type(ggml_backend_dev_t dev) {
-    static ggml_backend_qnn_buffer_type_context ggml_backend_qnn_buffer_type_contexts[GGML_QNN_MAX_DEVICES];
     static ggml_backend_buffer_type ggml_backend_qnn_buffer_types[GGML_QNN_MAX_DEVICES];
-    static bool ggml_backend_qnn_buffer_type_initialized = false;
     auto *dev_ctx = get_device_context(dev);
-    if (!ggml_backend_qnn_buffer_type_initialized) {
-        for (size_t i = 0; i < GGML_QNN_MAX_DEVICES; i++) {
-            auto &context = ggml_backend_qnn_buffer_type_contexts[i];
-            context = {std::string(QNN_BACKEND_NAME) + std::to_string(i)};
-            ggml_backend_qnn_buffer_types[i] = {
-                /* .iface   = */ {
-                    /* .get_name         = */ ggml_backend_qnn_buffer_type_name,
-                    /* .alloc_buffer     = */
-                    ggml_backend_qnn_buffer_type_alloc_buffer,
-                    /* .get_alignment    = */
-                    ggml_backend_qnn_buffer_type_get_alignment,
-                    /* .get_max_size     = */
-                    ggml_backend_qnn_buffer_type_get_max_size,
-                    /* .get_alloc_size   = */ nullptr, // defaults to ggml_nbytes
-                    /* .is_host          = */ ggml_backend_qnn_buffer_is_host,
-                },
-                /* .device */ dev,
-                /* .context = */ &context,
-            };
-        }
-        ggml_backend_qnn_buffer_type_initialized = true;
+    if (!ggml_backend_qnn_buffer_types[dev_ctx->device].device) {
+        ggml_backend_qnn_buffer_types[dev_ctx->device] = {
+            /* .iface   = */ {
+                /* .get_name         = */ ggml_backend_qnn_buffer_type_name,
+                /* .alloc_buffer     = */
+                ggml_backend_qnn_buffer_type_alloc_buffer,
+                /* .get_alignment    = */
+                ggml_backend_qnn_buffer_type_get_alignment,
+                /* .get_max_size     = */
+                ggml_backend_qnn_buffer_type_get_max_size,
+                /* .get_alloc_size   = */ nullptr, // defaults to ggml_nbytes
+                /* .is_host          = */ ggml_backend_qnn_buffer_is_host,
+            },
+            /* .device */ dev,
+            /* .context = */ nullptr,
+        };
+    } else {
+        GGML_ASSERT(ggml_backend_qnn_buffer_types[dev_ctx->device].device == dev);
     }
 
     return &ggml_backend_qnn_buffer_types[dev_ctx->device];
 }
 
 ggml_status ggml_backend_qnn_graph_compute(ggml_backend_t backend, ggml_cgraph *cgraph) {
-    enum ggml_status result = GGML_STATUS_SUCCESS;
-    auto *device_ctx = get_device_context(backend->device);
-    for (int i = 0; i < cgraph->n_nodes; i++) {
-        ggml_tensor *node = cgraph->nodes[i];
-        if (ggml_is_empty(node) || node->op == GGML_OP_RESHAPE || node->op == GGML_OP_TRANSPOSE ||
-            node->op == GGML_OP_VIEW || node->op == GGML_OP_PERMUTE || node->op == GGML_OP_NONE) {
-            continue;
-        }
-        bool ok = qnn::ggml_qnn_forward(device_ctx, node);
-        if (!ok) {
-            QNN_LOG_DEBUG("error: op not supported %s (%s)\n", node->name, ggml_op_name(node->op));
-        }
-    }
-
-    return result;
+    return qnn::device_compute_graph(get_device_context(backend->device), cgraph) ? GGML_STATUS_SUCCESS
+                                                                                  : GGML_STATUS_FAILED;
 }
 
-ggml_backend_i ggml_backend_qnn_interface = {
+constexpr const ggml_backend_i ggml_backend_qnn_interface = {
     /* .get_name                = */ ggml_backend_qnn_name,
     /* .free                    = */ ggml_backend_qnn_free,
     /* .set_tensor_async        = */ nullptr,
     /* .get_tensor_async        = */ nullptr,
-    /* .cpy_tensor_async        = */ nullptr,
+    /* .cpy_tensor_async        = */ ggml_backend_qnn_cpy_tensor_async,
     /* .synchronize             = */ nullptr,
     /* .graph_plan_create       = */ nullptr,
     /* .graph_plan_free         = */ nullptr,
@@ -345,7 +298,7 @@ enum ggml_backend_dev_type ggml_backend_qnn_device_get_type(ggml_backend_dev_t d
     return kDeviceCaps[get_device_context(dev)->device].type;
 }
 
-void ggml_backend_qnn_device_get_props(ggml_backend_dev_t dev, struct ggml_backend_dev_props *props) {
+void ggml_backend_qnn_device_get_props(ggml_backend_dev_t dev, ggml_backend_dev_props *props) {
     props->name = ggml_backend_qnn_device_get_name(dev);
     props->description = ggml_backend_qnn_device_get_description(dev);
     props->type = ggml_backend_qnn_device_get_type(dev);
@@ -363,6 +316,8 @@ ggml_guid_t ggml_backend_qnn_guid() {
                              0x92, 0xa3, 0xb4, 0xc5, 0xd6, 0xe7, 0xf8, 0x09};
     return &guid;
 }
+
+bool ggml_backend_is_qnn(ggml_backend_t backend) { return ggml_guid_matches(backend->guid, ggml_backend_qnn_guid()); }
 
 ggml_backend_t ggml_backend_qnn_init_with_device_context(ggml_backend_dev_t dev, const char *extend_lib_search_path) {
     if (!extend_lib_search_path) {
@@ -401,9 +356,9 @@ ggml_backend_t ggml_backend_qnn_init_with_device_context(ggml_backend_dev_t dev,
         }
     } else {
         if (setenv("LD_LIBRARY_PATH", path.c_str(), 1) == 0) {
-            QNN_LOG_DEBUG("%s backend setenv successfully\n", qnn::get_backend_name(device));
+            QNN_LOG_DEBUG("%s backend setenv successfully", qnn::get_backend_name(device));
         } else {
-            QNN_LOG_ERROR("%s backend setenv failure\n", qnn::get_backend_name(device));
+            QNN_LOG_ERROR("%s backend setenv failure", qnn::get_backend_name(device));
         }
     }
 #endif
@@ -411,12 +366,12 @@ ggml_backend_t ggml_backend_qnn_init_with_device_context(ggml_backend_dev_t dev,
     auto instance = std::make_shared<qnn::qnn_instance>(path, dev_ctx->lib_name, "ggml");
     auto result = instance->qnn_init(nullptr);
     if (result != 0) {
-        QNN_LOG_WARN("init qnn subsystem failed with qnn backend %s, pls check why\n", qnn::get_backend_name(device));
+        QNN_LOG_WARN("init qnn subsystem failed with qnn backend %s, pls check why", qnn::get_backend_name(device));
         return nullptr;
     }
     auto qnn_interface = instance->get_qnn_interface();
     if (!qnn_interface) {
-        QNN_LOG_WARN("qnn subsystem failure\n");
+        QNN_LOG_WARN("qnn subsystem failure");
         return nullptr;
     }
 
@@ -453,10 +408,10 @@ ggml_backend_buffer_t ggml_backend_qnn_device_buffer_from_ptr(ggml_backend_dev_t
     return ggml_backend_cpu_buffer_from_ptr(ptr, size);
 }
 
-bool ggml_backend_qnn_device_supports_op(ggml_backend_dev_t dev, const struct ggml_tensor *op) {
+bool ggml_backend_qnn_device_supports_op(ggml_backend_dev_t dev, const ggml_tensor *op) {
     // Note that this function could be called before the device context is initialized
     auto *device_ctx = get_device_context(dev);
-    return qnn::ggml_qnn_supports_op(device_ctx, op);
+    return qnn::device_supports_op(device_ctx, op);
 }
 
 bool ggml_backend_qnn_device_supports_buft(ggml_backend_dev_t dev, ggml_backend_buffer_type_t buft) {
@@ -464,7 +419,13 @@ bool ggml_backend_qnn_device_supports_buft(ggml_backend_dev_t dev, ggml_backend_
     return ggml_backend_buft_is_host(buft);
 }
 
-const struct ggml_backend_device_i ggml_backend_qnn_device_interface = {
+bool ggml_backend_qnn_device_offload_op(ggml_backend_dev_t dev, const ggml_tensor *op) {
+    auto *device_ctx = get_device_context(dev);
+    QNN_LOG_DEBUG("[%s][%s]offload op", qnn::get_backend_name(device_ctx->device), ggml_op_name(op->op));
+    return false;
+}
+
+constexpr const ggml_backend_device_i ggml_backend_qnn_device_interface = {
     /* .get_name             = */ ggml_backend_qnn_device_get_name,
     /* .get_description      = */ ggml_backend_qnn_device_get_description,
     /* .get_memory           = */ ggml_backend_qnn_device_get_memory,
@@ -476,7 +437,7 @@ const struct ggml_backend_device_i ggml_backend_qnn_device_interface = {
     /* .buffer_from_host_ptr = */ ggml_backend_qnn_device_buffer_from_ptr,
     /* .supports_op          = */ ggml_backend_qnn_device_supports_op,
     /* .supports_buft        = */ ggml_backend_qnn_device_supports_buft,
-    /* .offload_op           = */ nullptr,
+    /* .offload_op           = */ ggml_backend_qnn_device_offload_op,
     /* .event_new            = */ nullptr,
     /* .event_free           = */ nullptr,
     /* .event_synchronize    = */ nullptr,
@@ -489,27 +450,36 @@ const struct ggml_backend_device_i ggml_backend_qnn_device_interface = {
  */
 
 struct ggml_backend_qnn_reg_impl : ggml_backend_reg {
-    std::array<std::unique_ptr<ggml_backend_qnn_device_context>, GGML_QNN_MAX_DEVICES> device_contexts;
-    std::array<ggml_backend_device, GGML_QNN_MAX_DEVICES> devices;
+    std::vector<std::unique_ptr<ggml_backend_qnn_device_context>> device_contexts;
+    std::vector<ggml_backend_device> devices;
 
     explicit ggml_backend_qnn_reg_impl(ggml_backend_reg_i interface) {
         context = this;
         iface = interface;
 
         QNN_LOG_DEBUG("qnn backend registry init");
-        for (int i = 0; i < GGML_QNN_MAX_DEVICES; i++) {
-            const auto device_enum = (QNNBackend)(GGML_QNN_MAX_DEVICES - 1 - i); // init from the last device, i.e. NPU
-            device_contexts[i] = std::make_unique<ggml_backend_qnn_device_context>(
+        for (size_t i = 0; i < QNN_BACKEND_COUNT; i++) {
+            const auto device_enum = (QNNBackend)(QNN_BACKEND_COUNT - 1 - i); // init from the last device, i.e. NPU
+            if (device_enum == QNN_BACKEND_CPU) {
+                /*
+                 * here we skip the initialization of CPU device,
+                 *   cause it'll block unsupported ops fallback to ggml cpu backend
+                 */
+                continue;
+            }
+
+            device_contexts.emplace_back(std::make_unique<ggml_backend_qnn_device_context>(
                 /* .device   = */ device_enum, // init from the last device, i.e. NPU
                 /* .threads  = */ 1,
                 /* .name     = */ qnn::get_backend_name(device_enum),
                 /* .lib_name = */ kDeviceCaps[device_enum].lib_name,
-                /* .supported_types = */ kDeviceCaps[device_enum].supported_types);
+                /* .supported_types = */ kDeviceCaps[device_enum].supported_types));
 
-            auto &device = devices[i];
-            device.iface = ggml_backend_qnn_device_interface;
-            device.reg = this;
-            device.context = device_contexts[i].get();
+            devices.emplace_back(ggml_backend_device{
+                /* iface = */ ggml_backend_qnn_device_interface,
+                /* reg = */ this,
+                /* context = */ device_contexts.back().get(),
+            });
         }
     }
 };
