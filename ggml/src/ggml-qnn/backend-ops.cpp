@@ -183,6 +183,7 @@ constexpr const char *kGgmlOpToQnnOp[] = {
     nullptr,          // GGML_OP_POOL_2D_BACK
     nullptr,          // GGML_OP_UPSCALE
     nullptr,          // GGML_OP_PAD
+    nullptr,          // GGML_OP_PAD_REFLECT_1D
     nullptr,          // GGML_OP_ARANGE
     nullptr,          // GGML_OP_TIMESTEP_EMBEDDING
     nullptr,          // GGML_OP_ARGSORT
@@ -196,7 +197,7 @@ constexpr const char *kGgmlOpToQnnOp[] = {
     nullptr, // GGML_OP_WIN_UNPART
     nullptr, // GGML_OP_GET_REL_POS
     nullptr, // GGML_OP_ADD_REL_POS
-    nullptr, // GGML_OP_RWKV_WKV
+    nullptr, // GGML_OP_RWKV_WKV6
 
     nullptr, // GGML_OP_UNARY
 
@@ -392,6 +393,7 @@ constexpr const ggml_qnn_unary_op_t kQnnUnaryOpsTable[] = {
     nullptr,            // GGML_OP_POOL_2D_BACK
     nullptr,            // GGML_OP_UPSCALE
     nullptr,            // GGML_OP_PAD
+    nullptr,            // GGML_OP_PAD_REFLECT_1D
     nullptr,            // GGML_OP_ARANGE
     nullptr,            // GGML_OP_TIMESTEP_EMBEDDING
     nullptr,            // GGML_OP_ARGSORT
@@ -405,7 +407,7 @@ constexpr const ggml_qnn_unary_op_t kQnnUnaryOpsTable[] = {
     nullptr, // GGML_OP_WIN_UNPART
     nullptr, // GGML_OP_GET_REL_POS
     nullptr, // GGML_OP_ADD_REL_POS
-    nullptr, // GGML_OP_RWKV_WKV
+    nullptr, // GGML_OP_RWKV_WKV6
 
     nullptr, // GGML_OP_UNARY
 
@@ -503,6 +505,7 @@ constexpr const ggml_qnn_binary_op_t kQnnBinaryOpsTable[] = {
     nullptr, // GGML_OP_POOL_2D_BACK
     nullptr, // GGML_OP_UPSCALE
     nullptr, // GGML_OP_PAD
+    nullptr, // GGML_OP_PAD_REFLECT_1D
     nullptr, // GGML_OP_ARANGE
     nullptr, // GGML_OP_TIMESTEP_EMBEDDING
     nullptr, // GGML_OP_ARGSORT
