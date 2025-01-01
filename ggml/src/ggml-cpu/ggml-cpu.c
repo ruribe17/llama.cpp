@@ -1250,11 +1250,11 @@ static inline void __lsx_f16x4_store(ggml_fp16_t * x, __m128 y) {
     for (int i = 0; i < offset; ++i) {              \
         sum[i] = vec_add(sum[i], sum[offset + i]);  \
     }                                               \
-    offset >>= 1;
+    offset >>= 1;                                   \
     for (int i = 0; i < offset; ++i) {              \
         sum[i] = vec_add(sum[i], sum[offset + i]);  \
     }                                               \
-    offset >>= 1;
+    offset >>= 1;                                   \
     for (int i = 0; i < offset; ++i) {              \
         sum[i] = vec_add(sum[i], sum[offset + i]);  \
     }                                               \
