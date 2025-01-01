@@ -87,10 +87,6 @@
 #include <Accelerate/Accelerate.h>
 #endif
 
-#if defined(__s390x__) && defined(__VEC__)
-#include <vecintrin.h>
-#endif
-
 // floating point type used to accumulate sums
 typedef double ggml_float;
 
@@ -242,7 +238,7 @@ typedef pthread_t ggml_thread_t;
 #else
 #if defined(__POWER9_VECTOR__)
 #define CACHE_LINE_SIZE 128
-#elif defined(__s390x__) && defined(__VEC__)
+#elif defined(__VXE__) || defined(__VXE2__)
 #define CACHE_LINE_SIZE 256
 #else
 #define CACHE_LINE_SIZE 64
@@ -1224,7 +1220,7 @@ static inline void __lsx_f16x4_store(ggml_fp16_t * x, __m128 y) {
 #define GGML_F16_VEC_MUL             GGML_F32Cx4_MUL
 #define GGML_F16_VEC_REDUCE          GGML_F32Cx4_REDUCE
 
-#elif defined(__s390x__) && defined(__VEC__)
+#elif defined(__VXE__) || defined(__VXE2__)
 #define vec_add(a, b) ((a) + (b))
 #define vec_mul(a, b) ((a) * (b))
 

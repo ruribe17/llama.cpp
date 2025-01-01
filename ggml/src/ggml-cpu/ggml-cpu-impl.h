@@ -59,6 +59,15 @@ struct ggml_compute_params {
 #endif
 #endif
 
+#if defined(__s390x__) && defined(__VEC__)
+#ifndef __VXE__
+#define __VXE__
+#endif
+#ifndef __VXE2__
+#define __VXE2__
+#endif
+#endif
+
 #if defined(__ARM_FEATURE_SVE)
 #include <arm_sve.h>
 #include <sys/prctl.h>
@@ -357,6 +366,10 @@ inline static int32x4_t ggml_vdotq_s32(int32x4_t acc, int8x16_t a, int8x16_t b) 
 #if defined(__loongarch_sx)
 #include <lsxintrin.h>
 #endif
+#endif
+
+#if defined(__VXE__) || defined(__VXE2__)
+#include <vecintrin.h>
 #endif
 
 #if defined(__loongarch_asx)
