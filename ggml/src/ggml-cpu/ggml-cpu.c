@@ -1228,8 +1228,7 @@ static inline void __lsx_f16x4_store(ggml_fp16_t * x, __m128 y) {
 #define vec_add(a, b) ((a) + (b))
 #define vec_mul(a, b) ((a) * (b))
 
-// TODO: Activate this macro
-//#define GGML_SIMD
+#define GGML_SIMD
 
 // F32 s390x
 
@@ -1307,10 +1306,6 @@ static inline void __lzs_f16cx4_store(ggml_fp16_t * x, __vector float y) {
 #define GGML_F16_VEC_ADD            GGML_F32x4_ADD
 #define GGML_F16_VEC_MUL            GGML_F32x4_MUL
 #define GGML_F16_VEC_REDUCE         GGML_F32x4_REDUCE
-
-// TODO: Remove once SIMD is activated
-#define GGML_F32_ARR (GGML_F32_STEP/GGML_F32_EPR)
-#define GGML_F16_ARR (GGML_F16_STEP/GGML_F16_EPR)
 
 #endif
 
@@ -1450,8 +1445,7 @@ static void ggml_vec_dot_f32(int n, float * restrict s, size_t bs, const float *
    UNUSED(by);
    UNUSED(bs);
 
-// TODO: Remove logic bypass
-#if defined(GGML_SIMD) || (defined(__s390x__) && defined(__VEC__))
+#if defined(GGML_SIMD)
     float sumf = 0.0f;
     const int np = (n & ~(GGML_F32_STEP - 1));
 
@@ -1564,8 +1558,7 @@ static void ggml_vec_dot_f16(int n, float * restrict s, size_t bs, ggml_fp16_t *
 
     ggml_float sumf = 0.0;
 
-// TODO: Remove logic bypass
-#if defined(GGML_SIMD) || (defined(__s390x__) && defined(__VEC__))
+#if defined(GGML_SIMD)
     const int np = (n & ~(GGML_F16_STEP - 1));
 
     GGML_F16_VEC sum[GGML_F16_ARR] = { GGML_F16_VEC_ZERO };
@@ -1609,7 +1602,6 @@ inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float * re
         x[i] = (ggml_fp16_t *) ((char *) xv + i*xs);
     }
 
-// TODO: Fix problematic (__vector float *) + (__vector float *)
 #if defined(GGML_SIMD)
     const int np = (n & ~(GGML_F16_STEP - 1));
 
@@ -1655,8 +1647,7 @@ inline static void ggml_vec_dot_f16_unroll(const int n, const int xs, float * re
 }
 
 inline static void ggml_vec_mad_f32(const int n, float * restrict y, const float * restrict x, const float v) {
-// TODO: Remove logic bypass
-#if defined(GGML_SIMD) || (defined(__s390x__) && defined(__VEC__))
+#if defined(GGML_SIMD)
     const int np = (n & ~(GGML_F32_STEP - 1));
 
     GGML_F32_VEC vx = GGML_F32_VEC_SET1(v);
@@ -1687,8 +1678,7 @@ inline static void ggml_vec_mad_f32(const int n, float * restrict y, const float
 }
 
 inline static void ggml_vec_mad_f16(const int n, ggml_fp16_t * restrict y, const ggml_fp16_t * restrict x, const float v) {
-// TODO: Remove logic bypass
-#if defined(GGML_SIMD) || (defined(__s390x__) && defined(__VEC__))
+#if defined(GGML_SIMD)
     const int np = (n & ~(GGML_F16_STEP - 1));
 
     GGML_F16_VEC vx = GGML_F16_VEC_SET1(v);
@@ -1729,8 +1719,7 @@ inline static void ggml_vec_mad_f32_unroll(const int n, const int xs, const int 
         v[i] = (const float *) ((const char *) vv + i*vs);
     }
 
-// TODO: Remove logic bypass
-#if defined(GGML_SIMD) || (defined(__s390x__) && defined(__VEC__))
+#if defined(GGML_SIMD)
     const int np = (n & ~(GGML_F32_STEP - 1));
 
     GGML_F32_VEC vx[GGML_VEC_MAD_UNROLL];
@@ -1775,8 +1764,7 @@ inline static void ggml_vec_mad_f32_unroll(const int n, const int xs, const int 
 inline static void ggml_vec_scale_f32(const int n, float * y, const float   v) {
 #if defined(GGML_USE_ACCELERATE)
     vDSP_vsmul(y, 1, &v, y, 1, n);
-// TODO: Remove logic bypass
-#elif defined(GGML_SIMD) || (defined(__s390x__) && defined(__VEC__))
+#elif defined(GGML_SIMD)
     const int np = (n & ~(GGML_F32_STEP - 1));
 
     GGML_F32_VEC vx = GGML_F32_VEC_SET1(v);
@@ -1805,8 +1793,7 @@ inline static void ggml_vec_scale_f32(const int n, float * y, const float   v) {
 }
 
 inline static void ggml_vec_scale_f16(const int n, ggml_fp16_t * y, const float v) {
-// TODO: Remove logic bypass
-#if defined(GGML_SIMD) || (defined(__s390x__) && defined(__VEC__))
+#if defined(GGML_SIMD)
     const int np = (n & ~(GGML_F16_STEP - 1));
 
     GGML_F16_VEC vx = GGML_F16_VEC_SET1(v);
