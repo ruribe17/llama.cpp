@@ -1248,15 +1248,15 @@ static inline void __lsx_f16x4_store(ggml_fp16_t * x, __m128 y) {
 {                                                   \
     int offset = GGML_F32_ARR >> 1;                 \
     for (int i = 0; i < offset; ++i) {              \
-        sum[i] = vec_add(sum[i], sum[offset + i]);  \
+        x[i] = vec_add(x[i], x[offset + i]);        \
     }                                               \
     offset >>= 1;                                   \
     for (int i = 0; i < offset; ++i) {              \
-        sum[i] = vec_add(sum[i], sum[offset + i]);  \
+        x[i] = vec_add(x[i], x[offset + i]);        \
     }                                               \
     offset >>= 1;                                   \
     for (int i = 0; i < offset; ++i) {              \
-        sum[i] = vec_add(sum[i], sum[offset + i]);  \
+        x[i] = vec_add(x[i], x[offset + i]);        \
     }                                               \
     res = vec_extract(x[0], 0) +                    \
           vec_extract(x[0], 1) +                    \
@@ -1308,6 +1308,7 @@ static inline void __lzs_f16cx4_store(ggml_fp16_t * x, __vector float y) {
 #define GGML_F16_VEC_MUL            GGML_F32x4_MUL
 #define GGML_F16_VEC_REDUCE         GGML_F32x4_REDUCE
 
+// TODO: Remove once SIMD is activated
 #define GGML_F32_ARR (GGML_F32_STEP/GGML_F32_EPR)
 #define GGML_F16_ARR (GGML_F16_STEP/GGML_F16_EPR)
 
@@ -1315,8 +1316,7 @@ static inline void __lzs_f16cx4_store(ggml_fp16_t * x, __vector float y) {
 
 // GGML_F32_ARR / GGML_F16_ARR
 //   number of registers to use per step
-// TODO: Remove logic bypass
-#ifdef GGML_SIMD || (defined(__s390x__) && defined(__VEC__))
+#ifdef GGML_SIMD
 #define GGML_F32_ARR (GGML_F32_STEP/GGML_F32_EPR)
 #define GGML_F16_ARR (GGML_F16_STEP/GGML_F16_EPR)
 #endif
