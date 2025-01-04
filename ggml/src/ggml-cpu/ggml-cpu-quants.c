@@ -3687,60 +3687,29 @@ void ggml_vec_dot_q8_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 
     sumf = hsum_float_8(acc);
 #elif defined(__VXE__) || defined(__VXE2__)
-    __vector float sumv0 = vec_splats(0.0f);
-    __vector float sumv1 = vec_splats(0.0f);
+    __vector float acc = vec_splats(0.0f);
 
-    for (; ib + 1 < nb; ib += 2) {
-        const block_q8_0 * restrict x0 = &x[ib + 0];
-        const block_q8_0 * restrict x1 = &x[ib + 1];
-        const block_q8_0 * restrict y0 = &y[ib + 0];
-        const block_q8_0 * restrict y1 = &y[ib + 1];
+    for (; ib < nb; ++ib) {
+        const __vector int8_t v_xl = vec_xl(0      , x[ib].qs);
+        const __vector int8_t v_xh = vec_xl(QK8_0/2, x[ib].qs);
+        const __vector int8_t v_yl = vec_xl(0      , y[ib].qs);
+        const __vector int8_t v_yh = vec_xl(QK8_0/2, y[ib].qs);
 
-        const float d0 = GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d);
-        const float d1 = GGML_FP16_TO_FP32(x1->d) * GGML_FP16_TO_FP32(y1->d);
+        const __vector int16_t v_xylo = vec_mulo(v_xl, v_yl);
+        const __vector int16_t v_xyle = vec_mule(v_xl, v_yl);
+        const __vector int16_t v_xyho = vec_mulo(v_xh, v_yh);
+        const __vector int16_t v_xyhe = vec_mule(v_xh, v_yh);
 
-        // Load x0 and x1, low and high
-        const __vector int8_t x0_l = vec_xl(0      , x0->qs);
-        const __vector int8_t x0_h = vec_xl(QK8_0/2, x0->qs);
-        const __vector int8_t x1_l = vec_xl(0      , x1->qs);
-        const __vector int8_t x1_h = vec_xl(QK8_0/2, x1->qs);
+        __vector int16_t v_xy_ = v_xylo + v_xyle + v_xyho + v_xyhe;
+        v_xy_ += vec_reve(v_xy_);
 
-        // Load y0 and y1, low and high
-        const __vector int8_t y0_l = vec_xl(0      , y0->qs);
-        const __vector int8_t y0_h = vec_xl(QK8_0/2, y0->qs);
-        const __vector int8_t y1_l = vec_xl(0      , y1->qs);
-        const __vector int8_t y1_h = vec_xl(QK8_0/2, y1->qs);
+        const __vector float v_xy = vec_float(vec_unpackh(xy_));
+        const __vector float v_d = vec_splats(GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d));
 
-        const __vector int16_t xy0_lo = vec_mulo(x0_l, y0_l);
-        const __vector int16_t xy0_le = vec_mule(x0_l, y0_l);
-        const __vector int16_t xy0_ho = vec_mulo(x0_h, y0_h);
-        const __vector int16_t xy0_he = vec_mule(x0_h, y0_h);
-
-        const __vector int16_t xy1_lo = vec_mulo(x1_l, y1_l);
-        const __vector int16_t xy1_le = vec_mule(x1_l, y1_l);
-        const __vector int16_t xy1_ho = vec_mulo(x1_h, y1_h);
-        const __vector int16_t xy1_he = vec_mule(x1_h, y1_h);
-
-        __vector int16_t xy0_ = xy0_lo + xy0_le + xy0_ho + xy0_he;
-        __vector int16_t xy1_ = xy1_lo + xy1_le + xy1_ho + xy1_he;
-
-        // Fill remaining empty vector spaces
-        xy0_ += vec_reve(xy0_);
-        xy1_ += vec_reve(xy1_);
-
-        // Unpack left-half to become int16_t and convert to float
-        const __vector float xy0 = vec_float(vec_unpackh(xy0_));
-        const __vector float xy1 = vec_float(vec_unpackh(xy1_));
-
-        const __vector float v_d0 = { d0, d0, d0, d0 };
-        const __vector float v_d1 = { d1, d1, d1, d1 };
-
-        sumv0 = vec_madd(xy0, v_d0, sumv0);
-        sumv1 = vec_madd(xy1, v_d1, sumv1);
+        acc = vec_madd(v_xy, v_d, acc);
     }
 
-    sumf = sumv0[0] + sumv0[1] + sumv0[2] + sumv0[3] +
-           sumv1[0] + sumv1[1] + sumv1[2] + sumv1[3];
+    sumf = acc[0] + acc[1] + acc[2] + acc[3];
 #endif
     for (; ib < nb; ++ib) {
         int sumi = 0;
