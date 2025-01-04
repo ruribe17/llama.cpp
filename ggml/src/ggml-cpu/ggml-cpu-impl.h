@@ -370,6 +370,30 @@ inline static int32x4_t ggml_vdotq_s32(int32x4_t acc, int8x16_t a, int8x16_t b) 
 
 #if defined(__VXE__) || defined(__VXE2__)
 #include <vecintrin.h>
+
+#define vec_neg(a)    (-(a))                // Vector Negate
+#define vec_add(a, b) ((a) + (b))           // Vector Add
+#define vec_sub(a, b) ((a) - (b))           // Vector Subtract
+#define vec_mul(a, b) ((a) * (b))           // Vector Multiply
+#define vec_div(a, b) ((a) / (b))           // Vector Divide
+#define vec_sl(a, b)  ((a) << (b))          // Vector Shift Left
+#define vec_sra(a, b) ((a) >> (b))          // Vector Shift Right
+#define vec_sr(a, b)  ((a) >> (b))          // Vector Shift Right Algebraic
+#define vec_slo(a, b) vec_slb(a, (b) << 64) // Vector Shift Left by Octet
+#define vec_sro(a, b) vec_srb(a, (b) << 64) // Vector Shift Right by Octet
+
+#ifndef vec_and
+#define vec_and(a, b) ((a) & (b)) // Vector AND
+#endif
+
+#ifndef vec_or
+#define vec_or(a, b)  ((a) | (b)) // Vector OR
+#endif
+
+#ifndef vec_xor
+#define vec_xor(a, b) ((a) ^ (b)) // Vector XOR
+#endif
+
 #endif
 
 #if defined(__loongarch_asx)

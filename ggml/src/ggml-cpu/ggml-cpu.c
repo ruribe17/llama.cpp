@@ -1221,8 +1221,6 @@ static inline void __lsx_f16x4_store(ggml_fp16_t * x, __m128 y) {
 #define GGML_F16_VEC_REDUCE          GGML_F32Cx4_REDUCE
 
 #elif defined(__VXE__) || defined(__VXE2__)
-#define vec_add(a, b) ((a) + (b))
-#define vec_mul(a, b) ((a) * (b))
 
 #define GGML_SIMD
 
