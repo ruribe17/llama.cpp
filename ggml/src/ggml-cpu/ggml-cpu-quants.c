@@ -3724,7 +3724,7 @@ void ggml_vec_dot_q8_0_q8_0(int n, float * restrict s, size_t bs, const void * r
         __vector int16_t xy0_ = xy0_lo + xy0_le + xy0_ho + xy0_he;
         __vector int16_t xy1_ = xy1_lo + xy1_le + xy1_ho + xy1_he;
 
-        // Extend xy0_ and xy1_ from int16_t to int32_t
+        // Fill remaining empty vector spaces
         xy0_ += vec_reve(xy0_);
         xy1_ += vec_reve(xy1_);
 
