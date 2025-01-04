@@ -3703,7 +3703,7 @@ void ggml_vec_dot_q8_0_q8_0(int n, float * restrict s, size_t bs, const void * r
         __vector int16_t v_xy_ = v_xylo + v_xyle + v_xyho + v_xyhe;
         v_xy_ += vec_reve(v_xy_);
 
-        const __vector float v_xy = vec_float(vec_unpackh(xy_));
+        const __vector float v_xy = vec_float(vec_unpackh(v_xy_));
         const __vector float v_d = vec_splats(GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d));
 
         acc = vec_madd(v_xy, v_d, acc);
