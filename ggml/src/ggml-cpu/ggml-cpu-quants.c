@@ -2298,6 +2298,37 @@ void ggml_vec_dot_q4_0_q8_0(int n, float * restrict s, size_t bs, const void * r
     }
 
     sumf = hsum_float_4x4(acc_0, acc_1, acc_2, acc_3);
+#elif defined(__VXE__) || defined(__VXE2__)
+    __vector float acc = vec_splats(0.0f);
+
+    const __vector uint8_t v_m = vec_splats((const uint8_t)0x0F);
+    const __vector int8_t  v_s = vec_splats( (const int8_t)0x08);
+
+    for (; ib < nb; ++ib) {
+        const __vector uint8_t v_x = vec_xl(0, x[ib].qs);
+        const __vector int8_t v_xl = (const __vector int8_t)(v_x & v_m);
+        const __vector int8_t v_xh = (const __vector int8_t)(v_x >> 4);
+
+        const __vector int8_t v_xls = vec_sub(v_xl, v_s);
+        const __vector int8_t v_xhs = vec_sub(v_xh, v_s);
+
+        const __vector int8_t v_yl = vec_xl(0      , y[ib].qs);
+        const __vector int8_t v_yh = vec_xl(QK8_0/2, y[ib].qs);
+
+        const __vector int16_t v_xylso = vec_mulo(v_xls, v_yl);
+        const __vector int16_t v_xylse = vec_mule(v_xls, v_yl);
+        const __vector int16_t v_xyhso = vec_mulo(v_xhs, v_yh);
+        const __vector int16_t v_xyhse = vec_mule(v_xhs, v_yh);
+
+        __vector int16_t v_xy_ = v_xylso + v_xylse + v_xyhso + v_xyhse; v_xy_ += vec_reve(v_xy_);
+
+        const __vector float v_xy = vec_float(vec_unpackh(v_xy_));
+        const __vector float v_d = vec_splats(GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d));
+
+        acc = vec_madd(v_xy, v_d, acc);
+    }
+
+    sumf = acc[0] + acc[1] + acc[2] + acc[3];
 #endif
     for (; ib < nb; ++ib) {
         int sumi0 = 0;
