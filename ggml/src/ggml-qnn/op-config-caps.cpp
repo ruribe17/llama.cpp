@@ -139,6 +139,7 @@ constexpr const qnn_op_caps_t kOpCaps[] = {
     {}, // GGML_OP_GET_REL_POS
     {}, // GGML_OP_ADD_REL_POS
     {}, // GGML_OP_RWKV_WKV6
+    {}, // GGML_OP_GATED_LINEAR_ATTN
 
     {}, // GGML_OP_UNARY
 

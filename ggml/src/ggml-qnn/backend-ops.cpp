@@ -314,7 +314,8 @@ constexpr const ggml_qnn_op_t kQnnOpsTable[] = {
     nullptr, // GGML_OP_WIN_UNPART
     nullptr, // GGML_OP_GET_REL_POS
     nullptr, // GGML_OP_ADD_REL_POS
-    nullptr, // GGML_OP_RWKV_WKV
+    nullptr, // GGML_OP_RWKV_WKV6
+    nullptr, // GGML_OP_GATED_LINEAR_ATTN
 
     nullptr, // GGML_OP_UNARY
 

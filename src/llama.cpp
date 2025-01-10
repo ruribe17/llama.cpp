@@ -11848,10 +11848,6 @@ struct llama_sampler_chain_params llama_sampler_chain_default_params() {
 size_t llama_max_devices(void) {
     return 16;
 }
-#if defined(GGML_USE_QNN)
-    return GGML_QNN_MAX_DEVICES;
-#else
-#endif
 
 bool llama_supports_mmap(void) {
     return llama_mmap::SUPPORTED;
