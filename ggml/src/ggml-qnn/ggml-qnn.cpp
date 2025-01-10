@@ -222,6 +222,9 @@ bool ggml_backend_qnn_cpy_tensor_async(ggml_backend_t backend_src, ggml_backend_
     GGML_UNUSED(backend_dst);
     GGML_UNUSED(src);
     GGML_UNUSED(dst);
+
+    QNN_LOG_DEBUG("opy form %s to %s, src_is_qnn: %d, dst_is_qnn: %d", ggml_get_name(src), ggml_get_name(dst),
+                  (int)ggml_backend_is_qnn(backend_src), (int)ggml_backend_is_qnn(backend_dst));
     return false;
 }
 
@@ -316,8 +319,6 @@ ggml_guid_t ggml_backend_qnn_guid() {
                              0x92, 0xa3, 0xb4, 0xc5, 0xd6, 0xe7, 0xf8, 0x09};
     return &guid;
 }
-
-bool ggml_backend_is_qnn(ggml_backend_t backend) { return ggml_guid_matches(backend->guid, ggml_backend_qnn_guid()); }
 
 ggml_backend_t ggml_backend_qnn_init_with_device_context(ggml_backend_dev_t dev, const char *extend_lib_search_path) {
     if (!extend_lib_search_path) {
@@ -420,8 +421,13 @@ bool ggml_backend_qnn_device_supports_buft(ggml_backend_dev_t dev, ggml_backend_
 }
 
 bool ggml_backend_qnn_device_offload_op(ggml_backend_dev_t dev, const ggml_tensor *op) {
+#ifdef NDEBUG
+    GGML_UNUSED(dev);
+    GGML_UNUSED(op);
+#else
     auto *device_ctx = get_device_context(dev);
     QNN_LOG_DEBUG("[%s][%s]offload op", qnn::get_backend_name(device_ctx->device), ggml_op_name(op->op));
+#endif
     return false;
 }
 
@@ -508,6 +514,8 @@ const ggml_backend_reg_i ggml_backend_qnn_reg_interface = {
 };
 
 } // namespace
+
+bool ggml_backend_is_qnn(ggml_backend_t backend) { return ggml_guid_matches(backend->guid, ggml_backend_qnn_guid()); }
 
 ggml_backend_reg_t ggml_backend_qnn_reg() {
     static ggml_backend_qnn_reg_impl reg{ggml_backend_qnn_reg_interface};

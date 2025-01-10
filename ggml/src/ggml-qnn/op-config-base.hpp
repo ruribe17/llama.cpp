@@ -10,8 +10,6 @@
 
 namespace qnn {
 
-using ggml_tensor_array_t = std::vector<ggml_tensor *>;
-
 /**
  * @class ggml_qnn_op_config
  * @brief Abstract base class for configuring QNN operations.
@@ -24,6 +22,34 @@ public:
     virtual ~ggml_qnn_op_config() {}
 
     /**
+     * @brief Sets custom input tensors for the operation. This method should be called before `initialize_op_nodes`.
+     * If no custom input tensors are provided, the input tensors will be automatically created from the input ggml
+     * tensors.
+     *
+     * This pure virtual function must be overridden by derived classes to set
+     * the input tensors for the operation. The function takes a reference to a
+     * vector of qnn_tensor_ptr_t objects, which represent the input tensors.
+     *
+     * @param tensor_inputs A reference to a vector of qnn_tensor_ptr_t objects representing the input tensors.
+     */
+    virtual void set_input_tensors(qnn::qnn_tensor_array_t &tensor_inputs) = 0;
+    virtual void set_input_tensors(qnn::qnn_tensor_array_t &&tensor_inputs) = 0;
+
+    /**
+     * @brief Sets custom output tensors for the operation. This method should be called before `initialize_op_nodes`.
+     * If no custom output tensors are provided, the output tensors will be automatically created from the output ggml
+     * tensors.
+     *
+     * This pure virtual function must be overridden by derived classes to set
+     * the output tensors for the operation. The function takes a reference to a
+     * vector of qnn_tensor_ptr_t objects, which represent the output tensors.
+     *
+     * @param tensor_outputs A reference to a vector of qnn_tensor_ptr_t objects representing the output tensors.
+     */
+    virtual void set_output_tensors(qnn::qnn_tensor_array_t &tensor_outputs) = 0;
+    virtual void set_output_tensors(qnn::qnn_tensor_array_t &&tensor_inputs) = 0;
+
+    /**
      * @brief Creates tensors and internal nodes for constructing the calculation graph.
      *
      * This pure virtual function is responsible for creating tensors on the given
@@ -31,36 +57,32 @@ public:
      * the internal nodes necessary for constructing the calculation graph. It takes
      * input and output tensor arrays as parameters.
      *
-     * @param device The backend device where tensors will be created.
-     * @param graph_handle The handle to the graph where tensors and nodes will be associated.
-     * @param tensor_inputs An array of input tensors.
-     * @param tensor_outputs An array of output tensors.
+     * @param device
+     * @param graph_handle
      * @return true if tensors and nodes are successfully created, false otherwise.
      */
-    virtual bool initialize_op_nodes(QNNBackend device, Qnn_GraphHandle_t graph_handle,
-                                     const ggml_tensor_array_t &tensor_inputs,
-                                     const ggml_tensor_array_t &tensor_outputs) = 0;
+    virtual bool initialize_op_nodes(QNNBackend device, Qnn_GraphHandle_t graph_handle) = 0;
 
     /**
-     * @brief Pure virtual function to retrieve the input tensors for QNN (Quantized Neural Network).
+     * @brief Pure virtual function to retrieve the input tensors.
      *
      * This function must be overridden by derived classes to provide the specific implementation
      * for retrieving the input tensors used in QNN operations.
      *
-     * @return A reference to a vector of Qnn_Tensor_t objects representing the input tensors.
+     * @return A reference to a vector of qnn_tensor_ptr_t objects representing the input tensors.
      */
-    virtual std::vector<Qnn_Tensor_t> &get_qnn_input_tensors() = 0;
+    virtual const qnn_tensor_array_t &get_input_tensors() = 0;
 
     /**
-     * @brief Pure virtual function to retrieve the output tensors of a QNN (Quantized Neural Network).
+     * @brief Pure virtual function to retrieve the output tensors of a QNN.
      *
      * This function must be overridden by any derived class to provide access to the
      * output tensors of the QNN. The function returns a reference to a vector of
-     * Qnn_Tensor_t objects, which represent the output tensors.
+     * qnn_tensor_ptr_t objects, which represent the output tensors.
      *
-     * @return std::vector<Qnn_Tensor_t>& Reference to a vector of Qnn_Tensor_t objects.
+     * @return A reference to a vector of qnn_tensor_ptr_t objects representing the output tensors.
      */
-    virtual std::vector<Qnn_Tensor_t> &get_qnn_output_tensors() = 0;
+    virtual const qnn_tensor_array_t &get_output_tensors() = 0;
 
     /**
      * @brief Adds an operation to the given graph.
@@ -125,5 +147,6 @@ public:
 };
 
 using qnn_op_config_ptr_t = std::shared_ptr<ggml_qnn_op_config>;
+using qnn_op_config_array_t = std::vector<qnn_op_config_ptr_t>;
 
 } // namespace qnn
