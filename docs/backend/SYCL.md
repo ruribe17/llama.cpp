@@ -20,7 +20,7 @@
 **oneAPI** is an open ecosystem and a standard-based specification, supporting multiple architectures including but not limited to intel CPUs, GPUs and FPGAs. The key components of the oneAPI ecosystem include:
 
 - **DPCPP** *(Data Parallel C++)*: The primary oneAPI SYCL implementation, which includes the icpx/icx Compilers.
-- **oneAPI Libraries**: A set of highly optimized libraries targeting multiple domains *(e.g. oneMKL and oneDNN)*.
+- **oneAPI Libraries**: A set of highly optimized libraries targeting multiple domains *(e.g. Intel oneMKL, oneMath and oneDNN)*.
 - **oneAPI LevelZero**: A high performance low level interface for fine-grained control over intel iGPUs and dGPUs.
 - **Nvidia & AMD Plugins**: These are plugins extending oneAPI's DPCPP support to SYCL on Nvidia and AMD GPU targets.
 
@@ -228,27 +228,27 @@ Upon a successful installation, SYCL is enabled for the available intel devices,
 **oneAPI Plugin**: In order to enable SYCL support on Nvidia GPUs, please install the [Codeplay oneAPI Plugin for Nvidia GPUs](https://developer.codeplay.com/products/oneapi/nvidia/download). User should also make sure the plugin version matches the installed base toolkit one *(previous step)* for a seamless "oneAPI on Nvidia GPU" setup.
 
 
-**oneMKL for cuBlas**: The current oneMKL releases *(shipped with the oneAPI base-toolkit)* do not contain the cuBLAS backend. A build from source of the upstream [oneMKL](https://github.com/oneapi-src/oneMKL) with the *cuBLAS* backend enabled is thus required to run it on Nvidia GPUs.
+**oneMath for cuBlas**: The current Intel oneMKL releases *(shipped with the oneAPI base-toolkit)* do not contain the cuBLAS backend. [oneMath](https://github.com/uxlfoundation/oneMath) is used instead to dispatch to *cuBLAS* on Nvidia GPUs.
 
 ```sh
-git clone https://github.com/oneapi-src/oneMKL
-cd oneMKL
-cmake -B buildWithCublas -DCMAKE_CXX_COMPILER=icpx -DCMAKE_C_COMPILER=icx -DENABLE_MKLGPU_BACKEND=OFF -DENABLE_MKLCPU_BACKEND=OFF -DENABLE_CUBLAS_BACKEND=ON -DTARGET_DOMAINS=blas
-cmake --build buildWithCublas --config Release
+git clone https://github.com/uxlfoundation/oneMath
+cd oneMath
+cmake -B buildWithCublas -DCMAKE_CXX_COMPILER=icpx -DCMAKE_C_COMPILER=icx -DENABLE_MKLGPU_BACKEND=OFF -DENABLE_MKLCPU_BACKEND=OFF -DENABLE_CUBLAS_BACKEND=ON -DTARGET_DOMAINS=blas -DCMAKE_INSTALL_PREFIX:PATH=install
+cmake --build buildWithCublas --target install --config Release
 ```
 
 - **Adding support to AMD GPUs**
 
 **oneAPI Plugin**: In order to enable SYCL support on AMD GPUs, please install the [Codeplay oneAPI Plugin for AMD GPUs](https://developer.codeplay.com/products/oneapi/amd/download). As with Nvidia GPUs, the user should also make sure the plugin version matches the installed base toolkit.
 
-**oneMKL for rocBlas**: The current oneMKL releases *(shipped with the oneAPI base-toolkit)* doesn't contain the rocBLAS backend. A build from source of the upstream [oneMKL](https://github.com/oneapi-src/oneMKL) with the *rocBLAS* backend enabled is thus required to run it on AMD GPUs.
+**oneMath for rocBlas**: The current Intel oneMKL releases *(shipped with the oneAPI base-toolkit)* do not contain the rocBLAS backend. [oneMath](https://github.com/uxlfoundation/oneMath) is used instead to dispatch to *rocBLAS* on AMD GPUs.
 
 ```sh
-git clone https://github.com/oneapi-src/oneMKL
-cd oneMKL
-# Find your HIPTARGET with rocminfo, under the key 'Name:'
-cmake -B buildWithrocBLAS -DCMAKE_CXX_COMPILER=icpx -DCMAKE_C_COMPILER=icx -DENABLE_MKLGPU_BACKEND=OFF -DENABLE_MKLCPU_BACKEND=OFF -DENABLE_ROCBLAS_BACKEND=ON -DHIPTARGETS=${HIPTARGET} -DTARGET_DOMAINS=blas
-cmake --build buildWithrocBLAS --config Release
+git clone https://github.com/uxlfoundation/oneMath
+cd oneMath
+# Find your HIP_TARGETS with rocminfo, under the key 'Name:'
+cmake -B buildWithrocBLAS -DCMAKE_CXX_COMPILER=icpx -DCMAKE_C_COMPILER=icx -DENABLE_MKLGPU_BACKEND=OFF -DENABLE_MKLCPU_BACKEND=OFF -DENABLE_ROCBLAS_BACKEND=ON -DHIP_TARGETS=${HIP_TARGETS} -DTARGET_DOMAINS=blas  -DCMAKE_INSTALL_PREFIX:PATH=install
+cmake --build buildWithrocBLAS --target install --config Release
 ```
 
 3. **Verify installation and environment**
@@ -316,21 +316,15 @@ cmake --build build --config Release -j -v
 #### Nvidia GPU
 
 ```sh
-# Export relevant ENV variables
-export LD_LIBRARY_PATH=/path/to/oneMKL/buildWithCublas/lib:$LD_LIBRARY_PATH
-export LIBRARY_PATH=/path/to/oneMKL/buildWithCublas/lib:$LIBRARY_PATH
-export CPLUS_INCLUDE_DIR=/path/to/oneMKL/buildWithCublas/include:$CPLUS_INCLUDE_DIR
-export CPLUS_INCLUDE_DIR=/path/to/oneMKL/include:$CPLUS_INCLUDE_DIR
-
 # Build LLAMA with Nvidia BLAS acceleration through SYCL
 # Setting GGML_SYCL_DEVICE_ARCH is optional but can improve performance
 GGML_SYCL_DEVICE_ARCH=sm_80 # Example architecture
 
 # Option 1: Use FP32 (recommended for better performance in most cases)
-cmake -B build -DGGML_SYCL=ON -DGGML_SYCL_TARGET=NVIDIA -DGGML_SYCL_DEVICE_ARCH=${GGML_SYCL_DEVICE_ARCH} -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx
+cmake -B build -DGGML_SYCL=ON -DGGML_SYCL_TARGET=NVIDIA -DGGML_SYCL_DEVICE_ARCH=${GGML_SYCL_DEVICE_ARCH} -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DoneMath_DIR=/path/to/oneMath/buildWithCublas/install/lib/cmake/oneMath
 
 # Option 2: Use FP16
-cmake -B build -DGGML_SYCL=ON -DGGML_SYCL_TARGET=NVIDIA -DGGML_SYCL_DEVICE_ARCH=${GGML_SYCL_DEVICE_ARCH} -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DGGML_SYCL_F16=ON
+cmake -B build -DGGML_SYCL=ON -DGGML_SYCL_TARGET=NVIDIA -DGGML_SYCL_DEVICE_ARCH=${GGML_SYCL_DEVICE_ARCH} -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DoneMath_DIR=/path/to/oneMath/buildWithCublas/install/lib/cmake/oneMath -DGGML_SYCL_F16=ON
 
 # build all binary
 cmake --build build --config Release -j -v
@@ -339,18 +333,13 @@ cmake --build build --config Release -j -v
 #### AMD GPU
 
 ```sh
-# Export relevant ENV variables
-export LD_LIBRARY_PATH=/path/to/oneMKL/buildWithrocBLAS/lib:$LD_LIBRARY_PATH
-export LIBRARY_PATH=/path/to/oneMKL/buildWithrocBLAS/lib:$LIBRARY_PATH
-export CPLUS_INCLUDE_DIR=/path/to/oneMKL/buildWithrocBLAS/include:$CPLUS_INCLUDE_DIR
-
 # Build LLAMA with rocBLAS acceleration through SYCL
 
 ## AMD
 # Use FP32, FP16 is not supported
 # Find your GGML_SYCL_DEVICE_ARCH with rocminfo, under the key 'Name:'
 GGML_SYCL_DEVICE_ARCH=gfx90a # Example architecture
-cmake -B build -DGGML_SYCL=ON -DGGML_SYCL_TARGET=AMD -DGGML_SYCL_DEVICE_ARCH=${GGML_SYCL_DEVICE_ARCH} -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx
+cmake -B build -DGGML_SYCL=ON -DGGML_SYCL_TARGET=AMD -DGGML_SYCL_DEVICE_ARCH=${GGML_SYCL_DEVICE_ARCH} -DCMAKE_C_COMPILER=icx -DCMAKE_CXX_COMPILER=icpx -DoneMath_DIR=/path/to/oneMath/buildWithrocBLAS/install/lib/cmake/oneMath
 
 # build all binary
 cmake --build build --config Release -j -v
