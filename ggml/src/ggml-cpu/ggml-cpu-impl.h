@@ -394,6 +394,9 @@ inline static int32x4_t ggml_vdotq_s32(int32x4_t acc, int8x16_t a, int8x16_t b) 
 #define vec_xor(a, b) ((a) ^ (b)) // Vector XOR
 #endif
 
+typedef signed char char1x16_t __attribute__((vector_size(16)));
+typedef unsigned char uchar1x16_t __attribute__((vector_size(16)));
+
 typedef int8_t  int8x16_t __attribute__((vector_size(16)));
 typedef int16_t int16x8_t __attribute__((vector_size(16)));
 typedef int32_t int32x4_t __attribute__((vector_size(16)));
@@ -430,6 +433,7 @@ inline static ggml_int8x4_t ggml_vec_xl_x4(const int8_t * ptr) {
     return res;
 }
 
+//! WARNING: Very slow. Do not use if possible.
 inline static int8x16_t ggml_vec_tbl(int8x16_t a, uint8x16_t b) {
     int8x16_t res;
 
