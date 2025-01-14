@@ -10969,8 +10969,8 @@ void ggml_vec_dot_iq4_xs_q8_K(int n, float * restrict s, size_t bs, const void *
     float sumf = 0;
 
     for (int ibl = 0; ibl < nb; ++ibl) {
-        const uint8_t restrict * q4 = x[ibl].qs;
-        const int8_t  restrict * q8 = y[ibl].qs;
+        const uint8_t * restrict q4 = x[ibl].qs;
+        const int8_t  * restrict q8 = y[ibl].qs;
 
         uint16_t h = x[ibl].scales_h;
 
