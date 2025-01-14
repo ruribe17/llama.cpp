@@ -439,7 +439,10 @@ inline static ggml_int8x4_t ggml_vec_xl_x4(const int8_t * ptr) {
     return res;
 }
 
-//! WARNING: Very slow. Do not use if possible.
+/*
+    ! WARNING: Very slow. Use vec_perm if possible. Refer to iq4_xs
+    !          or iq4_nl for example implementation.
+*/
 inline static int8x16_t ggml_vec_tbl(int8x16_t a, uint8x16_t b) {
     int8x16_t res;
 
