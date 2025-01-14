@@ -394,6 +394,70 @@ inline static int32x4_t ggml_vdotq_s32(int32x4_t acc, int8x16_t a, int8x16_t b) 
 #define vec_xor(a, b) ((a) ^ (b)) // Vector XOR
 #endif
 
+typedef int8_t  int8x16_t __attribute__((vector_size(16)));
+typedef int16_t int16x8_t __attribute__((vector_size(16)));
+typedef int32_t int32x4_t __attribute__((vector_size(16)));
+
+typedef uint8_t  uint8x16_t __attribute__((vector_size(16)));
+typedef uint16_t uint16x8_t __attribute__((vector_size(16)));
+typedef uint32_t uint32x4_t __attribute__((vector_size(16)));
+
+typedef struct ggml_uint8x2_t {
+    uint8x16_t val[2];
+} ggml_uint8x2_t;
+
+typedef struct ggml_int8x4_t {
+    int8x16_t val[4];
+} ggml_int8x4_t;
+
+inline static ggml_uint8x2_t ggml_vec_xl_x2(const uint8_t * ptr) {
+    ggml_uint8x2_t res;
+
+    res.val[0] = vec_xl( 0, ptr);
+    res.val[1] = vec_xl(16, ptr);
+
+    return res;
+}
+
+inline static ggml_int8x4_t ggml_vec_xl_x4(const int8_t * ptr) {
+    ggml_int8x4_t res;
+
+    res.val[0] = vec_xl( 0, ptr);
+    res.val[1] = vec_xl(16, ptr);
+    res.val[2] = vec_xl(32, ptr);
+    res.val[3] = vec_xl(48, ptr);
+
+    return res;
+}
+
+inline static int8x16_t ggml_vec_tbl(int8x16_t a, uint8x16_t b) {
+    int8x16_t res;
+
+    res[ 0] = a[b[ 0]];
+    res[ 1] = a[b[ 1]];
+    res[ 2] = a[b[ 2]];
+    res[ 3] = a[b[ 3]];
+    res[ 4] = a[b[ 4]];
+    res[ 5] = a[b[ 5]];
+    res[ 6] = a[b[ 6]];
+    res[ 7] = a[b[ 7]];
+    res[ 8] = a[b[ 8]];
+    res[ 9] = a[b[ 9]];
+    res[10] = a[b[10]];
+    res[11] = a[b[11]];
+    res[12] = a[b[12]];
+    res[13] = a[b[13]];
+    res[14] = a[b[14]];
+    res[15] = a[b[15]];
+
+    return res;
+}
+
+inline static int32x4_t ggml_vec_dot(int32x4_t acc, int8x16_t a, int8x16_t b) {
+    const int16x8_t p = vec_mule(a, b) + vec_mulo(a, b);
+    return acc + (vec_unpackh(p) + vec_unpackl(p));
+}
+
 #endif
 
 #if defined(__loongarch_asx)
