@@ -10979,7 +10979,7 @@ void ggml_vec_dot_iq4_xs_q8_K(int n, float * restrict s, size_t bs, const void *
             h >>= 4;
 
             sumi1 += (prod_1[0] + prod_1[1] + prod_1[2] + prod_1[3]) * ls1;
-            sumi2 += (prod_2[0] + prod_2[1] + prod_2[2] + prod_2[3]) * ls1;
+            sumi2 += (prod_2[0] + prod_2[1] + prod_2[2] + prod_2[3]) * ls2;
         }
 
         sumf += GGML_FP16_TO_FP32(x[ibl].d) * y[ibl].d * (sumi1 + sumi2);
