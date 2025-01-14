@@ -10966,38 +10966,46 @@ void ggml_vec_dot_iq4_xs_q8_K(int n, float * restrict s, size_t bs, const void *
     const int8x16_t v_k = vec_xl(0, kvalues_iq4nl);
     const uint8x16_t v_m = vec_splat_u8(0x0F);
 
-    ggml_uint8x2_t q4bits;
-    ggml_int8x4_t  q4b, q8b;
-    int32x4_t prod_1, prod_2;
-
     float sumf = 0;
 
     for (int ibl = 0; ibl < nb; ++ibl) {
-        const uint8_t * q4 = x[ibl].qs;
-        const int8_t  * q8 = y[ibl].qs;
+        const uint8_t restrict * q4 = x[ibl].qs;
+        const int8_t  restrict * q8 = y[ibl].qs;
 
         uint16_t h = x[ibl].scales_h;
 
         int sumi1 = 0, sumi2 = 0;
         for (int ib = 0; ib < QK_K/64; ++ib) {
-            q4bits = ggml_vec_xl_x2(q4); q4 += 32;
-            q8b    = ggml_vec_xl_x4(q8); q8 += 64;
+            const uint8x16_t v_x0 = vec_xl(0       , q4);
+            const uint8x16_t v_x1 = vec_xl(QK4_NL/2, q4);
+            q4 += 32;
 
-            q4b.val[0] = ggml_vec_tbl(v_k, vec_and(q4bits.val[0], v_m));
-            q4b.val[1] = ggml_vec_tbl(v_k,  vec_sr(q4bits.val[0],   4));
-            q4b.val[2] = ggml_vec_tbl(v_k, vec_and(q4bits.val[1], v_m));
-            q4b.val[3] = ggml_vec_tbl(v_k,  vec_sr(q4bits.val[1],   4));
+            int8x16_t v_x0l = (int8x16_t)vec_and(v_x0, v_m);
+            int8x16_t v_x0h = (int8x16_t)vec_sr(v_x0, 4);
+            int8x16_t v_x1l = (int8x16_t)vec_and(v_x1, v_m);
+            int8x16_t v_x1h = (int8x16_t)vec_sr(v_x1, 4);
 
-            prod_1 = ggml_vec_dot(ggml_vec_dot(vec_splats(0), q4b.val[0], q8b.val[0]), q4b.val[1], q8b.val[1]);
-            prod_2 = ggml_vec_dot(ggml_vec_dot(vec_splats(0), q4b.val[2], q8b.val[2]), q4b.val[3], q8b.val[3]);
+            v_x0l = vec_perm(v_k, v_k, (uchar1x16_t)v_x0l);
+            v_x0h = vec_perm(v_k, v_k, (uchar1x16_t)v_x0h);
+            v_x1l = vec_perm(v_k, v_k, (uchar1x16_t)v_x1l);
+            v_x1h = vec_perm(v_k, v_k, (uchar1x16_t)v_x1h);
+
+            const int8x16_t v_y0 = vec_xl( 0, q8);
+            const int8x16_t v_y1 = vec_xl(16, q8);
+            const int8x16_t v_y2 = vec_xl(32, q8);
+            const int8x16_t v_y3 = vec_xl(48, q8);
+            q8 += 64;
+
+            int32x4_t vsumi0 = ggml_vec_dot(ggml_vec_dot(vec_splats(0), v_x0l, v_y0), v_x0h, v_y1);
+            int32x4_t vsumi1 = ggml_vec_dot(ggml_vec_dot(vec_splats(0), v_x1l, v_y2), v_x1h, v_y3);
 
             int ls1 = ((x[ibl].scales_l[ib] & 0xF) | ((h << 4) & 0x30)) - 32;
             int ls2 = ((x[ibl].scales_l[ib] >>  4) | ((h << 2) & 0x30)) - 32;
 
             h >>= 4;
 
-            sumi1 += (prod_1[0] + prod_1[1] + prod_1[2] + prod_1[3]) * ls1;
-            sumi2 += (prod_2[0] + prod_2[1] + prod_2[2] + prod_2[3]) * ls2;
+            sumi1 += (vsumi0[0] + vsumi0[1] + vsumi0[2] + vsumi0[3]) * ls1;
+            sumi2 += (vsumi1[0] + vsumi1[1] + vsumi1[2] + vsumi1[3]) * ls2;
         }
 
         sumf += GGML_FP16_TO_FP32(x[ibl].d) * y[ibl].d * (sumi1 + sumi2);
