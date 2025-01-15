@@ -929,6 +929,7 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "RMS_NORM",
     "RMS_NORM_BACK",
     "GROUP_NORM",
+    "L2_NORM",
 
     "MUL_MAT",
     "MUL_MAT_ID",
@@ -996,7 +997,7 @@ static const char * GGML_OP_NAME[GGML_OP_COUNT] = {
     "OPT_STEP_ADAMW",
 };
 
-static_assert(GGML_OP_COUNT == 83, "GGML_OP_COUNT != 83");
+static_assert(GGML_OP_COUNT == 84, "GGML_OP_COUNT != 84");
 
 static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "none",
@@ -1026,6 +1027,7 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "rms_norm(x)",
     "rms_norm_back(x)",
     "group_norm(x)",
+    "l2_norm(x)",
 
     "X*Y",
     "X[i]*Y",
@@ -1093,7 +1095,7 @@ static const char * GGML_OP_SYMBOL[GGML_OP_COUNT] = {
     "adamw(x)",
 };
 
-static_assert(GGML_OP_COUNT == 83, "GGML_OP_COUNT != 83");
+static_assert(GGML_OP_COUNT == 84, "GGML_OP_COUNT != 84");
 
 static_assert(GGML_OP_POOL_COUNT == 2, "GGML_OP_POOL_COUNT != 2");
 
@@ -2684,6 +2686,37 @@ struct ggml_tensor * ggml_group_norm_inplace(
         int                   n_groups,
         float                 eps) {
     return ggml_group_norm_impl(ctx, a, n_groups, eps, true);
+}
+
+// ggml_l2_norm
+
+static struct ggml_tensor * ggml_l2_norm_impl(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        float                 eps,
+        bool                  inplace) {
+    struct ggml_tensor * result = inplace ? ggml_view_tensor(ctx, a) : ggml_dup_tensor(ctx, a);
+
+    ggml_set_op_params_f32(result, 0, eps);
+
+    result->op     = GGML_OP_L2_NORM;
+    result->src[0] = a;
+
+    return result;
+}
+
+struct ggml_tensor * ggml_l2_norm(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        float                 eps) {
+    return ggml_l2_norm_impl(ctx, a, eps, false);
+}
+
+struct ggml_tensor * ggml_l2_norm_inplace(
+        struct ggml_context * ctx,
+        struct ggml_tensor  * a,
+        float                 eps) {
+    return ggml_l2_norm_impl(ctx, a, eps, true);
 }
 
 // ggml_mul_mat
