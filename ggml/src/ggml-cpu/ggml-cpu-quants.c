@@ -7865,7 +7865,57 @@ void ggml_vec_dot_iq2_xxs_q8_K(int n, float * restrict s, size_t bs, const void 
     }
 
     *s = 0.125f * hsum_float_8(accumf);
-
+//#elif defined(__VXE__) || defined(__VXE2__)
+//    const uint64_t * signs64 = (const uint64_t *)keven_signs_q2xs;
+//
+//    uint32_t aux32[4];
+//    const uint8_t * aux8 = (const uint8_t *)aux32;
+//
+//    float sumf = 0;
+//
+//    for (int i = 0; i < nb; ++i) {
+//        const float d = GGML_FP16_TO_FP32(x[i].d) * y[i].d;
+//        const uint16_t * restrict q2 = x[i].qs;
+//        const int8_t   * restrict q8 = y[i].qs;
+//
+//        float sumf1 = 0, sumf2 = 0;
+//
+//        for (int ib32 = 0; ib32 < QK_K/32; ib += 2) {
+//            int8x16_t q8b0 = vec_xl( 0, q8);
+//            int8x16_t qb81 = vec_xl(16, q8);
+//            int8x16_t q8b2 = vec_xl(32, q8);
+//            int8x16_t q8b3 = vec_xl(48, q8);
+//            q8 += 64;
+//
+//            memcpy(aux32, q2, 4 * sizeof(uint32_t));
+//            q2 += 8;
+//
+//            int8x16_t q2u0 = { *(const int64_t *)(iq2xxs_grid + aux8[ 0]), *(const int64_t *)(iq2xxs_grid + aux8[ 1]) };
+//            int8x16_t q2u1 = { *(const int64_t *)(iq2xxs_grid + aux8[ 2]), *(const int64_t *)(iq2xxs_grid + aux8[ 3]) };
+//            int8x16_t q2u2 = { *(const int64_t *)(iq2xxs_grid + aux8[ 8]), *(const int64_t *)(iq2xxs_grid + aux8[ 9]) };
+//            int8x16_t q2u3 = { *(const int64_t *)(iq2xxs_grid + aux8[10]), *(const int64_t *)(iq2xxs_grid + aux8[11]) };
+//
+//            int8x16_t q2s0 = { *(const int64_t *)(signs64 + ((aux32[1] >>  0) & 127)), *(const int64_t *)(signs64 + ((aux32[1] >>  7) & 127)) };
+//            int8x16_t q2s1 = { *(const int64_t *)(signs64 + ((aux32[1] >> 14) & 127)), *(const int64_t *)(signs64 + ((aux32[1] >> 21) & 127)) };
+//            int8x16_t q2s2 = { *(const int64_t *)(signs64 + ((aux32[3] >>  0) & 127)), *(const int64_t *)(signs64 + ((aux32[3] >>  7) & 127)) };
+//            int8x16_t q2s3 = { *(const int64_t *)(signs64 + ((aux32[3] >> 14) & 127)), *(const int64_t *)(signs64 + ((aux32[3] >> 21) & 127)) };
+//
+//            q2u0 = vec_mul(q2u0, q2s0);
+//            q2u1 = vec_mul(q2u1, q2s1);
+//            q2u2 = vec_mul(q2u2, q2s2);
+//            q2u3 = vec_mul(q2u3, q2s3);
+//
+//            const int32x4_t p1 = ggml_vec_dot(ggml_vec_dot(vec_splat_s32(0), q2u0, q8b0), q2u1, q8b1);
+//            const int32x4_t p2 = ggml_vec_dot(ggml_vec_dot(vec_splat_s32(0), q2u2, q8b2), q2u3, q8b3);
+//
+//            sumf1 += (p1[0] + p1[1] + p1[2] + p1[3]) * (0.5f + (aux32[1] >> 28));
+//            sumf2 += (p2[0] + p2[1] + p2[2] + p2[3]) * (0.5f + (aux32[3] >> 28));
+//        }
+//
+//        sumf += d * (sumf1 + sumf2);
+//    }
+//
+//    *s = 0.25f * sumf;
 #else
 
     uint32_t aux32[2];
