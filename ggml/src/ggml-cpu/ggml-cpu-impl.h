@@ -444,7 +444,7 @@ typedef struct ggml_int8x16x4_t {
 } ggml_int8x16x4;
 
 inline static ggml_int8x16x4_t ggml_vec_xl_s8x4(const int8_t * ptr) {
-    ggml_int8x16x4 res;
+    ggml_int8x16x4_t res;
 
     res.val[0] = vec_xl( 0, ptr);
     res.val[1] = vec_xl(16, ptr);
