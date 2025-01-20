@@ -2694,29 +2694,32 @@ void ggml_vec_dot_q4_1_q8_1(int n, float * restrict s, size_t bs, const void * r
     sumf = hsum_float_8(acc) + summs;
 #elif defined(__VXE__) || defined(__VXE2__)
     float summs = 0;
-    __vector float acc = vec_splats(0.0f);
+    float32x4_t acc = vec_splats(0.0f);
 
-    const __vector uint8_t v_m = vec_splats((const uint8_t)0x0F);
+    const uint8x16_t v_m = vec_splat_u8(0x0F);
 
     for (; ib < nb; ++ib) {
-        summs += GGML_FP16_TO_FP32(x[ib].m) * GGML_FP16_TO_FP32(y[ib].s);
+        const block_q4_1 * restrict x0 = &x[ib];
+        const block_q8_1 * restrict y0 = &y[ib];
 
-        const __vector uint8_t v_x = vec_xl(0, x[ib].qs);
-        const __vector int8_t v_xl = (const __vector int8_t)(v_x & v_m);
-        const __vector int8_t v_xh = (const __vector int8_t)(v_x >> 4);
+        summs += GGML_FP16_TO_FP32(x0->m) * GGML_FP16_TO_FP32(y0->s);
 
-        const __vector int8_t v_yl = vec_xl(0      , y[ib].qs);
-        const __vector int8_t v_yh = vec_xl(QK8_1/2, y[ib].qs);
+        const uint8x16_t v_x = vec_xl(0, x0->qs);
+        const int8x16_t v_xl = (const int8x16_t)(v_x & v_m);
+        const int8x16_t v_xh = (const int8x16_t)(v_x >> 4);
 
-        const __vector int16_t xylo = vec_mulo(v_xl, v_yl);
-        const __vector int16_t xyle = vec_mule(v_xl, v_yl);
-        const __vector int16_t xyho = vec_mulo(v_xh, v_yh);
-        const __vector int16_t xyhe = vec_mule(v_xh, v_yh);
+        const int8x16_t v_yl = vec_xl(0      , y0->qs);
+        const int8x16_t v_yh = vec_xl(QK8_1/2, y0->qs);
 
-        __vector int16_t v_xy_ = xylo + xyle + xyho + xyhe; v_xy_ += vec_reve(v_xy_);
+        const int16x8_t xylo = vec_mulo(v_xl, v_yl);
+        const int16x8_t xyle = vec_mule(v_xl, v_yl);
+        const int16x8_t xyho = vec_mulo(v_xh, v_yh);
+        const int16x8_t xyhe = vec_mule(v_xh, v_yh);
 
-        const __vector float v_xy = vec_float(vec_unpackh(v_xy_));
-        const __vector float v_d = vec_splats(GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d));
+        int16x8_t v_xy_ = xylo + xyle + xyho + xyhe; v_xy_ += vec_reve(v_xy_);
+
+        const float32x4_t v_xy = vec_float(vec_unpackh(v_xy_));
+        const float32x4_t v_d = vec_splats(GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
 
         acc = vec_madd(v_xy, v_d, acc);
     }
