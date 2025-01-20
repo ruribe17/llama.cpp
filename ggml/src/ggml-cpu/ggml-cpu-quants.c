@@ -10688,18 +10688,21 @@ void ggml_vec_dot_iq4_nl_q8_0(int n, float * restrict s, size_t bs, const void *
     const uint8x16_t v_m = vec_splat_u8(0x0F);
 
     for (; ib < nb; ++ib) {
-        const uint8x16_t v_x = vec_xl(0, x[ib].qs);
+        const block_iq4_nl * restrict x0 = &x[ib];
+        const block_q8_0   * restrict y0 = &y[ib];
+
+        const uint8x16_t v_x = vec_xl(0, x0->qs);
         int8x16_t v_xl = (int8x16_t)vec_and(v_x, v_m);
         int8x16_t v_xh = (int8x16_t)vec_sr(v_x, 4);
 
         v_xl = vec_perm(v_k, v_k, (uchar1x16_t)v_xl);
         v_xh = vec_perm(v_k, v_k, (uchar1x16_t)v_xh);
 
-        const int8x16_t v_yl = vec_xl(      0, y[ib].qs);
-        const int8x16_t v_yh = vec_xl(QK8_0/2, y[ib].qs);
+        const int8x16_t v_yl = vec_xl(0      , y0->qs);
+        const int8x16_t v_yh = vec_xl(QK8_0/2, y0->qs);
         const int32x4_t v_xy = ggml_vec_dot(ggml_vec_dot(vec_splats(0), v_xl, v_yl), v_xh, v_yh);
 
-        sumf += GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d) * (v_xy[0] + v_xy[1] + v_xy[2] + v_xy[3]);
+        sumf += GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d) * (v_xy[0] + v_xy[1] + v_xy[2] + v_xy[3]);
     }
 #endif
     for (; ib < nb; ++ib) {
