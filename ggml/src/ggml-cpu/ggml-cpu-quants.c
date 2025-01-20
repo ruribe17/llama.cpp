@@ -2711,14 +2711,9 @@ void ggml_vec_dot_q4_1_q8_1(int n, float * restrict s, size_t bs, const void * r
         const int8x16_t v_yl = vec_xl(0      , y0->qs);
         const int8x16_t v_yh = vec_xl(QK8_1/2, y0->qs);
 
-        const int16x8_t xylo = vec_mulo(v_xl, v_yl);
-        const int16x8_t xyle = vec_mule(v_xl, v_yl);
-        const int16x8_t xyho = vec_mulo(v_xh, v_yh);
-        const int16x8_t xyhe = vec_mule(v_xh, v_yh);
+        const int32x4_t v_xy_ = ggml_vec_dot(ggml_vec_dot(vec_splats(0), v_xl, v_yl), v_xh, v_yh);
+        const float32x4_t v_xy = vec_float(v_xy_);
 
-        int16x8_t v_xy_ = xylo + xyle + xyho + xyhe; v_xy_ += vec_reve(v_xy_);
-
-        const float32x4_t v_xy = vec_float(vec_unpackh(v_xy_));
         const float32x4_t v_d = vec_splats(GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
 
         acc = vec_madd(v_xy, v_d, acc);
