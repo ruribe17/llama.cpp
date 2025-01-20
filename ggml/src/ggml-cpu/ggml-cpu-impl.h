@@ -439,11 +439,11 @@ inline static ggml_uint8x16x4_t ggml_vec_xl_u8x4(const uint8_t * ptr) {
     return res;
 }
 
-typedef struct ggml_int8x16x4 {
+typedef struct ggml_int8x16x4_t {
     int8x16_t val[4];
 } ggml_int8x16x4;
 
-inline static ggml_int8x16x4 ggml_vec_xl_s8x4(const int8_t * ptr) {
+inline static ggml_int8x16x4_t ggml_vec_xl_s8x4(const int8_t * ptr) {
     ggml_int8x16x4 res;
 
     res.val[0] = vec_xl( 0, ptr);
