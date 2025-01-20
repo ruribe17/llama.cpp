@@ -411,16 +411,12 @@ typedef double double64x2_t __attribute((vector_size(16)));
 typedef signed long long long64x2_t __attribute((vector_size(16)));
 typedef unsigned long long ulong64x2_t __attribute__((vector_size(16)));
 
-typedef struct ggml_uint8x2_t {
+typedef struct ggml_uint8x16x2_t {
     uint8x16_t val[2];
-} ggml_uint8x2_t;
+} ggml_uint8x16x2_t;
 
-typedef struct ggml_int8x4_t {
-    int8x16_t val[4];
-} ggml_int8x4_t;
-
-inline static ggml_uint8x2_t ggml_vec_xl_x2(const uint8_t * ptr) {
-    ggml_uint8x2_t res;
+inline static ggml_uint8x16x2_t ggml_vec_xl_u8x2(const uint8_t * ptr) {
+    ggml_uint8x16x2_t res;
 
     res.val[0] = vec_xl( 0, ptr);
     res.val[1] = vec_xl(16, ptr);
@@ -428,13 +424,45 @@ inline static ggml_uint8x2_t ggml_vec_xl_x2(const uint8_t * ptr) {
     return res;
 }
 
-inline static ggml_int8x4_t ggml_vec_xl_x4(const int8_t * ptr) {
-    ggml_int8x4_t res;
+typedef struct ggml_uint8x16x4_t {
+    uint8x16_t val[4];
+} ggml_uint8x16x4_t;
+
+inline static ggml_uint8x16x4_t ggml_vec_xl_u8x4(const uint8_t * ptr) {
+    ggml_uint8x16x4_t res;
 
     res.val[0] = vec_xl( 0, ptr);
     res.val[1] = vec_xl(16, ptr);
     res.val[2] = vec_xl(32, ptr);
     res.val[3] = vec_xl(48, ptr);
+
+    return res;
+}
+
+typedef struct ggml_int8x16x4 {
+    int8x16_t val[4];
+} ggml_int8x16x4;
+
+inline static ggml_int8x16x4 ggml_vec_xl_s8x4(const int8_t * ptr) {
+    ggml_int8x16x4 res;
+
+    res.val[0] = vec_xl( 0, ptr);
+    res.val[1] = vec_xl(16, ptr);
+    res.val[2] = vec_xl(32, ptr);
+    res.val[3] = vec_xl(48, ptr);
+
+    return res;
+}
+
+typedef struct ggml_int16x8x2_t {
+    int16x8_t val[2];
+} ggml_int16x8x2_t;
+
+inline static ggml_int16x8x2_t ggml_vec_xl_s16x2(const int16_t * ptr) {
+    ggml_int16x8x2_t res;
+
+    res.val[0] = vec_xl( 0, ptr);
+    res.val[1] = vec_xl(16, ptr);
 
     return res;
 }

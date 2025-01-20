@@ -7502,7 +7502,101 @@ void ggml_vec_dot_q6_K_q8_K(int n, float * restrict s, size_t bs, const void * r
     }
 
     *s = hsum_float_8(acc);
+#elif defined(__VXE__) || defined(__VXE2__)
+    float sum = 0;
 
+    const uint8x16_t m4b = vec_splat_u8(0x0F);
+    const int32x4_t vzero = vec_splat_s32(0);
+    const uint8x16_t mone = vec_splat_u8(3);
+
+    ggml_int8x16x4_t q6bytes;
+    ggml_uint8x16x4_t q6h;
+
+    for (int i = 0; i < nb; ++i) {
+        const float d_all = GGML_FP16_TO_FP32(x[i].d);
+
+        const uint8_t * restrict q6 = x[i].ql;
+        const uint8_t * restrict qh = x[i].qh;
+        const int8_t  * restrict q8 = y[i].qs;
+
+        const int8_t  * restrict scale = x[i].scales;
+
+        const ggml_int16x8x2_t q8sums = ggml_vec_xl_s16x2(y[i].bsums);
+        const int8x16_t scales = vec_xl(0, scale);
+        const ggml_int16x8x2_t q6scales = {{ vec_unpackh(scales), vec_unpackl(scales) }};
+
+        const int32x4_t q8q6lo = vec_mulo(q8sums.val[0], q6scales.val[0]);
+        const int32x4_t q8q6le = vec_mule(q8sums.val[0], q6scales.val[0]);
+        const int32x4_t q8q6ho = vec_mulo(q8sums.val[1], q6scales.val[1]);
+        const int32x4_t q8q6he = vec_mule(q8sums.val[1], q6scales.val[1]);
+        const int32x4_t q8q6 = q8q6lo + q8q6le + q8q6ho + q8q6he;
+
+        const int32_t isum_mins = q8q6[0] + q8q6[1] + q8q6[2] + q8q6[3];
+
+        int32_t isum = 0;
+
+        for (int j = 0; j < QK_K/128; ++j) {
+            ggml_uint8x16x2_t qhbits = ggml_vec_xl_u8x2(qh); qh += 32;
+            ggml_uint8x16x4_t q6bits = ggml_vec_xl_u8x4(q6); q6 += 64;
+            ggml_int8x16x4_t q8bytes = ggml_vec_xl_s8x4(q8); q8 += 64;
+
+            q6h.val[0] = vec_sl(vec_and(mone, qhbits.val[0]), 4);
+            q6h.val[1] = vec_sl(vec_and(mone, qhbits.val[1]), 4);
+            uint8x16_t shifted = vec_sr(qhbits.val[0], 2);
+            q6h.val[2] = vec_sl(vec_and(mone, shifted), 4);
+            shifted = vec_sr(qhbits.val[1], 2);
+            q6h.val[3] = vec_sl(vec_and(mone, shifted), 4);
+
+            q6bytes.val[0] = (int8x16_t)(vec_or(vec_and(q6bits.val[0], m4b), q6h.val[0]));
+            q6bytes.val[1] = (int8x16_t)(vec_or(vec_and(q6bits.val[1], m4b), q6h.val[1]));
+            q6bytes.val[2] = (int8x16_t)(vec_or(vec_and(q6bits.val[2], m4b), q6h.val[2]));
+            q6bytes.val[3] = (int8x16_t)(vec_or(vec_and(q6bits.val[3], m4b), q6h.val[3]));
+
+            int32x4_t summs0 = ggml_vec_dot(vzero, q6bytes.val[0], q8bytes.val[0]);
+            int32x4_t summs1 = ggml_vec_dot(vzero, q6bytes.val[1], q8bytes.val[1]);
+            int32x4_t summs2 = ggml_vec_dot(vzero, q6bytes.val[2], q8bytes.val[2]);
+            int32x4_t summs3 = ggml_vec_dot(vzero, q6bytes.val[3], q8bytes.val[3]);
+
+            isum += (summs0[0] + summs0[1] + summs0[2] + summs0[3]) * scale[0] +
+                    (summs1[0] + summs1[1] + summs1[2] + summs1[3]) * scale[1] +
+                    (summs2[0] + summs2[1] + summs2[2] + summs2[3]) * scale[2] +
+                    (summs3[0] + summs3[1] + summs3[2] + summs3[3]) * scale[3];
+
+            scale += 4;
+
+            q8bytes = ggml_vec_xl_s8x4(q8); q8 += 64;
+
+            shifted = vec_sr(qhbits.val[0], 4);
+            q6h.val[0] = vec_sl(vec_and(mone, shifted), 4);
+            shifted = vec_sr(qhbits.val[1], 4);
+            q6h.val[1] = vec_sl(vec_and(mone, shifted), 4);
+            shifted = vec_sr(qhbits.val[0], 6);
+            q6h.val[2] = vec_sl(vec_and(mone, shifted), 4);
+            shifted = vec_sr(qhbits.val[1], 6);
+            q6h.val[3] = vec_sl(vec_and(mone, shifted), 4);
+
+            q6bytes.val[0] = (int8x16_t)(vec_or(vec_sr(q6bits.val[0], 4), q6h.val[0]));
+            q6bytes.val[1] = (int8x16_t)(vec_or(vec_sr(q6bits.val[1], 4), q6h.val[1]));
+            q6bytes.val[2] = (int8x16_t)(vec_or(vec_sr(q6bits.val[2], 4), q6h.val[2]));
+            q6bytes.val[3] = (int8x16_t)(vec_or(vec_sr(q6bits.val[3], 4), q6h.val[3]));
+
+            summs0 = ggml_vec_dot(vzero, q6bytes.val[0], q8bytes.val[0]);
+            summs1 = ggml_vec_dot(vzero, q6bytes.val[1], q8bytes.val[1]);
+            summs2 = ggml_vec_dot(vzero, q6bytes.val[2], q8bytes.val[2]);
+            summs3 = ggml_vec_dot(vzero, q6bytes.val[3], q8bytes.val[3]);
+
+            isum += (summs0[0] + summs0[1] + summs0[2] + summs0[3]) * scale[0] +
+                    (summs1[0] + summs1[1] + summs1[2] + summs1[3]) * scale[1] +
+                    (summs2[0] + summs2[1] + summs2[2] + summs2[3]) * scale[2] +
+                    (summs3[0] + summs3[1] + summs3[2] + summs3[3]) * scale[3];
+
+            scale += 4;
+        }
+
+        sum += d_all * y[i].d * (isum - 32 * isum_mins);
+    }
+
+    *s = sum;
 #else
 
     int8_t  aux8[QK_K];
