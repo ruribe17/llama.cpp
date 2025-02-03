@@ -6774,8 +6774,11 @@ struct ggml_cgraph * build_edgellm() {
                 LLM_NORM_RMS, cb, -1);
         cb(cur, "result_norm", -1);
 
-        // lm_head
-        cur = ggml_mul_mat(ctx0, model.output, cur);
+        // // lm_head
+        // cur = ggml_mul_mat(ctx0, model.output, cur);
+        // cb(cur, "result_output", -1);
+
+        cur = llm_build_lora_mm(lctx, ctx0, model.output, cur);
         cb(cur, "result_output", -1);
 
         ggml_build_forward_expand(gf, cur);
