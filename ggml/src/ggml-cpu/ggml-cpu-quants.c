@@ -3823,20 +3823,20 @@ void ggml_vec_dot_q8_0_q8_0(int n, float * restrict s, size_t bs, const void * r
         __builtin_prefetch(x[ib].qs, 0, 1);
         __builtin_prefetch(y[ib].qs, 0, 1);
 
-        const __vector int8_t v_xl = vec_xl(0      , x[ib].qs);
-        const __vector int8_t v_xh = vec_xl(QK8_0/2, x[ib].qs);
-        const __vector int8_t v_yl = vec_xl(0      , y[ib].qs);
-        const __vector int8_t v_yh = vec_xl(QK8_0/2, y[ib].qs);
+        const int8x16_t v_xl = vec_xl(0      , x[ib].qs);
+        const int8x16_t v_xh = vec_xl(QK8_0/2, x[ib].qs);
+        const int8x16_t v_yl = vec_xl(0      , y[ib].qs);
+        const int8x16_t v_yh = vec_xl(QK8_0/2, y[ib].qs);
 
-        const __vector int16_t v_xylo = vec_mulo(v_xl, v_yl);
-        const __vector int16_t v_xyle = vec_mule(v_xl, v_yl);
-        const __vector int16_t v_xyho = vec_mulo(v_xh, v_yh);
-        const __vector int16_t v_xyhe = vec_mule(v_xh, v_yh);
+        const int16x8_t v_xylo = vec_mulo(v_xl, v_yl);
+        const int16x8_t v_xyle = vec_mule(v_xl, v_yl);
+        const int16x8_t v_xyho = vec_mulo(v_xh, v_yh);
+        const int16x8_t v_xyhe = vec_mule(v_xh, v_yh);
 
-        __vector int16_t v_xy_ = v_xylo + v_xyle + v_xyho + v_xyhe; v_xy_ += vec_reve(v_xy_);
+        int16x8_t v_xy_ = v_xylo + v_xyle + v_xyho + v_xyhe; v_xy_ += vec_reve(v_xy_);
 
-        const __vector float v_xy = vec_float(vec_unpackh(v_xy_));
-        const __vector float v_d = vec_splats(GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d));
+        const float32x4_t v_xy = vec_float(vec_unpackh(v_xy_));
+        const float32x4_t v_d = vec_splats(GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d));
 
         acc = vec_madd(v_xy, v_d, acc);
     }
