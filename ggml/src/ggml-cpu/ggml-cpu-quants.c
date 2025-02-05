@@ -3818,7 +3818,11 @@ void ggml_vec_dot_q8_0_q8_0(int n, float * restrict s, size_t bs, const void * r
 #elif defined(__VXE__) || defined(__VXE2__)
     __vector float acc = vec_splats(0.0f);
 
+#pragma GCC unroll 8
     for (; ib < nb; ++ib) {
+        __builtin_prefetch(x[ib].qs, 0, 1);
+        __builtin_prefetch(y[ib].qs, 0, 1);
+
         const __vector int8_t v_xl = vec_xl(0      , x[ib].qs);
         const __vector int8_t v_xh = vec_xl(QK8_0/2, x[ib].qs);
         const __vector int8_t v_yl = vec_xl(0      , y[ib].qs);
