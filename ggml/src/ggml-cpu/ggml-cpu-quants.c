@@ -2698,23 +2698,24 @@ void ggml_vec_dot_q4_1_q8_1(int n, float * restrict s, size_t bs, const void * r
 
     const uint8x16_t v_m = vec_splat_u8(0x0F);
 
+#pragma GCC unroll 4
     for (; ib < nb; ++ib) {
-        const block_q4_1 * restrict x0 = &x[ib];
-        const block_q8_1 * restrict y0 = &y[ib];
+        __builtin_prefetch(x[ib].qs, 0, 1);
+        __builtin_prefetch(y[ib].qs, 0, 1);
 
-        summs += GGML_FP16_TO_FP32(x0->m) * GGML_FP16_TO_FP32(y0->s);
+        summs += GGML_FP16_TO_FP32(x[ib].m) * GGML_FP16_TO_FP32(y[ib].s);
 
-        const uint8x16_t v_x = vec_xl(0, x0->qs);
+        const uint8x16_t v_x = vec_xl(0, x[ib].qs);
         const int8x16_t v_xl = (const int8x16_t)(v_x & v_m);
         const int8x16_t v_xh = (const int8x16_t)(v_x >> 4);
 
-        const int8x16_t v_yl = vec_xl(0      , y0->qs);
-        const int8x16_t v_yh = vec_xl(QK8_1/2, y0->qs);
+        const int8x16_t v_yl = vec_xl(0      , y[ib].qs);
+        const int8x16_t v_yh = vec_xl(QK8_1/2, y[ib].qs);
 
         const int32x4_t v_xy_ = ggml_vec_dot(ggml_vec_dot(vec_splats(0), v_xl, v_yl), v_xh, v_yh);
         const float32x4_t v_xy = vec_float(v_xy_);
 
-        const float32x4_t v_d = vec_splats(GGML_FP16_TO_FP32(x0->d) * GGML_FP16_TO_FP32(y0->d));
+        const float32x4_t v_d = vec_splats(GGML_FP16_TO_FP32(x[ib].d) * GGML_FP16_TO_FP32(y[ib].d));
 
         acc = vec_madd(v_xy, v_d, acc);
     }
