@@ -7504,57 +7504,80 @@ void ggml_vec_dot_q6_K_q8_K(int n, float * restrict s, size_t bs, const void * r
 #elif defined(__VXE__) || defined(__VXE2__)
     float sum = 0;
 
-    const uint8x16_t m4b = vec_splat_u8(0x0F);
-    const int32x4_t vzero = vec_splat_s32(0);
-    const uint8x16_t mone = vec_splat_u8(3);
+    // Lower 4-bit and upper 2-bit masks
+    const uint8x16_t v_lm = vec_splat_u8(0x0F);
+    const uint8x16_t v_um = vec_splat_u8(0x03);
 
-    ggml_int8x16x4_t q6bytes;
-    ggml_uint8x16x4_t q6h;
+    const int32x4_t v_z = vec_splat_s32(0);
+
+    int8x16_t  q6b[4];
+    uint8x16_t q6h[4];
+
+    uint8x16_t v_xl[4];
+    uint8x16_t v_xh[2];
+    int8x16_t  v_y[4];
 
     for (int i = 0; i < nb; ++i) {
         const float d_all = GGML_FP16_TO_FP32(x[i].d);
 
-        const uint8_t * restrict q6 = x[i].ql;
-        const uint8_t * restrict qh = x[i].qh;
-        const int8_t  * restrict q8 = y[i].qs;
+        const uint8_t * restrict x0l = x[i].ql;
+        const uint8_t * restrict x0h = x[i].qh;
+        const int8_t  * restrict y0 = y[i].qs;
 
         const int8_t  * restrict scale = x[i].scales;
 
-        const ggml_int16x8x2_t q8sums = ggml_vec_xl_s16x2(y[i].bsums);
-        const int8x16_t scales = vec_xl(0, scale);
-        const ggml_int16x8x2_t q6scales = {{ vec_unpackh(scales), vec_unpackl(scales) }};
+        const int16x8_t v_ysumsl = vec_xl(0 , y[i].bsums);
+        const int16x8_t v_ysumsh = vec_xl(16, y[i].bsums);
 
-        const int32x4_t q8q6lo = vec_mulo(q8sums.val[0], q6scales.val[0]);
-        const int32x4_t q8q6le = vec_mule(q8sums.val[0], q6scales.val[0]);
-        const int32x4_t q8q6ho = vec_mulo(q8sums.val[1], q6scales.val[1]);
-        const int32x4_t q8q6he = vec_mule(q8sums.val[1], q6scales.val[1]);
-        const int32x4_t q8q6 = q8q6lo + q8q6le + q8q6ho + q8q6he;
+        const int8x16_t v_scale  = vec_xl(0, scale);
+        const int16x8_t v_scalel = vec_unpackh(scales);
+        const int16x8_t v_scaleh = vec_unpackl(scales);
 
-        const int32_t isum_mins = q8q6[0] + q8q6[1] + q8q6[2] + q8q6[3];
+        const int32x4_t v_minslo = vec_mulo(v_ysumsl, v_scalel);
+        const int32x4_t v_minsle = vec_mule(v_ysumsl, v_scalel);
+        const int32x4_t v_minsho = vec_mulo(v_ysumsh, v_scaleh);
+        const int32x4_t v_minshe = vec_mule(v_ysumsh, v_scaleh);
+        const int32x4_t v_mins = v_minslo + v_minsle + v_minsho + v_minshe;
+
+        const int32_t mins = vmins[0] + vmins[1] + vmins[2] + vmins[3];
 
         int32_t isum = 0;
-
         for (int j = 0; j < QK_K/128; ++j) {
-            ggml_uint8x16x2_t qhbits = ggml_vec_xl_u8x2(qh); qh += 32;
-            ggml_uint8x16x4_t q6bits = ggml_vec_xl_u8x4(q6); q6 += 64;
-            ggml_int8x16x4_t q8bytes = ggml_vec_xl_s8x4(q8); q8 += 64;
+            // Load model upper 2 bits
+            v_xh[0] = vec_xl(0 , x0h);
+            v_xh[1] = vec_xl(16, x0h);
+            x0h += 32;
 
-            q6h.val[0] = vec_sl(vec_and(mone, qhbits.val[0]), 4);
-            q6h.val[1] = vec_sl(vec_and(mone, qhbits.val[1]), 4);
-            uint8x16_t shifted = vec_sr(qhbits.val[0], 2);
-            q6h.val[2] = vec_sl(vec_and(mone, shifted), 4);
-            shifted = vec_sr(qhbits.val[1], 2);
-            q6h.val[3] = vec_sl(vec_and(mone, shifted), 4);
+            // Load model lower 4 bits
+            v_xl[0] = vec_xl(0 , x0l);
+            v_xl[1] = vec_xl(16, x0l);
+            v_xl[2] = vec_xl(32, x0l);
+            v_xl[3] = vec_xl(48, x0l);
+            x0l += 64;
 
-            q6bytes.val[0] = (int8x16_t)(vec_or(vec_and(q6bits.val[0], m4b), q6h.val[0]));
-            q6bytes.val[1] = (int8x16_t)(vec_or(vec_and(q6bits.val[1], m4b), q6h.val[1]));
-            q6bytes.val[2] = (int8x16_t)(vec_or(vec_and(q6bits.val[2], m4b), q6h.val[2]));
-            q6bytes.val[3] = (int8x16_t)(vec_or(vec_and(q6bits.val[3], m4b), q6h.val[3]));
+            // Load activation quants
+            v_y[0] = vec_xl(0 , y0);
+            v_y[1] = vec_xl(16, y0);
+            v_y[2] = vec_xl(32, y0);
+            v_y[3] = vec_xl(48, y0);
+            y0 += 64;
 
-            int32x4_t summs0 = ggml_vec_dot(vzero, q6bytes.val[0], q8bytes.val[0]);
-            int32x4_t summs1 = ggml_vec_dot(vzero, q6bytes.val[1], q8bytes.val[1]);
-            int32x4_t summs2 = ggml_vec_dot(vzero, q6bytes.val[2], q8bytes.val[2]);
-            int32x4_t summs3 = ggml_vec_dot(vzero, q6bytes.val[3], q8bytes.val[3]);
+            q6h[0] = vec_sl(vec_and(v_um, v_xh[0]), 4);
+            q6h[1] = vec_sl(vec_and(v_um, v_xh[1]), 4);
+            uint8x16_t shifted = vec_sr(v_xh[0], 2);
+            q6h[2] = vec_sl(vec_and(v_um, shifted), 4);
+            shifted = vec_sr(v_xh[1], 2);
+            q6h[3] = vec_sl(vec_and(v_um, shifted), 4);
+
+            q6b[0] = (int8x16_t)(vec_or(vec_and(v_xl[0], v_lm), q6h[0]));
+            q6b[1] = (int8x16_t)(vec_or(vec_and(v_xl[1], v_lm), q6h[1]));
+            q6b[2] = (int8x16_t)(vec_or(vec_and(v_xl[2], v_lm), q6h[2]));
+            q6b[3] = (int8x16_t)(vec_or(vec_and(v_xl[3], v_lm), q6h[3]));
+
+            int32x4_t summs0 = ggml_vec_dot(v_z, q6b[0], v_y[0]);
+            int32x4_t summs1 = ggml_vec_dot(v_z, q6b[1], v_y[1]);
+            int32x4_t summs2 = ggml_vec_dot(v_z, q6b[2], v_y[2]);
+            int32x4_t summs3 = ggml_vec_dot(v_z, q6b[3], v_y[3]);
 
             isum += (summs0[0] + summs0[1] + summs0[2] + summs0[3]) * scale[0] +
                     (summs1[0] + summs1[1] + summs1[2] + summs1[3]) * scale[1] +
@@ -7563,26 +7586,32 @@ void ggml_vec_dot_q6_K_q8_K(int n, float * restrict s, size_t bs, const void * r
 
             scale += 4;
 
-            q8bytes = ggml_vec_xl_s8x4(q8); q8 += 64;
 
-            shifted = vec_sr(qhbits.val[0], 4);
-            q6h.val[0] = vec_sl(vec_and(mone, shifted), 4);
-            shifted = vec_sr(qhbits.val[1], 4);
-            q6h.val[1] = vec_sl(vec_and(mone, shifted), 4);
-            shifted = vec_sr(qhbits.val[0], 6);
-            q6h.val[2] = vec_sl(vec_and(mone, shifted), 4);
-            shifted = vec_sr(qhbits.val[1], 6);
-            q6h.val[3] = vec_sl(vec_and(mone, shifted), 4);
+            // Load activation quants
+            v_y[0] = vec_xl(0 , y0);
+            v_y[1] = vec_xl(16, y0);
+            v_y[2] = vec_xl(32, y0);
+            v_y[3] = vec_xl(48, y0);
+            y0 += 64;
 
-            q6bytes.val[0] = (int8x16_t)(vec_or(vec_sr(q6bits.val[0], 4), q6h.val[0]));
-            q6bytes.val[1] = (int8x16_t)(vec_or(vec_sr(q6bits.val[1], 4), q6h.val[1]));
-            q6bytes.val[2] = (int8x16_t)(vec_or(vec_sr(q6bits.val[2], 4), q6h.val[2]));
-            q6bytes.val[3] = (int8x16_t)(vec_or(vec_sr(q6bits.val[3], 4), q6h.val[3]));
+            shifted = vec_sr(v_xh[0], 4);
+            q6h[0] = vec_sl(vec_and(v_um, shifted), 4);
+            shifted = vec_sr(v_xh[1], 4);
+            q6h[1] = vec_sl(vec_and(v_um, shifted), 4);
+            shifted = vec_sr(v_xh[0], 6);
+            q6h[2] = vec_sl(vec_and(v_um, shifted), 4);
+            shifted = vec_sr(v_xh[1], 6);
+            q6h[3] = vec_sl(vec_and(v_um, shifted), 4);
 
-            summs0 = ggml_vec_dot(vzero, q6bytes.val[0], q8bytes.val[0]);
-            summs1 = ggml_vec_dot(vzero, q6bytes.val[1], q8bytes.val[1]);
-            summs2 = ggml_vec_dot(vzero, q6bytes.val[2], q8bytes.val[2]);
-            summs3 = ggml_vec_dot(vzero, q6bytes.val[3], q8bytes.val[3]);
+            q6b[0] = (int8x16_t)(vec_or(vec_sr(v_xl[0], 4), q6h[0]));
+            q6b[1] = (int8x16_t)(vec_or(vec_sr(v_xl[1], 4), q6h[1]));
+            q6b[2] = (int8x16_t)(vec_or(vec_sr(v_xl[2], 4), q6h[2]));
+            q6b[3] = (int8x16_t)(vec_or(vec_sr(v_xl[3], 4), q6h[3]));
+
+            summs0 = ggml_vec_dot(v_z, q6b[0], v_y[0]);
+            summs1 = ggml_vec_dot(v_z, q6b[1], v_y[1]);
+            summs2 = ggml_vec_dot(v_z, q6b[2], v_y[2]);
+            summs3 = ggml_vec_dot(v_z, q6b[3], v_y[3]);
 
             isum += (summs0[0] + summs0[1] + summs0[2] + summs0[3]) * scale[0] +
                     (summs1[0] + summs1[1] + summs1[2] + summs1[3]) * scale[1] +
@@ -7592,7 +7621,7 @@ void ggml_vec_dot_q6_K_q8_K(int n, float * restrict s, size_t bs, const void * r
             scale += 4;
         }
 
-        sum += d_all * y[i].d * (isum - 32 * isum_mins);
+        sum += d_all * y[i].d * (isum - 32 * mins);
     }
 
     *s = sum;
