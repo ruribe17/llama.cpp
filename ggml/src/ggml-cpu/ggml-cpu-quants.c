@@ -7530,8 +7530,8 @@ void ggml_vec_dot_q6_K_q8_K(int n, float * restrict s, size_t bs, const void * r
         const int16x8_t v_ysumsh = vec_xl(16, y[i].bsums);
 
         const int8x16_t v_scale  = vec_xl(0, scale);
-        const int16x8_t v_scalel = vec_unpackh(scales);
-        const int16x8_t v_scaleh = vec_unpackl(scales);
+        const int16x8_t v_scalel = vec_unpackh(v_scale);
+        const int16x8_t v_scaleh = vec_unpackl(v_scale);
 
         const int32x4_t v_minslo = vec_mulo(v_ysumsl, v_scalel);
         const int32x4_t v_minsle = vec_mule(v_ysumsl, v_scalel);
@@ -7539,7 +7539,7 @@ void ggml_vec_dot_q6_K_q8_K(int n, float * restrict s, size_t bs, const void * r
         const int32x4_t v_minshe = vec_mule(v_ysumsh, v_scaleh);
         const int32x4_t v_mins = v_minslo + v_minsle + v_minsho + v_minshe;
 
-        const int32_t mins = vmins[0] + vmins[1] + vmins[2] + vmins[3];
+        const int32_t mins = v_mins[0] + v_mins[1] + v_mins[2] + v_mins[3];
 
         int32_t isum = 0;
         for (int j = 0; j < QK_K/128; ++j) {
