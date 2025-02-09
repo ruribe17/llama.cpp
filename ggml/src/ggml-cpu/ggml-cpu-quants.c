@@ -6893,7 +6893,7 @@ void ggml_vec_dot_q5_K_q8_K(int n, float * restrict s, size_t bs, const void * r
         const uint8_t * scales = (const uint8_t *)utmp;
         const uint8_t * restrict x0l = x[i].qs;
         const uint8_t * restrict x0h = x[i].qh;
-        const uint8_t * restrict y0 = y[i].qs;
+        const int8_t  * restrict y0 = y[i].qs;
 
         v_xh[0] = vec_xl(0 , x0h);
         v_xh[1] = vec_xl(16, x0h);
