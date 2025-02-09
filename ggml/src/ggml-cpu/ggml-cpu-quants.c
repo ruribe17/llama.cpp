@@ -10899,8 +10899,8 @@ void ggml_vec_dot_iq4_nl_q8_0(int n, float * restrict s, size_t bs, const void *
         int8x16_t v_xl = (int8x16_t)vec_and(v_x, v_m);
         int8x16_t v_xh = (int8x16_t)vec_sr(v_x, 4);
 
-        v_xl = vec_perm(v_k, v_k, (uchar1x16_t)v_xl);
-        v_xh = vec_perm(v_k, v_k, (uchar1x16_t)v_xh);
+        v_xl = vec_perm(v_k, v_k, (uchar8x16_t)v_xl);
+        v_xh = vec_perm(v_k, v_k, (uchar8x16_t)v_xh);
 
         const int8x16_t v_yl = vec_xl(0      , y0->qs);
         const int8x16_t v_yh = vec_xl(QK8_0/2, y0->qs);
