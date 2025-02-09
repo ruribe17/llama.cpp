@@ -6845,7 +6845,94 @@ void ggml_vec_dot_q5_K_q8_K(int n, float * restrict s, size_t bs, const void * r
     }
 
     *s = hsum_float_8(acc) + summs;
+#elif defined(__VXE__) || defined(__VXE2__)
+    const uint8x16_t v_lm = vec_splat_u8(0x0F);
+    const uint8x16_t v_1m = vec_splat_u8(0x01);
+    const uint8x16_t v_2m = vec_splat_u8(0x02);
 
+    const int32x4_t v_z = vec_splat_s32(0);
+
+    const uchar8x16_t v_minsm = {
+        0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F,
+        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+    };
+
+    int8x16_t  q5b[4];
+    uint8x16_t q5h[4];
+
+    uint8x16_t v_xl[2];
+    uint8x16_t v_xh[2];
+    int8x16_t  v_y[4];
+
+    float sumf = 0;
+
+    for (int i = 0; i < nb; ++i) {
+        const float d = y[i].d * GGML_FP16_TO_FP32(x[i].d);
+        const float dmin = y[i].d * GGML_FP16_TO_FP32(x[i].dmin);
+
+        const int16x8_t v_ysumsl = vec_xl(0 , y[i].bsums);
+        const int16x8_t v_ysumsh = vec_xl(16, y[i].bsums);
+        const int16x8_t v_ysums = vec_padd_s16(v_ysumsl, v_ysumsh);
+
+        memcpy(utmp, x[i].scales, 12);
+        utmp[3] = ((utmp[2] >> 4) & kmask2) | (((utmp[1] >> 6) & kmask3) << 4);
+        const uint32_t uaux = utmp[1] & kmask1;
+        utmp[1] = (utmp[2] & kmask2) | (((utmp[0] >> 6) & kmask3) << 4);
+        utmp[2] = uaux;
+        utmp[0] &= kmask1;
+
+        const uint8x16_t v_mins16 = vec_xl(0, (const uint8_t *)utmp);
+        const uint8x16_t v_mins8 = vec_perm(v_mins16, v_mins16, v_minsm);
+        const int16x8_t v_minsh = (int16x8_t)vec_unpackh(v_mins8);
+
+        const int32x4_t v_minsho = vec_mulo(v_ysums, v_minsh);
+        const int32x4_t v_minshe = vec_mule(v_ysums, v_minsh);
+        const int32x4_t v_mins = vec_add(v_minsho, v_minshe);
+        const int32_t mins = v_mins[0] + v_mins[1] + v_mins[2] + v_mins[3];
+
+        const uint8_t * scales = (const uint8_t *)utmp;
+        const uint8_t * restrict x0l = x[i].qs;
+        const uint8_t * restrict x0h = x[i].qh;
+        const uint8_t * restrict y0 = y[i].qs;
+
+        v_xh[0] = vec_xl(0 , x0h);
+        v_xh[1] = vec_xl(16, x0h);
+
+        int32_t sumi = 0;
+        for (int j = 0; j < QK_K/64; ++j) {
+            v_xl[0] = vec_xl(0 , x0l);
+            v_xl[1] = vec_xl(16, x0l);
+            x0l += 32;
+
+            v_y[0] = vec_xl(0 , y0);
+            v_y[1] = vec_xl(16, y0);
+            v_y[2] = vec_xl(32, y0);
+            v_y[3] = vec_xl(48, y0);
+            y0 += 64;
+
+            q5h[0] = vec_sl(vec_and(v_1m, v_xh[0]), 4);
+            q5h[1] = vec_sl(vec_and(v_1m, v_xh[1]), 4);
+            q5h[2] = vec_sl(vec_and(v_2m, v_xh[0]), 3);
+            q5h[3] = vec_sl(vec_and(v_2m, v_xh[1]), 3);
+            v_xh[0] = vec_sr(v_xh[0], 2);
+            v_xh[1] = vec_sr(v_xh[1], 2);
+
+            q5b[0] = (int8x16_t)vec_or(vec_and(v_xl[0], v_lm), q5h[0]);
+            q5b[1] = (int8x16_t)vec_or(vec_and(v_xl[1], v_lm), q5h[1]);
+            q5b[2] = (int8x16_t)vec_or(vec_sr(v_xl[0], 4), q5h[2]);
+            q5b[3] = (int8x16_t)vec_or(vec_sr(v_xl[1], 4), q5h[3]);
+
+            int32x4_t sumi0 = ggml_vec_dot(ggml_vec_dot(v_z, q5b[0], v_y[0]), q5b[1], v_y[1]);
+            int32x4_t sumi1 = ggml_vec_dot(ggml_vec_dot(v_z, q5b[2], v_y[2]), q5b[3], v_y[3]);
+
+            sumi += (sumi0[0] + sumi0[1] + sumi0[2] + sumi0[3]) * *scales++;
+            sumi += (sumi1[0] + sumi1[1] + sumi1[2] + sumi1[3]) * *scales++;
+        }
+
+        sumf += d * sumi - dmin * mins;
+    }
+
+    *s = sumf;
 #else
 
     const uint8_t * scales = (const uint8_t*)&utmp[0];
