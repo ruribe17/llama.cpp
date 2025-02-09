@@ -394,8 +394,8 @@ inline static int32x4_t ggml_vdotq_s32(int32x4_t acc, int8x16_t a, int8x16_t b) 
 #define vec_xor(a, b) ((a) ^ (b)) // Vector XOR
 #endif
 
-typedef signed char char1x16_t __attribute__((vector_size(16)));
-typedef unsigned char uchar1x16_t __attribute__((vector_size(16)));
+typedef signed char char8x16_t __attribute__((vector_size(16)));
+typedef unsigned char uchar8x16_t __attribute__((vector_size(16)));
 
 typedef int8_t  int8x16_t __attribute__((vector_size(16)));
 typedef int16_t int16x8_t __attribute__((vector_size(16)));
