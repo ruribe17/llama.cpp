@@ -6214,6 +6214,77 @@ void ggml_vec_dot_q4_K_q8_K(int n, float * restrict s, size_t bs, const void * r
     ft_union fi;
     fi.i = __lsx_vpickve2gr_w(acc_m, 0);
     *s = hsum_float_8(acc) + fi.f ;
+#elif defined(__VXE__) || defined(__VXE2__)
+    const uint8x16_t v_lm = vec_splat_u8(0x0F);
+    const int32x4_t v_z = vec_splat_s32(0);
+
+    uint8x16_t v_x[2];
+    int8x16_t  v_xl[2];
+    int8x16_t  v_y[2];
+
+    float sumf = 0;
+
+    for (int i = 0; i < nb; ++i) {
+        const float d = y[i].d * GGML_FP16_TO_FP32(x[i].d);
+        const float dmin = y[i].d * GGML_FP16_TO_FP32(x[i].dmin);
+
+        const int16x8_t v_ysumsl = vec_xl(0 , y[i].bsums);
+        const int16x8_t v_ysumsh = vec_xl(16, y[i].bsums);
+        const int16x8_t v_ysums = vec_padd_s16(v_ysumsl, v_ysumsh);
+
+        memcpy(utmp, x[i].scales, 12);
+
+        uint32x4_t v_mins8 = { 0 };
+        v_mins8 = vset_lane_u32(utmp[1] & kmask1, v_mins8, 0);
+        v_mins8 = vset_lane_u32(((utmp[2] >> 4) & kmask2) | (((utmp[1] >> 6) & kmask3) << 4), v_mins8, 1);
+
+        utmp[1] = (utmp[2] & kmask2) | (((utmp[0] >> 6) & kmask3) << 4);
+        utmp[0] &= kmask1;
+
+        const int16x8_t v_minsh = (int16x8_t)vec_unpackh((uint8x16_t)v_mins8);
+
+        const int32x4_t v_minso = vec_mulo(v_ysums, v_minsh);
+        const int32x4_t v_minse = vec_mule(v_ysums, v_minsh);
+        const int32x4_t v_mins = v_minso + v_minse;
+        sumf -= dmin * (v_mins[0] + v_mins[1] + v_mins[2] + v_mins[3]);
+
+        const uint8_t * scales = (const uint8_t *)utmp;
+        const uint8_t * restrict x0 = x[i].qs;
+        const int8_t  * restrict y0 = y[i].qs;
+
+        int32_t sumi1 = 0;
+        int32_t sumi2 = 0;
+
+        for (int j = 0; j < QK_K/64; ++j) {
+            v_x[0] = vec_xl(0 , x0);
+            v_x[1] = vec_xl(16, x0);
+            x0 += 32;
+
+            v_y[0] = vec_xl(0 , y0);
+            v_y[1] = vec_xl(16, y0);
+            y0 += 32;
+
+            v_xl[0] = (int8x16_t)vec_and(v_x[0], v_lm);
+            v_xl[1] = (int8x16_t)vec_and(v_x[1], v_lm);
+
+            const int32x4_t p1 = ggml_vec_dot(ggml_vec_dot(v_z, v_xl[0], v_y[0]), v_xl[1], v_y[1]);
+            sumi1 += (p1[0] + p1[1] + p1[2] + p1[3]) * scales[2*j+0];
+
+            v_y[0] = vec_xl(0 , y0);
+            v_y[1] = vec_xl(16, y0);
+            y0 += 32;
+
+            v_xl[0] = (int8x16_t)vec_sr(v_x[0], 4);
+            v_xl[1] = (int8x16_t)vec_sr(v_x[1], 4);
+
+            const int32x4_t p2 = ggml_vec_dot(ggml_vec_dot(v_z, v_xl[0], v_y[0]), v_xl[1], v_y[1]);
+            sumi2 += (p2[0] + p2[1] + p2[2] + p2[3]) * scales[2*j+1];
+        }
+
+        sumf += d * (sumi1 + sumi2);
+    }
+
+    *s = sumf;
 #else
 
     const uint8_t * scales = (const uint8_t*)&utmp[0];
