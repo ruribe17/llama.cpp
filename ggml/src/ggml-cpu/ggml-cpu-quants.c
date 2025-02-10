@@ -6235,8 +6235,8 @@ void ggml_vec_dot_q4_K_q8_K(int n, float * restrict s, size_t bs, const void * r
         memcpy(utmp, x[i].scales, 12);
 
         uint32x4_t v_mins8 = { 0 };
-        v_mins8 = vset_lane_u32(utmp[1] & kmask1, v_mins8, 0);
-        v_mins8 = vset_lane_u32(((utmp[2] >> 4) & kmask2) | (((utmp[1] >> 6) & kmask3) << 4), v_mins8, 1);
+        v_mins8 = vec_insert(utmp[1] & kmask1, v_mins8, 0);
+        v_mins8 = vec_insert(((utmp[2] >> 4) & kmask2) | (((utmp[1] >> 6) & kmask3) << 4), v_mins8, 1);
 
         utmp[1] = (utmp[2] & kmask2) | (((utmp[0] >> 6) & kmask3) << 4);
         utmp[0] &= kmask1;
