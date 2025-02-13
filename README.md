@@ -136,6 +136,7 @@ Instructions for adding support for new models: [HOWTO-add-model.md](docs/develo
 - Rust (more features): [edgenai/llama_cpp-rs](https://github.com/edgenai/llama_cpp-rs)
 - Rust (nicer API): [mdrokz/rust-llama.cpp](https://github.com/mdrokz/rust-llama.cpp)
 - Rust (more direct bindings): [utilityai/llama-cpp-rs](https://github.com/utilityai/llama-cpp-rs)
+- Rust (automated build from crates.io): [ShelbyJenkins/llm_client](https://github.com/ShelbyJenkins/llm_client)
 - C#/.NET: [SciSharp/LLamaSharp](https://github.com/SciSharp/LLamaSharp)
 - C#/VB.NET (more features - community license): [LM-Kit.NET](https://docs.lm-kit.com/lm-kit-net/index.html)
 - Scala 3: [donderom/llm4s](https://github.com/donderom/llm4s)
@@ -188,6 +189,7 @@ Instructions for adding support for new models: [HOWTO-add-model.md](docs/develo
 - [ramalama](https://github.com/containers/ramalama) (MIT)
 - [semperai/amica](https://github.com/semperai/amica) (MIT)
 - [withcatai/catai](https://github.com/withcatai/catai) (MIT)
+- [Autopen](https://github.com/blackhole89/autopen) (GPL)
 
 </details>
 
@@ -233,6 +235,7 @@ Instructions for adding support for new models: [HOWTO-add-model.md](docs/develo
 | [HIP](docs/build.md#hip) | AMD GPU |
 | [Vulkan](docs/build.md#vulkan) | GPU |
 | [CANN](docs/build.md#cann) | Ascend NPU |
+| [OpenCL](docs/backend/OPENCL.md) | Adreno GPU |
 
 ## Building the project
 
@@ -518,3 +521,17 @@ If your issue is with model generation quality, then please at least scan the fo
 
 #### References
 
+
+### Completions
+Command-line completion is available for some environments.
+
+#### Bash Completion
+```bash
+$ build/bin/llama-cli --completion-bash > ~/.llama-completion.bash
+$ source ~/.llama-completion.bash
+```
+Optionally this can be added to your `.bashrc` or `.bash_profile` to load it
+automatically. For example:
+```console
+$ echo "source ~/.llama-completion.bash" >> ~/.bashrc
+```
