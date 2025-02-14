@@ -933,19 +933,24 @@ size_t ggml_gallocr_get_buffer_size(ggml_gallocr_t galloc, int buffer_id) {
 
 // utils
 
+static void free_buffers(ggml_backend_buffer_t ** buffers, size_t * n_buffers) {
+    for (size_t i = 0; i < *n_buffers; i++) {
+        ggml_backend_buffer_free((*buffers)[i]);
+    }
+    free(*buffers);
+}
+
 static bool alloc_tensor_range(struct ggml_context * ctx,
         struct ggml_tensor * first, struct ggml_tensor * last,
         ggml_backend_buffer_type_t buft, size_t size,
         ggml_backend_buffer_t ** buffers, size_t * n_buffers) {
+
     ggml_backend_buffer_t buffer = ggml_backend_buft_alloc_buffer(buft, size);
     if (buffer == NULL) {
 #ifndef NDEBUG
         GGML_LOG_DEBUG("%s: failed to allocate %s buffer of size %zu\n", __func__, ggml_backend_buft_name(buft), size);
 #endif
-        for (size_t i = 0; i < *n_buffers; i++) {
-            ggml_backend_buffer_free((*buffers)[i]);
-        }
-        free(*buffers);
+        free_buffers(buffers, n_buffers);
         return false;
     }
 
@@ -956,12 +961,26 @@ static bool alloc_tensor_range(struct ggml_context * ctx,
             if (t->view_src == NULL) {
                 ggml_tallocr_alloc(&tallocr, t);
             } else if (t->buffer == NULL) {
-                ggml_backend_view_init(t);
+                enum ggml_status status = ggml_backend_view_init(t);
+                if (status != GGML_STATUS_SUCCESS) {
+                    GGML_LOG_WARN("%s: failed to ggml_backend_view_init: %s\n", __func__, ggml_status_to_string(status));
+                    free_buffers(buffers, n_buffers); // Check with reviewers
+                    ggml_backend_buffer_free(buffer);
+                    // Check with reviewers: any need to nullify all the tensors ptrs (first, ..., t)?
+                    return false;
+                }
             }
         } else {
             if (t->view_src != NULL && t->buffer == NULL) {
                 // view of a pre-allocated tensor
-                ggml_backend_view_init(t);
+                enum ggml_status status = ggml_backend_view_init(t);
+                if (status != GGML_STATUS_SUCCESS) {
+                    GGML_LOG_WARN("%s: failed to ggml_backend_view_init: %s\n", __func__, ggml_status_to_string(status));
+                    // Check with reviewers: any need to nullify all the tensors (first, ..., t)?
+                    free_buffers(buffers, n_buffers); // Check with reviewers
+                    ggml_backend_buffer_free(buffer);
+                    return false;
+                }
             }
         }
     }
