@@ -159,16 +159,29 @@ static void ggml_check_sycl() try {
     if (!initialized) {
         GGML_SYCL_DEBUG("[SYCL] call ggml_check_sycl\n");
         g_ggml_sycl_debug = get_sycl_env("GGML_SYCL_DEBUG", 0);
-        GGML_LOG_INFO("GGML_SYCL_DEBUG: %d\n", g_ggml_sycl_debug);
+        GGML_LOG_INFO("Build with Macros:\n");
+        GGML_LOG_INFO("  GGML_SYCL_DEBUG: %d\n", g_ggml_sycl_debug);
 #if defined(GGML_SYCL_FORCE_MMQ)
-        GGML_LOG_INFO("GGML_SYCL_FORCE_MMQ:   yes\n");
+        GGML_LOG_INFO("  GGML_SYCL_FORCE_MMQ: yes\n");
 #else
-        GGML_LOG_INFO("GGML_SYCL_FORCE_MMQ:   no\n");
+        GGML_LOG_INFO("  GGML_SYCL_FORCE_MMQ: no\n");
 #endif
 #if defined(GGML_SYCL_F16)
-        GGML_LOG_INFO("GGML_SYCL_F16: yes\n");
+        GGML_LOG_INFO("  GGML_SYCL_F16: yes\n");
 #else
-        GGML_LOG_INFO("GGML_SYCL_F16: no\n");
+        GGML_LOG_INFO("  GGML_SYCL_F16: no\n");
+#endif
+
+#if defined(GGML_SYCL_INTEL_TARGET)
+        GGML_LOG_INFO("  GGML_SYCL_INTEL_TARGET: yes\n");
+#endif
+
+#if defined(GGML_SYCL_NVIDIA_TARGET)
+        GGML_LOG_INFO("  GGML_SYCL_NVIDIA_TARGET: yes\n");
+#endif
+
+#if defined(GGML_SYCL_AMD_TARGET)
+        GGML_LOG_INFO("  GGML_SYCL_AMD_TARGET: yes\n");
 #endif
 
 /* NOT REMOVE, keep it for next optimize for XMX.
@@ -309,6 +322,34 @@ catch (sycl::exception const &exc) {
   std::exit(1);
 }
 
+void reorder_qw(char*data_device, const int ncols,
+                 const int nrows, size_t size,
+                 dpct::queue_ptr stream) {
+    auto tmp_buf = sycl::malloc_shared<char>(size, *stream);
+    SYCL_CHECK(
+        CHECK_TRY_ERROR((*stream).memcpy(tmp_buf, data_device, size)
+            .wait()));
+    GGML_ASSERT((size % sizeof(block_q4_0) == 0));
+
+    auto qs_ptr = (uint8_t*)data_device;
+
+    auto d_ptr = (sycl::half*)(qs_ptr + ncols * nrows / 2);
+    stream->parallel_for(
+        size / sizeof(block_q4_0),
+            [=](auto i) [[intel::reqd_sub_group_size(WARP_SIZE)]] {
+            const block_q4_0* x = (const block_q4_0*)tmp_buf;
+            const int ib = i;
+
+            for (int j = 0; j < QK4_0/2; j ++)
+            {
+                *(qs_ptr + ib * QK4_0 / 2 + j) = x[ib].qs[j];
+            }
+            *(d_ptr + ib) = x[ib].d;
+        });
+
+    sycl::free(tmp_buf, *stream);
+}
+
 static void ggml_backend_sycl_buffer_set_tensor(ggml_backend_buffer_t buffer,
                                                 ggml_tensor *tensor,
                                                 const void *data, size_t offset,
@@ -326,6 +367,15 @@ static void ggml_backend_sycl_buffer_set_tensor(ggml_backend_buffer_t buffer,
         CHECK_TRY_ERROR((*stream).memcpy((char *)tensor->data + offset, host_buf, size)
                              .wait()));
     free(host_buf);
+
+#if defined(GGML_SYCL_INTEL_TARGET)
+    if (tensor->type == GGML_TYPE_Q4_0) {
+        size_t ncols = tensor->ne[0];
+        size_t nrows = tensor->ne[1];
+        reorder_qw((char *)tensor->data + offset, ncols, nrows, size, stream);
+    }
+#endif
+
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -1380,6 +1430,54 @@ static void k_get_rows(
     dst_row[iybs + iqs + y_offset] = v.y();
 }
 
+template<int qk, int qr, dequantize_kernel_t_reorder dequantize_kernel_recorder, typename dst_t>
+static void k_get_rows_reorder(
+            const void * src0, const void *src0_dq, const int32_t * src1, dst_t * dst,
+            int64_t ne00, /*int64_t ne01, int64_t ne02, int64_t ne03,*/
+            /*int64_t ne10, int64_t ne11,*/ int64_t ne12, /*int64_t ne13,*/
+            /*size_t s0,*/ size_t s1, size_t s2, size_t s3,
+            /*size_t nb00,*/ size_t nb01, size_t nb02, size_t nb03,
+            size_t s10, size_t s11, size_t s12,
+            const sycl::nd_item<3> &item_ct1/*, size_t s13*/) {
+
+    const int i00 = (item_ct1.get_group(2) * item_ct1.get_local_range(2) +
+                     item_ct1.get_local_id(2)) *
+                    2;
+    const int i10 = item_ct1.get_local_range(1) * item_ct1.get_group(1) +
+                    item_ct1.get_local_id(1);
+    const int i11 = (item_ct1.get_group(0) * item_ct1.get_local_range(0) +
+                     item_ct1.get_local_id(0)) /
+                    ne12;
+    const int i12 = (item_ct1.get_group(0) * item_ct1.get_local_range(0) +
+                     item_ct1.get_local_id(0)) %
+                    ne12;
+
+    if (i00 >= ne00) {
+        return;
+    }
+    auto ncols = ne00;
+    const int i01 = src1[i10*s10 + i11*s11 + i12*s12];
+
+    dst_t * dst_row = dst + i10*s1 + i11*s2 + i12*s3;
+
+    const int src0_off = i01 * ncols + i00;
+    const int ib = src0_off / QK4_0; // block index
+    const int iqs = (i00%qk)/qr; // x quant index
+    const int iybs = i00 - i00%qk; // dst block start index
+    const int y_offset = qr == 1 ? 1 : qk/2;
+
+    // dequantize
+    dfloat2 v;
+    dequantize_kernel_recorder((const void *)src0_dq, ib, (const void *)src0, src0_off/2, v);
+
+    dst_row[iybs + iqs + 0] = v.x();
+    dst_row[iybs + iqs + y_offset] = v.y();
+
+    GGML_UNUSED(nb01);
+    GGML_UNUSED(nb02);
+    GGML_UNUSED(nb03);
+}
+
 template<typename src0_t, typename dst_t>
 static void k_get_rows_float(
             const src0_t * src0, const int32_t * src1, dst_t * dst,
@@ -1930,6 +2028,47 @@ static void get_rows_sycl(ggml_backend_sycl_context & ctx, const ggml_tensor *sr
     GGML_UNUSED(dst);
     GGML_UNUSED(ctx);
 }
+
+template <int qk, int qr, dequantize_kernel_t_reorder dq_reorder>
+static void get_rows_sycl_reorder(ggml_backend_sycl_context & ctx, const ggml_tensor *src0, const ggml_tensor *src1,
+                          ggml_tensor *dst, const void *src0_dd,
+                          const int32_t *src1_dd, float *dst_dd,
+                          queue_ptr stream) {
+
+    GGML_TENSOR_BINARY_OP_LOCALS
+
+    const sycl::range<3> block_dims(1, 1, SYCL_GET_ROWS_BLOCK_SIZE);
+    const int block_num_x = (ne00 + 2*SYCL_GET_ROWS_BLOCK_SIZE - 1) / (2*SYCL_GET_ROWS_BLOCK_SIZE);
+    const sycl::range<3> block_nums(ne11 * ne12, ne10, block_num_x);
+
+    // strides in elements
+    //const size_t s0 = nb0 / ggml_element_size(dst);
+    const size_t s1 = nb1 / ggml_element_size(dst);
+    const size_t s2 = nb2 / ggml_element_size(dst);
+    const size_t s3 = nb3 / ggml_element_size(dst);
+
+    const size_t s10 = nb10 / ggml_element_size(src1);
+    const size_t s11 = nb11 / ggml_element_size(src1);
+    const size_t s12 = nb12 / ggml_element_size(src1);
+    //const size_t s13 = nb13 / ggml_element_size(src1);
+
+    GGML_ASSERT(ne00 % 2 == 0);
+
+    const uint8_t* src0_q = (const uint8_t*)src0_dd;
+    const size_t ncols = ne00;
+    const size_t nrows = ne01;
+    const sycl::half* src0_dq = (const sycl::half*)(src0_q + nrows * ncols / 2);
+    stream->parallel_for(sycl::nd_range<3>(block_nums * block_dims, block_dims),
+                         [=](sycl::nd_item<3> item_ct1) [[intel::reqd_sub_group_size(WARP_SIZE)]]{
+                             k_get_rows_reorder<qk, qr, dq_reorder>(
+                                 src0_dd, src0_dq, src1_dd, dst_dd, ne00, ne12, s1, s2,
+                                 s3, nb01, nb02, nb03, s10, s11, s12, item_ct1);
+                         });
+
+    GGML_UNUSED(dst);
+    GGML_UNUSED(ctx);
+}
+
 
 template <typename src0_t>
 static void get_rows_sycl_float(ggml_backend_sycl_context & ctx, const ggml_tensor *src0,
@@ -2516,7 +2655,11 @@ static void ggml_sycl_op_get_rows(ggml_backend_sycl_context & ctx, const ggml_te
             get_rows_sycl_float(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
             break;
         case GGML_TYPE_Q4_0:
+#if defined(GGML_SYCL_INTEL_TARGET)
+            get_rows_sycl_reorder<QK4_0, QR4_0, dequantize_q4_0_reorder>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
+#else
             get_rows_sycl<QK4_0, QR4_0, dequantize_q4_0>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
+#endif
             break;
         case GGML_TYPE_Q4_1:
             get_rows_sycl<QK4_1, QR4_1, dequantize_q4_1>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
