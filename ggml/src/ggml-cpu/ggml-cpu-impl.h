@@ -495,27 +495,12 @@ inline static int8x16_t ggml_vec_tbl(int8x16_t a, uint8x16_t b) {
 }
 
 inline static int16x8_t vec_padd_s16(int16x8_t a, int16x8_t b) {
-    const uchar8x16_t v_maske = {
-        0x00, 0x01, 0x04, 0x05, 0x08, 0x09, 0x0C, 0x0D,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-    };
+    const uchar8x16_t v_maske = {  0,  1,  4,  5,  8,  9, 12, 13,
+                                  16, 17, 20, 21, 24, 25, 28, 29 };
 
-    const uchar8x16_t v_masko = {
-        0x02, 0x03, 0x06, 0x07, 0x0A, 0x0B, 0x0E, 0x0F,
-        0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-    };
-
-    const uchar8x16_t v_maskj = {
-         0,  1,  2,  3,  4,  5,  6,  7,
-        16, 17, 18, 19, 20, 21, 22, 23
-    };
-
-    const int16x8_t pa = vec_add(vec_perm(a, a, v_maske),
-                                 vec_perm(a, a, v_masko));
-    const int16x8_t pb = vec_add(vec_perm(b, b, v_maske),
-                                 vec_perm(b, b, v_masko));
-
-    return vec_perm(pa, pb, v_maskj);
+    const int16x8_t v_abo = vec_pack((int32x4_t)a, (int32x4_t)b);
+    const int16x8_t v_abe = vec_perm(a, b, v_maske);
+    return v_abo + v_abe;
 }
 
 inline static int32x4_t ggml_vec_dot(int32x4_t acc, int8x16_t a, int8x16_t b) {
