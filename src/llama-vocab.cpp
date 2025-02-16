@@ -1781,7 +1781,7 @@ void llama_vocab::impl::load(llama_model_loader & ml, const LLM_KV & kv) {
                         || t.first == "<end_of_turn>"
                         || t.first == "<|endoftext|>"
                         || t.first == "<EOT>"
-                        || t.first == "<｜end▁of▁sentence｜>" // DeepSeek
+                        || t.first == "<|EOT|>"// DeepSeek-r1
                    ) {
                     special_eot_id = t.second;
                     if ((id_to_token[t.second].attr & LLAMA_TOKEN_ATTR_CONTROL) == 0) {
@@ -1791,7 +1791,19 @@ void llama_vocab::impl::load(llama_model_loader & ml, const LLM_KV & kv) {
                     }
                 }
             }
-
+             // find EOS token: "<｜end▁of▁sentence｜>", etc. // for deepseek
+            if (special_eos_id == LLAMA_TOKEN_NULL) {
+                if (false
+                        || t.first == "<｜end▁of▁sentence｜>" // DeepSeek
+                   ) {
+                    special_eos_id = t.second;
+                    if ((id_to_token[t.second].attr & LLAMA_TOKEN_ATTR_CONTROL) == 0) {
+                        LLAMA_LOG_WARN("%s: control-looking token: %6d '%s' was not control-type; this is probably a bug in the model. its type will be overridden\n",
+                                __func__, t.second, t.first.c_str());
+                        id_to_token[t.second].attr = LLAMA_TOKEN_ATTR_CONTROL;
+                    }
+                }
+            }
             // find EOM token: "<|eom_id|>"
             if (special_eom_id == LLAMA_TOKEN_NULL) {
                 if (false
@@ -1931,6 +1943,8 @@ void llama_vocab::impl::load(llama_model_loader & ml, const LLM_KV & kv) {
                     || t.first == "<|endoftext|>"
                     || t.first == "<|eom_id|>"
                     || t.first == "<EOT>"
+                    || t.first == "<|EOT|>"// DeepSeek
+                    || t.first == "<｜end▁of▁sentence｜>" // DeepSeek
                ) {
                 special_eog_ids.insert(t.second);
                 if ((id_to_token[t.second].attr & LLAMA_TOKEN_ATTR_CONTROL) == 0) {
