@@ -39,6 +39,7 @@
 #include "ggml-sycl/backend.hpp"
 #include "ggml-sycl/presets.hpp"
 #include "ggml-sycl/gemm.hpp"
+#include "ggml-sycl/sycl_hw.hpp"
 
 static bool g_sycl_loaded = false;
 
@@ -63,14 +64,18 @@ static ggml_sycl_device_info ggml_sycl_init() {
     for (int i = 0; i < info.device_count; ++i) {
         info.devices[i].vmm = 0;
         dpct::device_info prop;
+        sycl::device device = dpct::dev_mgr::instance().get_device(i);
+
         SYCL_CHECK(CHECK_TRY_ERROR(dpct::get_device_info(
-            prop, dpct::dev_mgr::instance().get_device(i))));
+            prop, device)));
 
         info.default_tensor_split[i] = total_vram;
         total_vram += prop.get_global_mem_size();
 
         info.devices[i].cc =
             100 * prop.get_major_version() + 10 * prop.get_minor_version();
+        info.devices[i].hw_info = get_device_hw_info(&device);
+        info.devices[i].opt_feature = check_gpu_optimize_feature(info.devices[i].hw_info.family);
 
         info.max_work_group_sizes[i] = prop.get_max_work_group_size();
     }
@@ -109,6 +114,27 @@ void print_device_detail(int id, sycl::device &device, std::string device_type) 
             global_mem_size, device.get_info<sycl::info::device::driver_version>().c_str());
 }
 
+void print_device_opt_feature(int device_count) {
+    GGML_LOG_INFO("SYCL Optimization Feature:\n");
+    GGML_LOG_INFO(
+        "|ID|        Device Type|Reorder|\n");
+    GGML_LOG_INFO(
+        "|--|-------------------|-------|\n");
+    std::map<std::string, size_t> DeviceNums;
+    for (int id = 0; id < device_count; ++id) {
+      sycl::device device = dpct::dev_mgr::instance().get_device(id);
+      std::string backend_type = get_device_backend_and_type(device);
+      int type_id = DeviceNums[backend_type]++;
+      std::stringstream device_type;
+      device_type << "[" << backend_type << ":" << std::to_string(type_id)
+                  << "]";
+      std::string device_type_s = device_type.str();
+      device_type_s = std::regex_replace(device_type_s, std::regex("ext_oneapi_"), "");
+      GGML_LOG_INFO("|%2d|%19s|%7s|\n", id, device_type_s.c_str(),
+        ggml_sycl_info().devices[id].opt_feature.reorder ? "Y": "N");
+    }
+
+}
 void ggml_backend_sycl_print_sycl_devices() {
     GGML_SYCL_DEBUG("[SYCL] call ggml_backend_sycl_print_sycl_devices\n");
     int device_count = dpct::dev_mgr::instance().device_count();
@@ -137,6 +163,8 @@ void ggml_backend_sycl_print_sycl_devices() {
                   << "]";
       print_device_detail(id, device, device_type.str());
     }
+
+    print_device_opt_feature(device_count);
 }
 
 static inline int get_sycl_env(const char *env_name, int default_val) {
@@ -170,18 +198,6 @@ static void ggml_check_sycl() try {
         GGML_LOG_INFO("  GGML_SYCL_F16: yes\n");
 #else
         GGML_LOG_INFO("  GGML_SYCL_F16: no\n");
-#endif
-
-#if defined(GGML_SYCL_INTEL_TARGET)
-        GGML_LOG_INFO("  GGML_SYCL_INTEL_TARGET: yes\n");
-#endif
-
-#if defined(GGML_SYCL_NVIDIA_TARGET)
-        GGML_LOG_INFO("  GGML_SYCL_NVIDIA_TARGET: yes\n");
-#endif
-
-#if defined(GGML_SYCL_AMD_TARGET)
-        GGML_LOG_INFO("  GGML_SYCL_AMD_TARGET: yes\n");
 #endif
 
 /* NOT REMOVE, keep it for next optimize for XMX.
@@ -253,11 +269,13 @@ struct ggml_backend_sycl_buffer_context {
     void * dev_ptr = nullptr;
     queue_ptr stream;
     std::string name;
+    optimize_feature opt_feature;
 
      ggml_backend_sycl_buffer_context(int device, void * dev_ptr, queue_ptr stream) :
         device(device), dev_ptr(dev_ptr), stream(stream) {
             check_allow_gpu_index(device);
             name = (GGML_SYCL_NAME + std::to_string(device));
+            opt_feature = ggml_sycl_info().devices[device].opt_feature;
         }
 
 
@@ -368,14 +386,13 @@ static void ggml_backend_sycl_buffer_set_tensor(ggml_backend_buffer_t buffer,
                              .wait()));
     free(host_buf);
 
-#if defined(GGML_SYCL_INTEL_TARGET)
-    if (tensor->type == GGML_TYPE_Q4_0) {
-        size_t ncols = tensor->ne[0];
-        size_t nrows = tensor->ne[1];
-        reorder_qw((char *)tensor->data + offset, ncols, nrows, size, stream);
+    if (ctx->opt_feature.reorder) {
+        if (tensor->type == GGML_TYPE_Q4_0) {
+            size_t ncols = tensor->ne[0];
+            size_t nrows = tensor->ne[1];
+            reorder_qw((char *)tensor->data + offset, ncols, nrows, size, stream);
+        }
     }
-#endif
-
 }
 catch (sycl::exception const &exc) {
   std::cerr << exc.what() << "Exception caught at file:" << __FILE__
@@ -2655,11 +2672,11 @@ static void ggml_sycl_op_get_rows(ggml_backend_sycl_context & ctx, const ggml_te
             get_rows_sycl_float(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
             break;
         case GGML_TYPE_Q4_0:
-#if defined(GGML_SYCL_INTEL_TARGET)
-            get_rows_sycl_reorder<QK4_0, QR4_0, dequantize_q4_0_reorder>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
-#else
-            get_rows_sycl<QK4_0, QR4_0, dequantize_q4_0>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
-#endif
+            if (ctx.opt_feature.reorder) {
+                get_rows_sycl_reorder<QK4_0, QR4_0, dequantize_q4_0_reorder>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
+            } else {
+                get_rows_sycl<QK4_0, QR4_0, dequantize_q4_0>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
+            }
             break;
         case GGML_TYPE_Q4_1:
             get_rows_sycl<QK4_1, QR4_1, dequantize_q4_1>(ctx, src0, src1, dst, src0_d, src1_i32, dst_d, stream);
@@ -2735,7 +2752,7 @@ inline void ggml_sycl_op_mul_mat_sycl(
         // GGML_SYCL_DEBUG("ggml_sycl_op_mul_mat_sycl - fp16 path\n");
         ggml_sycl_pool_alloc<sycl::half> src0_as_f16(ctx.pool());
         if (src0->type != GGML_TYPE_F16) {
-            const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src0->type);
+            const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src0->type, ctx);
             GGML_ASSERT(to_fp16_sycl != nullptr);
             size_t ne = row_diff*ne00;
             src0_as_f16.alloc(ne);
@@ -2747,7 +2764,7 @@ inline void ggml_sycl_op_mul_mat_sycl(
 
         ggml_sycl_pool_alloc<sycl::half> src1_as_f16(ctx.pool());
         if (src1->type != GGML_TYPE_F16) {
-            const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src1->type);
+            const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src1->type, ctx);
             GGML_ASSERT(to_fp16_sycl != nullptr);
             size_t ne = src1_ncols*ne10;
             src1_as_f16.alloc(ne);
@@ -2768,13 +2785,13 @@ inline void ggml_sycl_op_mul_mat_sycl(
             src1_ptr, dpct::library_data_t::real_half, ne10, &beta_f16,
             dst_f16.get(), dpct::library_data_t::real_half, ldc,
             dpct::library_data_t::real_half)));
-        const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(GGML_TYPE_F16);
+        const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(GGML_TYPE_F16, ctx);
         to_fp32_sycl(dst_f16.get(), dst_dd_i, row_diff*src1_ncols, stream);
 #else
         auto dnnl_stream = ctx.stream_dnnl(stream);
         DnnlGemmWrapper::row_gemm(dnnl_stream, false, true, src1_ncols, row_diff, ne10, src1_ptr, DnnlGemmWrapper::to_dt<sycl::half>(),
             src0_ptr, DnnlGemmWrapper::to_dt<sycl::half>(), dst_f16.get(), DnnlGemmWrapper::to_dt<sycl::half>());
-        const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(GGML_TYPE_F16);
+        const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(GGML_TYPE_F16, ctx);
         to_fp32_sycl(dst_f16.get(), dst_dd_i, row_diff* src1_ncols, stream);
 #endif
     }
@@ -2783,13 +2800,13 @@ inline void ggml_sycl_op_mul_mat_sycl(
         ggml_sycl_pool_alloc<float> src0_ddq_as_f32(ctx.pool());
         ggml_sycl_pool_alloc<float> src1_ddq_as_f32(ctx.pool());
         if (src0->type != GGML_TYPE_F32) {
-            const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(src0->type);
+            const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(src0->type, ctx);
             GGML_ASSERT(to_fp32_sycl != nullptr);
             src0_ddq_as_f32.alloc(row_diff*ne00);
             to_fp32_sycl(src0_dd_i, src0_ddq_as_f32.get(), row_diff*ne00, stream);
         }
         if (src1->type != GGML_TYPE_F32) {
-            const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(src1->type);
+            const to_fp32_sycl_t to_fp32_sycl = ggml_get_to_fp32_sycl(src1->type, ctx);
             GGML_ASSERT(to_fp32_sycl != nullptr);
             src1_ddq_as_f32.alloc(src1_ncols*ne10);
             to_fp32_sycl(src1_ddf_i, src1_ddq_as_f32.get(), src1_ncols*ne10, stream);
@@ -3535,7 +3552,7 @@ static void ggml_sycl_mul_mat_batched_sycl(ggml_backend_sycl_context & ctx,
     // convert src1 to fp16
     ggml_sycl_pool_alloc<sycl::half> src1_f16_alloc(ctx.pool());
     if (src1->type != GGML_TYPE_F16) {
-        const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src1->type);
+        const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src1->type, ctx);
         const int64_t ne_src1 = ggml_nelements(src1);
         src1_f16_alloc.alloc(ne_src1);
         GGML_ASSERT(to_fp16_sycl != nullptr);

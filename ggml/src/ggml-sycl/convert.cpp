@@ -472,14 +472,14 @@ static void convert_unary_sycl(const void *__restrict__ vx,
     }
 }
 
-to_fp16_sycl_t ggml_get_to_fp16_sycl(ggml_type type) {
+to_fp16_sycl_t ggml_get_to_fp16_sycl(ggml_type type, ggml_backend_sycl_context & ctx) {
     switch (type) {
         case GGML_TYPE_Q4_0:
-#if defined(GGML_SYCL_INTEL_TARGET)
-            return dequantize_row_q4_0_sycl_reorder;
-#else
-            return dequantize_block_sycl<QK4_0, QR4_0, dequantize_q4_0>;
-#endif
+            if (ctx.opt_feature.reorder) {
+                return dequantize_row_q4_0_sycl_reorder;
+            } else {
+                return dequantize_block_sycl<QK4_0, QR4_0, dequantize_q4_0>;
+            }
         case GGML_TYPE_Q4_1:
             return dequantize_block_sycl<QK4_1, QR4_1, dequantize_q4_1>;
         case GGML_TYPE_Q5_0:
@@ -523,14 +523,14 @@ to_fp16_sycl_t ggml_get_to_fp16_sycl(ggml_type type) {
     }
 }
 
-to_fp32_sycl_t ggml_get_to_fp32_sycl(ggml_type type) {
+to_fp32_sycl_t ggml_get_to_fp32_sycl(ggml_type type, ggml_backend_sycl_context & ctx) {
     switch (type) {
         case GGML_TYPE_Q4_0:
-#if defined(GGML_SYCL_INTEL_TARGET)
-            return dequantize_row_q4_0_sycl_reorder;
-#else
-            return dequantize_row_q4_0_sycl;
-#endif
+            if (ctx.opt_feature.reorder) {
+                return dequantize_row_q4_0_sycl_reorder;
+            } else {
+                return dequantize_row_q4_0_sycl;
+            }
         case GGML_TYPE_Q4_1:
             return dequantize_row_q4_1_sycl;
         case GGML_TYPE_Q5_0:

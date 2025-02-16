@@ -4,19 +4,6 @@ if (NOT GGML_SYCL_TARGET MATCHES "^(INTEL|NVIDIA|AMD)$")
     message(FATAL_ERROR "Invalid backend chosen, supported options are INTEL, NVIDIA, or AMD")
 endif()
 
-if (GGML_SYCL_TARGET STREQUAL "INTEL")
-    add_compile_definitions(GGML_SYCL_INTEL_TARGET)
-endif()
-
-if (GGML_SYCL_TARGET STREQUAL "NVIDIA")
-    add_compile_definitions(GGML_SYCL_NVIDIA_TARGET)
-endif()
-
-if (GGML_SYCL_TARGET STREQUAL "AMD")
-    add_compile_definitions(GGML_SYCL_AMD_TARGET)
-endif()
-
-
 check_cxx_compiler_flag("-fsycl" SUPPORTS_SYCL)
 
 if (DEFINED ENV{ONEAPI_ROOT})

@@ -19,6 +19,8 @@
 #include "dpct/helper.hpp"
 #include "ggml-sycl.h"
 #include "presets.hpp"
+#include "sycl_hw.hpp"
+
 #if GGML_SYCL_DNNL
 #include "dnnl.hpp"
 #include "dnnl_sycl.hpp"
@@ -182,17 +184,23 @@ inline dpct::err0 ggml_sycl_set_device(const int device) try {
 }
 
 //////////////////////
+struct optimize_feature {
+    bool reorder=false;
+};
+
+struct sycl_device_info {
+    int     cc;                 // compute capability
+    // int     nsm;                // number of streaming multiprocessors
+    // size_t  smpb;               // max. shared memory per block
+    bool    vmm;                // virtual memory support
+    size_t  total_vram;
+    sycl_hw_info hw_info;
+    optimize_feature opt_feature;
+};
+
 
 struct ggml_sycl_device_info {
     int device_count;
-
-    struct sycl_device_info {
-        int     cc;                 // compute capability
-        // int     nsm;                // number of streaming multiprocessors
-        // size_t  smpb;               // max. shared memory per block
-        bool    vmm;                // virtual memory support
-        size_t  total_vram;
-    };
 
     sycl_device_info devices[GGML_SYCL_MAX_DEVICES] = {};
 
@@ -262,15 +270,26 @@ struct ggml_tensor_extra_gpu {
                         [GGML_SYCL_MAX_STREAMS]; // events for synchronizing multiple GPUs
 };
 
+inline optimize_feature check_gpu_optimize_feature(int hw_family) {
+    optimize_feature opt;
+    opt.reorder = ( hw_family==SYCL_HW_FAMILY_INTEL_PVC ||
+                    hw_family==SYCL_HW_FAMILY_INTEL_MTL_ARL ||
+                    hw_family==SYCL_HW_FAMILY_INTEL_LNL ||
+                    hw_family==SYCL_HW_FAMILY_INTEL_ARC);
+    return opt;
+}
+
 struct ggml_backend_sycl_context {
     int device;
     std::string name;
+    optimize_feature opt_feature;
 
     queue_ptr qptrs[GGML_SYCL_MAX_DEVICES][GGML_SYCL_MAX_STREAMS] = { { nullptr } };
 
     explicit ggml_backend_sycl_context(int device) :
         device(device),
         name(GGML_SYCL_NAME + std::to_string(device)) {
+        opt_feature = ggml_sycl_info().devices[device].opt_feature;
     }
 
     queue_ptr stream(int device, int stream) {
@@ -680,5 +699,4 @@ bool gpu_has_xmx(sycl::device &dev);
 void ggml_sycl_op_flatten(ggml_backend_sycl_context & ctx, const ggml_tensor *src0,
                                  const ggml_tensor *src1, ggml_tensor *dst,
                                  const ggml_sycl_op_flatten_t op);
-
 #endif // GGML_SYCL_COMMON_HPP
