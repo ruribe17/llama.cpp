@@ -506,14 +506,23 @@ kernel void kernel_norm(
         global float * dst,
         ulong offsetd,
         int ne00,
+        int ne01,
+        int ne02,
+        int ne03,
         ulong nb01,
+        ulong nb02,
+        ulong nb03,
         float eps,
         local float * sum
 ) {
     src0 = (global void*)((global char*)src0 + offset0);
     dst = (global void*)((global char*)dst + offsetd);
 
-    global float * x = (global float *) ((global char *) src0 + get_group_id(0)*nb01);
+    int i03 = get_group_id(2);
+    int i02 = get_group_id(1);
+    int i01 = get_group_id(0);
+
+    global float * x = (global float *) ((global char *) src0 + i03*nb03 + i02*nb02 + i01*nb01);
 
     // MEAN
     // parallel sum
@@ -533,7 +542,7 @@ kernel void kernel_norm(
 
     // recenter and VARIANCE
     barrier(CLK_LOCAL_MEM_FENCE);
-    global float * y = dst + get_group_id(0)*ne00;
+    global float * y = dst + i03*ne02*ne01*ne00 + i02*ne01*ne00 + i01*ne00;
     sum[get_local_id(0)] = 0.0f;
     for (int i00 = get_local_id(0); i00 < ne00; i00 += get_local_size(0)) {
         y[i00] = x[i00] - mean;
