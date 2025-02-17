@@ -26,39 +26,40 @@ static std::string trim(const std::string & str) {
 }
 
 static const std::map<std::string, llm_chat_template> LLM_CHAT_TEMPLATES = {
-    { "chatml",            LLM_CHAT_TEMPLATE_CHATML            },
-    { "llama2",            LLM_CHAT_TEMPLATE_LLAMA_2           },
-    { "llama2-sys",        LLM_CHAT_TEMPLATE_LLAMA_2_SYS       },
-    { "llama2-sys-bos",    LLM_CHAT_TEMPLATE_LLAMA_2_SYS_BOS   },
-    { "llama2-sys-strip",  LLM_CHAT_TEMPLATE_LLAMA_2_SYS_STRIP },
-    { "mistral-v1",        LLM_CHAT_TEMPLATE_MISTRAL_V1        },
-    { "mistral-v3",        LLM_CHAT_TEMPLATE_MISTRAL_V3        },
-    { "mistral-v3-tekken", LLM_CHAT_TEMPLATE_MISTRAL_V3_TEKKEN },
-    { "mistral-v7",        LLM_CHAT_TEMPLATE_MISTRAL_V7        },
-    { "phi3",              LLM_CHAT_TEMPLATE_PHI_3             },
-    { "phi4",              LLM_CHAT_TEMPLATE_PHI_4             },
-    { "falcon3",           LLM_CHAT_TEMPLATE_FALCON_3          },
-    { "zephyr",            LLM_CHAT_TEMPLATE_ZEPHYR            },
-    { "monarch",           LLM_CHAT_TEMPLATE_MONARCH           },
-    { "gemma",             LLM_CHAT_TEMPLATE_GEMMA             },
-    { "orion",             LLM_CHAT_TEMPLATE_ORION             },
-    { "openchat",          LLM_CHAT_TEMPLATE_OPENCHAT          },
-    { "vicuna",            LLM_CHAT_TEMPLATE_VICUNA            },
-    { "vicuna-orca",       LLM_CHAT_TEMPLATE_VICUNA_ORCA       },
-    { "deepseek",          LLM_CHAT_TEMPLATE_DEEPSEEK          },
-    { "deepseek2",         LLM_CHAT_TEMPLATE_DEEPSEEK_2        },
-    { "deepseek3",         LLM_CHAT_TEMPLATE_DEEPSEEK_3        },
-    { "command-r",         LLM_CHAT_TEMPLATE_COMMAND_R         },
-    { "llama3",            LLM_CHAT_TEMPLATE_LLAMA_3           },
-    { "chatglm3",          LLM_CHAT_TEMPLATE_CHATGML_3         },
-    { "chatglm4",          LLM_CHAT_TEMPLATE_CHATGML_4         },
-    { "glmedge",           LLM_CHAT_TEMPLATE_GLMEDGE           },
-    { "minicpm",           LLM_CHAT_TEMPLATE_MINICPM           },
-    { "exaone3",           LLM_CHAT_TEMPLATE_EXAONE_3          },
-    { "rwkv-world",        LLM_CHAT_TEMPLATE_RWKV_WORLD        },
-    { "granite",           LLM_CHAT_TEMPLATE_GRANITE           },
-    { "gigachat",          LLM_CHAT_TEMPLATE_GIGACHAT          },
-    { "megrez",            LLM_CHAT_TEMPLATE_MEGREZ            },
+    { "chatml",              LLM_CHAT_TEMPLATE_CHATML              },
+    { "llama2",              LLM_CHAT_TEMPLATE_LLAMA_2             },
+    { "llama2-sys",          LLM_CHAT_TEMPLATE_LLAMA_2_SYS         },
+    { "llama2-sys-bos",      LLM_CHAT_TEMPLATE_LLAMA_2_SYS_BOS     },
+    { "llama2-sys-strip",    LLM_CHAT_TEMPLATE_LLAMA_2_SYS_STRIP   },
+    { "mistral-v1",          LLM_CHAT_TEMPLATE_MISTRAL_V1          },
+    { "mistral-v3",          LLM_CHAT_TEMPLATE_MISTRAL_V3          },
+    { "mistral-v3-tekken",   LLM_CHAT_TEMPLATE_MISTRAL_V3_TEKKEN   },
+    { "mistral-v7",          LLM_CHAT_TEMPLATE_MISTRAL_V7          },
+    { "phi3",                LLM_CHAT_TEMPLATE_PHI_3               },
+    { "phi4",                LLM_CHAT_TEMPLATE_PHI_4               },
+    { "falcon3",             LLM_CHAT_TEMPLATE_FALCON_3            },
+    { "zephyr",              LLM_CHAT_TEMPLATE_ZEPHYR              },
+    { "monarch",             LLM_CHAT_TEMPLATE_MONARCH             },
+    { "gemma",               LLM_CHAT_TEMPLATE_GEMMA               },
+    { "orion",               LLM_CHAT_TEMPLATE_ORION               },
+    { "openchat",            LLM_CHAT_TEMPLATE_OPENCHAT            },
+    { "vicuna",              LLM_CHAT_TEMPLATE_VICUNA              },
+    { "vicuna-orca",         LLM_CHAT_TEMPLATE_VICUNA_ORCA         },
+    { "deepseek",            LLM_CHAT_TEMPLATE_DEEPSEEK            },
+    { "deepseek2",           LLM_CHAT_TEMPLATE_DEEPSEEK_2          },
+    { "deepseek3",           LLM_CHAT_TEMPLATE_DEEPSEEK_3          },
+    { "deepseek-r1-distill", LLM_CHAT_TEMPLATE_DEEPSEEK_R1_DISTILL },
+    { "command-r",           LLM_CHAT_TEMPLATE_COMMAND_R           },
+    { "llama3",              LLM_CHAT_TEMPLATE_LLAMA_3             },
+    { "chatglm3",            LLM_CHAT_TEMPLATE_CHATGML_3           },
+    { "chatglm4",            LLM_CHAT_TEMPLATE_CHATGML_4           },
+    { "glmedge",             LLM_CHAT_TEMPLATE_GLMEDGE             },
+    { "minicpm",             LLM_CHAT_TEMPLATE_MINICPM             },
+    { "exaone3",             LLM_CHAT_TEMPLATE_EXAONE_3            },
+    { "rwkv-world",          LLM_CHAT_TEMPLATE_RWKV_WORLD          },
+    { "granite",             LLM_CHAT_TEMPLATE_GRANITE             },
+    { "gigachat",            LLM_CHAT_TEMPLATE_GIGACHAT            },
+    { "megrez",              LLM_CHAT_TEMPLATE_MEGREZ              },
 };
 
 llm_chat_template llm_chat_template_from_str(const std::string & name) {
@@ -154,6 +155,8 @@ llm_chat_template llm_chat_detect_template(const std::string & tmpl) {
         return LLM_CHAT_TEMPLATE_MINICPM;
     } else if (tmpl_contains("'Assistant: ' + message['content'] + eos_token")) {
         return LLM_CHAT_TEMPLATE_DEEPSEEK_2;
+    } else if (tmpl_contains(LU8("<｜Assistant｜>")) && tmpl_contains(LU8("<｜User｜>")) && tmpl_contains(LU8("<｜end▁of▁sentence｜>")) && tmpl_contains(LU8("<｜Assistant｜><think>\\n"))) {
+        return LLM_CHAT_TEMPLATE_DEEPSEEK_R1_DISTILL;
     } else if (tmpl_contains(LU8("<｜Assistant｜>")) && tmpl_contains(LU8("<｜User｜>")) && tmpl_contains(LU8("<｜end▁of▁sentence｜>"))) {
         return LLM_CHAT_TEMPLATE_DEEPSEEK_3;
     } else if (tmpl_contains("[|system|]") && tmpl_contains("[|assistant|]") && tmpl_contains("[|endofturn|]")) {
@@ -492,7 +495,24 @@ int32_t llm_chat_apply_template(
         if (add_ass) {
             ss << LU8("<｜Assistant｜>");
         }
-    } else if (tmpl == LLM_CHAT_TEMPLATE_EXAONE_3) {
+    } else if (tmpl == LLM_CHAT_TEMPLATE_DEEPSEEK_R1_DISTILL) {
+        // DeepSeek-R1-Distill
+        ss << "<｜begin▁of▁sentence｜>";
+        for (auto message : chat) {
+            std::string role(message->role);
+            if (role == "system") {
+                ss << message->content;
+            } else if (role == "user") {
+                ss << LU8("<｜User｜>") << message->content;
+            } else if (role == "assistant") {
+                ss << LU8("<｜Assistant｜>") << message->content << LU8("<｜end▁of▁sentence｜>");
+            }
+        }
+        if (add_ass) {
+            ss << LU8("<｜Assistant｜>");
+        }
+    }
+    else if (tmpl == LLM_CHAT_TEMPLATE_EXAONE_3) {
         // ref: https://huggingface.co/LGAI-EXAONE/EXAONE-3.0-7.8B-Instruct/discussions/8#66bae61b1893d14ee8ed85bb
         // EXAONE-3.0-7.8B-Instruct
         for (auto message : chat) {
