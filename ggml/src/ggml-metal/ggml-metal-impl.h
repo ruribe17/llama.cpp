@@ -84,6 +84,7 @@ typedef struct {
 } ggml_metal_kargs_repeat;
 
 typedef struct {
+    int64_t  ne;
     int64_t  ne00;
     int64_t  ne01;
     int64_t  ne02;

@@ -4372,6 +4372,256 @@ kernel void kernel_concat(
     }
 }
 
+kernel void kernel_cpy_q4_0_f32(
+    constant ggml_metal_kargs_cpy & args,
+    device const char *cx   [[ buffer(1) ]],
+    device       char *cdst [[ buffer(2) ]],
+    uint tid                [[ thread_position_in_grid ]]
+)
+{
+    // Compute the global index multiplied by QK, matching:
+    // i = (blockDim.x*blockIdx.x + threadIdx.x)*qk
+    const int i = int(tid) * QK4_0;
+
+    // Bounds check
+    if (i >= args.ne) {
+        return;
+    }
+
+    const int i03 = i/(args.ne00 * args.ne01 * args.ne02);
+    const int i02 = (i - i03*args.ne00*args.ne01*args.ne02 )/ (args.ne00*args.ne01);
+    const int i01 = (i - i03*args.ne00*args.ne01*args.ne02  -  i02*args.ne01*args.ne00) / args.ne00;
+    const int i00 = i - i03*args.ne00*args.ne01*args.ne02 - i02*args.ne01*args.ne00 - i01*args.ne00;
+    const int x_offset = (i00/QK4_0)*args.nb00 + i01*args.nb01 + i02*args.nb02 + i03 * args.nb03;
+
+    const int i13 = i/(args.ne0 * args.ne1 * args.ne2);
+    const int i12 = (i - i13*args.ne0*args.ne1*args.ne2) / (args.ne0*args.ne1);
+    const int i11 = (i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1) / args.ne0;
+    const int i10 = i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1 - i11*args.ne0;
+    const int dst_offset = i10*args.nb0 + i11*args.nb1 + i12*args.nb2 + i13*args.nb3;
+
+    device const block_q4_0 * src_block = (device const block_q4_0 *)(cx + x_offset);
+    device float * dst = (device float *)(cdst + dst_offset);
+
+    float d = float(src_block->d);
+    const float shift = 8.0f;
+
+    // Unpack 2 x 4-bit values per byte.
+    for (int j = 0; j < QK4_0/2; j++) {
+        uint8_t q = src_block->qs[j];
+        uint8_t q0 = q & 0x0F;
+        uint8_t q1 = (q >> 4) & 0x0F;
+        dst[j]             = (float(q0) - shift) * d;
+        dst[j + QK4_0/2]   = (float(q1) - shift) * d;
+    }
+}
+
+kernel void kernel_cpy_q4_1_f32(
+    constant ggml_metal_kargs_cpy & args,
+    device const char *cx   [[ buffer(1) ]],
+    device       char *cdst [[ buffer(2) ]],
+    uint tid                [[ thread_position_in_grid ]]
+)
+{
+    // Compute the global index multiplied by QK, matching:
+    // i = (blockDim.x*blockIdx.x + threadIdx.x)*qk
+    const int i = int(tid) * QK4_1;
+
+    // Bounds check
+    if (i >= args.ne) {
+        return;
+    }
+
+    const int i03 = i/(args.ne00 * args.ne01 * args.ne02);
+    const int i02 = (i - i03*args.ne00*args.ne01*args.ne02 )/ (args.ne00*args.ne01);
+    const int i01 = (i - i03*args.ne00*args.ne01*args.ne02  -  i02*args.ne01*args.ne00) / args.ne00;
+    const int i00 = i - i03*args.ne00*args.ne01*args.ne02 - i02*args.ne01*args.ne00 - i01*args.ne00;
+    const int x_offset = (i00/QK4_1)*args.nb00 + i01*args.nb01 + i02*args.nb02 + i03 * args.nb03;
+
+    const int i13 = i/(args.ne0 * args.ne1 * args.ne2);
+    const int i12 = (i - i13*args.ne0*args.ne1*args.ne2) / (args.ne0*args.ne1);
+    const int i11 = (i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1) / args.ne0;
+    const int i10 = i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1 - i11*args.ne0;
+    const int dst_offset = i10*args.nb0 + i11*args.nb1 + i12*args.nb2 + i13*args.nb3;
+
+    device const block_q4_1 * src_block = (device const block_q4_1 *)(cx + x_offset);
+    device float * dst = (device float *)(cdst + dst_offset);
+
+    float d = float(src_block->d);
+    float vmin = float(src_block->m);
+
+    for (int j = 0; j < QK4_1/2; j++) {
+        uint8_t q = src_block->qs[j];
+        uint8_t q0 = q & 0x0F;
+        uint8_t q1 = (q >> 4) & 0x0F;
+        dst[j]             = vmin + d * float(q0);
+        dst[j + QK4_1/2]   = vmin + d * float(q1);
+    }
+}
+
+
+kernel void kernel_cpy_q5_0_f32(
+    constant ggml_metal_kargs_cpy & args,
+    device const char *cx   [[ buffer(1) ]],
+    device       char *cdst [[ buffer(2) ]],
+    uint tid                [[ thread_position_in_grid ]]
+)
+{
+    // Compute the global index multiplied by QK, matching:
+    // i = (blockDim.x*blockIdx.x + threadIdx.x)*qk
+    const int i = int(tid) * QK5_0;
+
+    // Bounds check
+    if (i >= args.ne) {
+        return;
+    }
+
+    const int i03 = i/(args.ne00 * args.ne01 * args.ne02);
+    const int i02 = (i - i03*args.ne00*args.ne01*args.ne02 )/ (args.ne00*args.ne01);
+    const int i01 = (i - i03*args.ne00*args.ne01*args.ne02  -  i02*args.ne01*args.ne00) / args.ne00;
+    const int i00 = i - i03*args.ne00*args.ne01*args.ne02 - i02*args.ne01*args.ne00 - i01*args.ne00;
+    const int x_offset = (i00/QK5_0)*args.nb00 + i01*args.nb01 + i02*args.nb02 + i03 * args.nb03;
+
+    const int i13 = i/(args.ne0 * args.ne1 * args.ne2);
+    const int i12 = (i - i13*args.ne0*args.ne1*args.ne2) / (args.ne0*args.ne1);
+    const int i11 = (i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1) / args.ne0;
+    const int i10 = i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1 - i11*args.ne0;
+    const int dst_offset = i10*args.nb0 + i11*args.nb1 + i12*args.nb2 + i13*args.nb3;
+
+    device const block_q5_0 * src_block = (device const block_q5_0 *)(cx + x_offset);
+    device float * dst = (device float *)(cdst + dst_offset);
+
+    float d = float(src_block->d);
+    const float shift = 16.f;
+
+    // Combine the four qh bytes into a 32-bit value.
+    uint32_t qhVal = 0
+         | ((uint32_t) src_block->qh[0] <<  0)
+         | ((uint32_t) src_block->qh[1] <<  8)
+         | ((uint32_t) src_block->qh[2] << 16)
+         | ((uint32_t) src_block->qh[3] << 24);
+
+    // First half
+    for (int j = 0; j < QK5_0/2; j++) {
+        uint8_t q = src_block->qs[j];
+        uint8_t lowNib = q & 0x0F;
+        uint8_t highBit = (qhVal >> j) & 0x1;
+        uint8_t qVal = (highBit << 4) | lowNib;
+        dst[j] = (float(qVal) - shift) * d;
+    }
+    // Second half
+    for (int j = QK5_0/2; j < QK5_0; j++) {
+        int k = j - QK5_0/2;
+        uint8_t q = src_block->qs[k];
+        uint8_t hiNib = (q >> 4) & 0x0F;
+        uint8_t highBit = (qhVal >> j) & 0x1;
+        uint8_t qVal = (highBit << 4) | hiNib;
+        dst[j] = (float(qVal) - shift) * d;
+    }
+}
+
+
+kernel void kernel_cpy_q5_1_f32(
+    constant ggml_metal_kargs_cpy & args,
+    device const char *cx   [[ buffer(1) ]],
+    device       char *cdst [[ buffer(2) ]],
+    uint tid                [[ thread_position_in_grid ]]
+)
+{
+    // Compute the global index multiplied by QK, matching:
+    // i = (blockDim.x*blockIdx.x + threadIdx.x)*qk
+    const int i = int(tid) * QK5_1;
+
+    // Bounds check
+    if (i >= args.ne) {
+        return;
+    }
+
+    const int i03 = i/(args.ne00 * args.ne01 * args.ne02);
+    const int i02 = (i - i03*args.ne00*args.ne01*args.ne02 )/ (args.ne00*args.ne01);
+    const int i01 = (i - i03*args.ne00*args.ne01*args.ne02  -  i02*args.ne01*args.ne00) / args.ne00;
+    const int i00 = i - i03*args.ne00*args.ne01*args.ne02 - i02*args.ne01*args.ne00 - i01*args.ne00;
+    const int x_offset = (i00/QK5_1)*args.nb00 + i01*args.nb01 + i02*args.nb02 + i03 * args.nb03;
+
+    const int i13 = i/(args.ne0 * args.ne1 * args.ne2);
+    const int i12 = (i - i13*args.ne0*args.ne1*args.ne2) / (args.ne0*args.ne1);
+    const int i11 = (i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1) / args.ne0;
+    const int i10 = i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1 - i11*args.ne0;
+    const int dst_offset = i10*args.nb0 + i11*args.nb1 + i12*args.nb2 + i13*args.nb3;
+
+    device const block_q5_1 * src_block = (device const block_q5_1 *)(cx + x_offset);
+    device float * dst = (device float *)(cdst + dst_offset);
+
+    float d = float(src_block->d);
+    float vmin = float(src_block->m);
+
+    uint32_t qhVal = 0
+         | ((uint32_t) src_block->qh[0] <<  0)
+         | ((uint32_t) src_block->qh[1] <<  8)
+         | ((uint32_t) src_block->qh[2] << 16)
+         | ((uint32_t) src_block->qh[3] << 24);
+
+    // First half
+    for (int j = 0; j < QK5_1/2; j++) {
+        uint8_t q = src_block->qs[j];
+        uint8_t lowNib = q & 0x0F;
+        uint8_t highBit = (qhVal >> j) & 0x1;
+        uint8_t qVal = (highBit << 4) | lowNib;
+        dst[j] = vmin + d * float(qVal);
+    }
+    // Second half
+    for (int j = QK5_1/2; j < QK5_1; j++) {
+        int k = j - QK5_1/2;
+        uint8_t q = src_block->qs[k];
+        uint8_t hiNib = (q >> 4) & 0x0F;
+        uint8_t highBit = (qhVal >> j) & 0x1;
+        uint8_t qVal = (highBit << 4) | hiNib;
+        dst[j] = vmin + d * float(qVal);
+    }
+}
+
+kernel void kernel_cpy_q8_0_f32(
+    constant ggml_metal_kargs_cpy &args [[ buffer(0) ]],
+    device const char *cx   [[ buffer(1) ]],
+    device       char *cdst [[ buffer(2) ]],
+    uint tid                [[ thread_position_in_grid ]]
+) {
+    // Compute the global index multiplied by QK, matching:
+    // i = (blockDim.x*blockIdx.x + threadIdx.x)*qk
+    const int i = int(tid) * QK8_0;
+
+    // Bounds check
+    if (i >= args.ne) {
+        return;
+    }
+
+    const int i03 = i/(args.ne00 * args.ne01 * args.ne02);
+    const int i02 = (i - i03*args.ne00*args.ne01*args.ne02 )/ (args.ne00*args.ne01);
+    const int i01 = (i - i03*args.ne00*args.ne01*args.ne02  -  i02*args.ne01*args.ne00) / args.ne00;
+    const int i00 = i - i03*args.ne00*args.ne01*args.ne02 - i02*args.ne01*args.ne00 - i01*args.ne00;
+    const int x_offset = (i00/QK8_0)*args.nb00 + i01*args.nb01 + i02*args.nb02 + i03 * args.nb03;
+
+    const int i13 = i/(args.ne0 * args.ne1 * args.ne2);
+    const int i12 = (i - i13*args.ne0*args.ne1*args.ne2) / (args.ne0*args.ne1);
+    const int i11 = (i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1) / args.ne0;
+    const int i10 = i - i13*args.ne0*args.ne1*args.ne2 - i12*args.ne0*args.ne1 - i11*args.ne0;
+    const int dst_offset = i10*args.nb0 + i11*args.nb1 + i12*args.nb2 + i13*args.nb3;
+
+    // Call the device function that performs the copy/dequantization.
+    // cpy_blck(cx + x_offset, cdst + dst_offset);
+    device const char * src_block = cx + x_offset;
+    device char * dst = cdst + dst_offset;
+
+    const device block_q8_0 * xi = (device const block_q8_0 *) src_block;
+    device float * dsti = (device float *) dst;
+
+    const float d = (float)xi->d;
+
+    for (int j = 0; j < QK8_0; j++) {
+       dsti[j] = xi->qs[j] * d;
+    }
+}
+
 template<typename args_t>
 void kernel_mul_mv_q2_K_f32_impl(
         args_t args,
