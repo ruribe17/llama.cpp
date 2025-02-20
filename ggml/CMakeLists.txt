@@ -102,6 +102,7 @@ endif()
 
 option(GGML_CPU_HBM          "ggml: use memkind for CPU HBM" OFF)
 option(GGML_CPU_AARCH64      "ggml: use runtime weight conversion of Q4_0 to Q4_X_X" ON)
+option(GGML_CPU_KLEIDIAI     "ggml: use KleidiAI optimized kernels if applicable" OFF)
 option(GGML_AVX              "ggml: enable AVX"              ${INS_ENB})
 option(GGML_AVX_VNNI         "ggml: enable AVX-VNNI"         OFF)
 option(GGML_AVX2             "ggml: enable AVX2"             ${INS_ENB})
@@ -274,22 +275,25 @@ endif()
 
 # Generate version info based on git commit.
 
-find_program(GIT_EXE NAMES git git.exe REQUIRED NO_CMAKE_FIND_ROOT_PATH)
-execute_process(COMMAND ${GIT_EXE} rev-list --count HEAD
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE GGML_BUILD_NUMBER
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
+if(NOT DEFINED GGML_BUILD_NUMBER)
+    find_program(GIT_EXE NAMES git git.exe REQUIRED NO_CMAKE_FIND_ROOT_PATH)
+    execute_process(COMMAND ${GIT_EXE} rev-list --count HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GGML_BUILD_NUMBER
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
 
-if(GGML_BUILD_NUMBER EQUAL 1)
-    message(WARNING "GGML build version fixed at 1 likely due to a shallow clone.")
+    if(GGML_BUILD_NUMBER EQUAL 1)
+        message(WARNING "GGML build version fixed at 1 likely due to a shallow clone.")
+    endif()
+
+    execute_process(COMMAND ${GIT_EXE} rev-parse --short HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GGML_BUILD_COMMIT
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
 endif()
 
-execute_process(COMMAND ${GIT_EXE} rev-parse --short HEAD
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    OUTPUT_VARIABLE GGML_BUILD_COMMIT
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-)
 
 # Capture variables prefixed with GGML_.
 
