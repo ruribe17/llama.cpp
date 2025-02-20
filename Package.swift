@@ -14,6 +14,10 @@ let package = Package(
         .library(name: "llama", targets: ["llama"]),
     ],
     targets: [
-        .systemLibrary(name: "llama", pkgConfig: "llama"),
+        .binaryTarget(
+            name: "llama",
+            path: "build-ios/llama.xcframework"
+        ),
+        //.systemLibrary(name: "llama", pkgConfig: "llama"),
     ]
 )

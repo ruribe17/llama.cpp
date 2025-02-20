@@ -471,7 +471,11 @@ struct llama_mlock::impl {
 
         char* errmsg = std::strerror(errno);
         bool suggest = (errno == ENOMEM);
-
+#if defined(GGML_VISIONOS) || defined(GGML_TVOS)
+        // visionOS/watchOS/tvOS dont't support RLIMIT_MEMLOCK
+        // Skip resource limit checks on visionOS/watchOS/tvOS
+        suggest = false;
+#else
         struct rlimit lock_limit;
         if (suggest && getrlimit(RLIMIT_MEMLOCK, &lock_limit)) {
             suggest = false;
@@ -479,6 +483,7 @@ struct llama_mlock::impl {
         if (suggest && (lock_limit.rlim_max > lock_limit.rlim_cur + size)) {
             suggest = false;
         }
+#endif
 
         LLAMA_LOG_WARN("warning: failed to mlock %zu-byte buffer (after previously locking %zu bytes): %s\n%s",
                 size, this->size, errmsg, suggest ? MLOCK_SUGGESTION : "");
