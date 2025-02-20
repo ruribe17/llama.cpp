@@ -885,7 +885,7 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     // If feature layers are explicitly set, stack them (if we have multiple)
     if (embedding_stack.size() > 0) {
         embeddings = embedding_stack.at(0);
-        for (unsigned long i=1; i < embedding_stack.size(); i++) {
+        for (size_t i = 1; i < embedding_stack.size(); i++) {
             embeddings = ggml_concat(ctx0, embeddings, embedding_stack.at(i), 0);
         }
     }
