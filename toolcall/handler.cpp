@@ -1,6 +1,6 @@
 
 #include <json.hpp>
-#include "handler.h"
+#include "toolcall-handler.h"
 
 #ifdef LLAMA_USE_CURL
 #    include "mcp_sse_transport.h"

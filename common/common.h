@@ -3,7 +3,11 @@
 #pragma once
 
 #include "llama-cpp.h"
-#include "toolcall/params.h"
+
+#ifdef LLAMA_USE_TOOLCALL
+#    include "toolcall-params.h"
+#endif
+
 #include <set>
 #include <string>
 #include <vector>
@@ -353,7 +357,11 @@ struct common_params {
     std::string chat_template = "";                                                                         // NOLINT
     bool use_jinja = false;                                                                                 // NOLINT
     bool enable_chat_template = true;
+
+#ifdef LLAMA_USE_TOOLCALL
     toolcall::params jinja_tools;
+#endif
+
     common_reasoning_format reasoning_format = COMMON_REASONING_FORMAT_DEEPSEEK;
 
     std::vector<std::string> api_keys;

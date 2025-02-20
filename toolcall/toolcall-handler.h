@@ -1,6 +1,6 @@
 #pragma once
 
-#include "params.h"
+#include "toolcall-params.h"
 #include <string>
 #include <variant>
 #include <memory>
