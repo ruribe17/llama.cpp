@@ -587,6 +587,7 @@ struct clip_ctx {
     struct clip_vision_model vision_model;
     projector_type proj_type = PROJECTOR_TYPE_MLP;
 
+    int32_t max_feature_layer;
     float image_mean[3];
     float image_std[3];
     bool use_gelu = false;
@@ -755,12 +756,9 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     std::vector<struct ggml_tensor *> embedding_stack;
-    // Check to see if we have 1+ set vision feature layers set; otherwise it's determined
-    // by the type of projector that this model has (usually last or second to last layer).
-    int max_feature_layer = get_deepest_feature_layer(ctx);
 
     // loop over layers
-    for (int il = 0; il < max_feature_layer; il++) {
+    for (int il = 0; il < ctx->max_feature_layer; il++) {
         struct ggml_tensor * cur = embeddings; // embeddings = residual, cur = hidden_states
 
         // If this is an embedding feature layer, save the output.
@@ -862,7 +860,7 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     // post-layernorm
-    if (ctx->has_post_norm && max_feature_layer == n_layer) {
+    if (ctx->has_post_norm && ctx->max_feature_layer == n_layer) {
         embeddings = ggml_norm(ctx0, embeddings, eps);
         ggml_set_name(embeddings, "post_ln");
 
@@ -1515,6 +1513,9 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
             new_clip->image_mean[i] = mean_data[i];
             new_clip->image_std[i]  = std_data[i];
         }
+
+        // Calculate the deepest feature layer based on hparams and projector type
+        new_clip->max_feature_layer = get_deepest_feature_layer(new_clip);
 
         if (verbosity >= 2) {
             LOG_INF("\n%s: vision model hparams\n", __func__);
