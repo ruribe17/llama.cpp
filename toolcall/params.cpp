@@ -18,7 +18,7 @@ toolcall::params::params(std::string tools, std::string choice) {
 void toolcall::params::tools(std::string tools) {
     try {
         if (! tools.empty()) {
-            if (starts_with(tools, "mcp+http")) {
+            if (starts_with(tools, "http")) {
 #ifndef LLAMA_USE_CURL
                 throw std::invalid_argument(
                     "Model Context Protocol (MCP) only works when llama.cpp is compiled with libcurl");
