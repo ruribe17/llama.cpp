@@ -27,7 +27,7 @@ import wget
 
 
 DEFAULT_HTTP_TIMEOUT = 12 if "LLAMA_SANITIZE" not in os.environ else 30
-
+REQUEST_RETRIES = int(os.environ.get('LLAMA_SERVER_TEST_REQUEST_RETRIES', '1'))
 
 class ServerResponse:
     headers: dict
@@ -81,6 +81,7 @@ class ServerProcess:
     reasoning_format: Literal['deepseek', 'none'] | None = None
     chat_template: str | None = None
     chat_template_file: str | None = None
+    server_path: str | None = None
 
     # session variables
     process: subprocess.Popen | None = None
@@ -94,7 +95,9 @@ class ServerProcess:
             self.server_port = int(os.environ["PORT"])
 
     def start(self, timeout_seconds: int | None = DEFAULT_HTTP_TIMEOUT) -> None:
-        if "LLAMA_SERVER_BIN_PATH" in os.environ:
+        if self.server_path is not None:
+            server_path = self.server_path
+        elif "LLAMA_SERVER_BIN_PATH" in os.environ:
             server_path = os.environ["LLAMA_SERVER_BIN_PATH"]
         elif os.name == "nt":
             server_path = "../../../build/bin/Release/llama-server.exe"
@@ -181,7 +184,7 @@ class ServerProcess:
             server_args.extend(["--chat-template-file", self.chat_template_file])
 
         args = [str(arg) for arg in [server_path, *server_args]]
-        print(f"bench: starting server with: {' '.join(args)}")
+        print(f"tests: starting server with: {' '.join(args)}")
 
         flags = 0
         if "nt" == os.name:
@@ -212,6 +215,10 @@ class ServerProcess:
                     return  # server is ready
             except Exception as e:
                 pass
+            # Check if process died
+            if self.process.poll() is not None:
+                raise RuntimeError(f"Server process died with return code {self.process.returncode}")
+
             print(f"Waiting for server to start...")
             time.sleep(0.5)
         raise TimeoutError(f"Server did not start within {timeout_seconds} seconds")
@@ -233,23 +240,31 @@ class ServerProcess:
         timeout: float | None = None,
     ) -> ServerResponse:
         url = f"http://{self.server_host}:{self.server_port}{path}"
-        parse_body = False
-        if method == "GET":
-            response = requests.get(url, headers=headers, timeout=timeout)
-            parse_body = True
-        elif method == "POST":
-            response = requests.post(url, headers=headers, json=data, timeout=timeout)
-            parse_body = True
-        elif method == "OPTIONS":
-            response = requests.options(url, headers=headers, timeout=timeout)
-        else:
-            raise ValueError(f"Unimplemented method: {method}")
-        result = ServerResponse()
-        result.headers = dict(response.headers)
-        result.status_code = response.status_code
-        result.body = response.json() if parse_body else None
-        print("Response from server", json.dumps(result.body, indent=2))
-        return result
+        for remaining_attempts in range(REQUEST_RETRIES, 0, -1):
+            # print(f"#\ncurl {url} -d '{json.dumps(data, indent=2)}'\n")
+            parse_body = False
+            if method == "GET":
+                response = requests.get(url, headers=headers, timeout=timeout)
+                parse_body = True
+            elif method == "POST":
+                response = requests.post(url, headers=headers, json=data, timeout=timeout)
+                parse_body = True
+            elif method == "OPTIONS":
+                response = requests.options(url, headers=headers, timeout=timeout)
+            else:
+                raise ValueError(f"Unimplemented method: {method}")
+
+            if (response is None or response.status_code != 200) and remaining_attempts > 0:
+                continue
+            result = ServerResponse()
+            result.headers = dict(response.headers)
+            result.status_code = response.status_code
+            result.body = response.json() if parse_body else None
+            # print("Response from server", json.dumps(result.body, indent=2))
+            return result
+
+        raise RuntimeError(f"Failed to make request to {url} after {retries} attempts")
+
 
     def make_stream_request(
         self,

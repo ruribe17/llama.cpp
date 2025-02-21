@@ -74,14 +74,7 @@ WEATHER_TOOL = {
 }
 
 
-def do_test_completion_with_required_tool_tiny(template_name: str, tool: dict, argument_key: str | None):
-    global server
-    n_predict = 512
-    # server = ServerPreset.stories15m_moe()
-    server.jinja = True
-    server.n_predict = n_predict
-    server.chat_template_file = f'../../../models/templates/{template_name}.jinja'
-    server.start(timeout_seconds=TIMEOUT_SERVER_START)
+def do_test_completion_with_required_tool_tiny(server: ServerProcess, tool: dict, argument_key: str | None, n_predict, **kwargs):
     res = server.make_request("POST", "/v1/chat/completions", data={
         "max_tokens": n_predict,
         "messages": [
@@ -91,6 +84,7 @@ def do_test_completion_with_required_tool_tiny(template_name: str, tool: dict, a
         "tool_choice": "required",
         "tools": [tool],
         "parallel_tool_calls": False,
+        **kwargs,
     })
     assert res.status_code == 200, f"Expected status code 200, got {res.status_code}"
     choice = res.body["choices"][0]
@@ -113,7 +107,14 @@ def do_test_completion_with_required_tool_tiny(template_name: str, tool: dict, a
     ("meta-llama-Llama-3.3-70B-Instruct",             PYTHON_TOOL,          "code"),
 ])
 def test_completion_with_required_tool_tiny_fast(template_name: str, tool: dict, argument_key: str | None):
-    do_test_completion_with_required_tool_tiny(template_name, tool, argument_key)
+    global server
+    n_predict = 512
+    # server = ServerPreset.stories15m_moe()
+    server.jinja = True
+    server.n_predict = n_predict
+    server.chat_template_file = f'../../../models/templates/{template_name}.jinja'
+    server.start(timeout_seconds=TIMEOUT_SERVER_START)
+    do_test_completion_with_required_tool_tiny(server, tool, argument_key, n_predict, temperature=0.0, top_k=1, top_p=1.0)
 
 
 @pytest.mark.slow
@@ -138,7 +139,14 @@ def test_completion_with_required_tool_tiny_fast(template_name: str, tool: dict,
     ("fireworks-ai-llama-3-firefunction-v2",          PYTHON_TOOL,          "code"),
 ])
 def test_completion_with_required_tool_tiny_slow(template_name: str, tool: dict, argument_key: str | None):
-    do_test_completion_with_required_tool_tiny(template_name, tool, argument_key)
+    global server
+    n_predict = 512
+    # server = ServerPreset.stories15m_moe()
+    server.jinja = True
+    server.n_predict = n_predict
+    server.chat_template_file = f'../../../models/templates/{template_name}.jinja'
+    server.start(timeout_seconds=TIMEOUT_SERVER_START)
+    do_test_completion_with_required_tool_tiny(server, tool, argument_key, n_predict)
 
 
 @pytest.mark.slow
@@ -234,12 +242,7 @@ def test_completion_with_required_tool_real_model(tool: dict, argument_key: str 
         assert argument_key in actual_arguments, f"tool arguments: {json.dumps(actual_arguments)}, expected: {argument_key}"
 
 
-def do_test_completion_without_tool_call(template_name: str, n_predict: int, tools: list[dict], tool_choice: str | None):
-    global server
-    server.jinja = True
-    server.n_predict = n_predict
-    server.chat_template_file = f'../../../models/templates/{template_name}.jinja'
-    server.start(timeout_seconds=TIMEOUT_SERVER_START)
+def do_test_completion_without_tool_call(server: ServerProcess, n_predict: int, tools: list[dict], tool_choice: str | None, **kwargs):
     res = server.make_request("POST", "/v1/chat/completions", data={
         "max_tokens": n_predict,
         "messages": [
@@ -248,6 +251,7 @@ def do_test_completion_without_tool_call(template_name: str, n_predict: int, too
         ],
         "tools": tools if tools else None,
         "tool_choice": tool_choice,
+        **kwargs,
     }, timeout=TIMEOUT_HTTP_REQUEST)
     assert res.status_code == 200, f"Expected status code 200, got {res.status_code}"
     choice = res.body["choices"][0]
@@ -260,7 +264,12 @@ def do_test_completion_without_tool_call(template_name: str, n_predict: int, too
     ("meta-llama-Llama-3.3-70B-Instruct",         128, [PYTHON_TOOL], 'none'),
 ])
 def test_completion_without_tool_call_fast(template_name: str, n_predict: int, tools: list[dict], tool_choice: str | None):
-    do_test_completion_without_tool_call(template_name, n_predict, tools, tool_choice)
+    global server
+    server.jinja = True
+    server.n_predict = n_predict
+    server.chat_template_file = f'../../../models/templates/{template_name}.jinja'
+    server.start(timeout_seconds=TIMEOUT_SERVER_START)
+    do_test_completion_without_tool_call(server, n_predict, tools, tool_choice)
 
 
 @pytest.mark.slow
@@ -276,7 +285,12 @@ def test_completion_without_tool_call_fast(template_name: str, n_predict: int, t
     ("meta-llama-Llama-3.2-3B-Instruct",              256, [PYTHON_TOOL], 'none'),
 ])
 def test_completion_without_tool_call_slow(template_name: str, n_predict: int, tools: list[dict], tool_choice: str | None):
-    do_test_completion_without_tool_call(template_name, n_predict, tools, tool_choice)
+    global server
+    server.jinja = True
+    server.n_predict = n_predict
+    server.chat_template_file = f'../../../models/templates/{template_name}.jinja'
+    server.start(timeout_seconds=TIMEOUT_SERVER_START)
+    do_test_completion_without_tool_call(server, n_predict, tools, tool_choice)
 
 
 @pytest.mark.slow
@@ -333,13 +347,17 @@ def test_weather(hf_repo: str, template_override: str | Tuple[str, str | None] |
     elif isinstance(template_override, str):
         server.chat_template = template_override
     server.start(timeout_seconds=TIMEOUT_SERVER_START)
+    do_test_weather(server, max_tokens=n_predict)
+
+
+def do_test_weather(server: ServerProcess, **kwargs):
     res = server.make_request("POST", "/v1/chat/completions", data={
-        "max_tokens": n_predict,
         "messages": [
             {"role": "system", "content": "You are a chatbot that uses tools/functions. Dont overthink things."},
             {"role": "user", "content": "What is the weather in Istanbul?"},
         ],
         "tools": [WEATHER_TOOL],
+        **kwargs,
     }, timeout=TIMEOUT_HTTP_REQUEST)
     assert res.status_code == 200, f"Expected status code 200, got {res.status_code}"
     choice = res.body["choices"][0]
@@ -387,6 +405,10 @@ def test_calc_result(result_override: str | None, n_predict: int, hf_repo: str, 
     elif isinstance(template_override, str):
         server.chat_template = template_override
     server.start(timeout_seconds=TIMEOUT_SERVER_START)
+    do_test_calc_result(server, result_override, n_predict)
+
+
+def do_test_calc_result(server: ServerProcess, result_override: str | None, n_predict: int, **kwargs):
     res = server.make_request("POST", "/v1/chat/completions", data={
         "max_tokens": n_predict,
         "messages": [
@@ -431,7 +453,8 @@ def test_calc_result(result_override: str | None, n_predict: int, hf_repo: str, 
                     }
                 }
             }
-        ]
+        ],
+        **kwargs,
     }, timeout=TIMEOUT_HTTP_REQUEST)
     assert res.status_code == 200, f"Expected status code 200, got {res.status_code}"
     choice = res.body["choices"][0]
@@ -548,13 +571,18 @@ def test_hello_world(hf_repo: str, template_override: str | Tuple[str, str | Non
     elif isinstance(template_override, str):
         server.chat_template = template_override
     server.start(timeout_seconds=TIMEOUT_SERVER_START)
+
+    do_test_hello_world(server, max_tokens=n_predict)
+
+
+def do_test_hello_world(server: ServerProcess, **kwargs):
     res = server.make_request("POST", "/v1/chat/completions", data={
-        "max_tokens": n_predict,
         "messages": [
             {"role": "system", "content": "You are a tool-calling agent."},
             {"role": "user", "content": "say hello world with python"},
         ],
         "tools": [PYTHON_TOOL],
+        **kwargs,
     }, timeout=TIMEOUT_HTTP_REQUEST)
     assert res.status_code == 200, f"Expected status code 200, got {res.status_code}"
     choice = res.body["choices"][0]
