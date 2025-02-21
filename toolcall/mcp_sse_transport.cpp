@@ -1,6 +1,4 @@
 
-#include <iostream>
-#include <sstream>
 #include "mcp_sse_transport.h"
 #include <log.h>
 #include <chrono>
@@ -73,6 +71,8 @@ static size_t sse_callback(char * data, size_t size, size_t nmemb, void * client
 }
 
 void toolcall::mcp_sse_transport::parse_field_value(std::string field, std::string value) {
+    LOG_DBG("SSE: field \"%s\"; value \"%s\"", field.c_str(), value.c_str());
+
     if (field == "event") {
         // Set the event type buffer to field value.
         event_.type = std::move(value);

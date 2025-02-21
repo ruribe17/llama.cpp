@@ -21,6 +21,15 @@ namespace toolcall
         }
 
         template <typename T>
+        void unsubscribe(callback<T> callback) {
+            auto& vec = std::get<std::vector<toolcall::callback<T>>>(subscribers_);
+            auto found = std::find(vec.begin(), vec.end(), callback);
+            if (found != vec.end()) {
+                vec.erase(found);
+            }
+        }
+
+        template <typename T>
         void notify(const T & message) const {
             const auto& vec = std::get<std::vector<toolcall::callback<T>>>(subscribers_);
             for (const auto& callback : vec) {
@@ -49,8 +58,8 @@ namespace toolcall
                                                    mcp::initialize_response,
                                                    mcp::initialized_notification,
                                                    mcp::tools_list_request,
-                                                   mcp::tools_list_response>
-    {
+                                                   mcp::tools_list_response,
+                                                   mcp::tools_list_changed_notification> {
     public:
         virtual ~mcp_transport() = default;
         virtual void start() = 0;

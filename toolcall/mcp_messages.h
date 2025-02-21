@@ -118,7 +118,7 @@ namespace mcp
 
     class initialize_request : public request {
     public:
-        initialize_request(nlohmann::json id, mcp::capabilities caps);
+        initialize_request(nlohmann::json id, mcp::capabilities caps = mcp::capabilities{});
 
         const std::string & name()    const { return ClientName; }
         const std::string & version() const { return ClientVersion; }
@@ -206,12 +206,18 @@ namespace mcp
         const tools_list & tools() const { return tools_; }
 
         void next_cursor(std::string next_cursor);
-        const std::string & next_cursor() { return next_cursor_; }
+        const std::string & next_cursor() const { return next_cursor_; }
 
     private:
         void refreshResult();
         tools_list tools_;
         std::string next_cursor_;
+    };
+
+    class tools_list_changed_notification : public notification {
+    public:
+        tools_list_changed_notification()
+            : notification("notifications/tools/list_changed") {}
     };
 
     using message_variant =
@@ -220,7 +226,8 @@ namespace mcp
                      initialize_response,
                      initialized_notification,
                      tools_list_request,
-                     tools_list_response>;
+                     tools_list_response,
+                     tools_list_changed_notification>;
 
     bool create_message(const std::string & data, message_variant & message);
 }
