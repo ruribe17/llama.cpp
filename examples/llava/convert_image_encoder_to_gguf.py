@@ -236,7 +236,7 @@ def get_non_negative_vision_feature_layers(v_hparams):
     form:
 
         [<emb input>, <output of enc block 0>, ... <output of enc block num_hidden_layers>]
-    
+
     so feature indices should be offset as n+1 to get the output of encoder block n.
     We convert all vision feature layers to non-negative so that -1 can be used in
     the model as an unset value. If no vision feature layer is found, we leave it unset.
