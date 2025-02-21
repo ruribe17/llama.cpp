@@ -329,6 +329,9 @@ int main(int argc, char ** argv) {
 
 #ifdef LLAMA_USE_TOOLCALL
     auto tc_handler = toolcall::create_handler(params.jinja_tools);
+    if (tc_handler) {
+        tc_handler->initialize();
+    }
     chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get(), vocab, tc_handler);
 #else
     chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get());
