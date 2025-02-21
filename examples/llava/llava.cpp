@@ -353,9 +353,10 @@ static bool encode_image_with_clip(clip_ctx * ctx_clip, int n_threads, const cli
         LOG_INF("%s: %d segments encoded in %8.2f ms\n", __func__, (int)img_res_v.size, (t_img_enc_batch_us - t_img_enc_start_us) / 1000.0);
 
         const int32_t * image_grid = clip_image_grid(ctx_clip);
+        const size_t num_gridpoints = get_clip_image_grid_size(ctx_clip);
 
         std::vector<std::pair<int, int>> grid_pinpoints;
-        for (size_t i = 0; i < get_max_image_grid_pinpoints() && image_grid[i] != 0; i += 2) {
+        for (size_t i = 0; i < num_gridpoints; i += 2) {
             grid_pinpoints.push_back({image_grid[i], image_grid[i+1]});
         }
 

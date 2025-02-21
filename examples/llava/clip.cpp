@@ -171,11 +171,6 @@ static std::string format(const char * fmt, ...) {
 #define TN_GLM_BOI_W "adapter.boi"
 #define TN_GLM_EOI_W "adapter.eoi"
 
-// Maximum number of flattened image grid pinpoints (i.e., double
-// the max number of ordered pairs) to be used for anyres
-#define MAX_IMAGE_GRID_PINPOINTS 64
-// Maximum number of encoder layers to be concatenated to form the features
-#define MAX_IMAGE_FEATURE_LAYERS 4
 
 enum projector_type {
     PROJECTOR_TYPE_MLP,
@@ -450,9 +445,9 @@ struct clip_hparams {
 
     char mm_patch_merge_type[32] = "flat"; // spatial_unpad or flat (default)
 
-    int32_t image_grid_pinpoints[MAX_IMAGE_GRID_PINPOINTS];
+    std::vector<int32_t> image_grid_pinpoints;
     int32_t image_crop_resolution;
-    int32_t vision_feature_layer[MAX_IMAGE_FEATURE_LAYERS];
+    std::vector<int32_t> vision_feature_layer;
 };
 
 struct clip_layer {
@@ -770,7 +765,7 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
 
         // If this is an embedding feature layer, save the output.
         // NOTE: 0 index here refers to the input to the encoder.
-        for (int vl_idx = 0; vl_idx < MAX_IMAGE_FEATURE_LAYERS && (hparams.vision_feature_layer[vl_idx] > 0); vl_idx++) {
+        for (size_t vl_idx = 0; vl_idx < hparams.vision_feature_layer.size(); vl_idx++) {
             if (il == ctx->vision_model.hparams.vision_feature_layer[vl_idx]) {
                 embedding_stack.push_back(embeddings);
                 break;
@@ -875,7 +870,7 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     // final layer is a vision feature layer
-    for (int vl_idx = 0; vl_idx < MAX_IMAGE_FEATURE_LAYERS && (hparams.vision_feature_layer[vl_idx] > 0); vl_idx++) {
+    for (size_t vl_idx = 0; vl_idx < hparams.vision_feature_layer.size(); vl_idx++) {
         if (n_layer == ctx->vision_model.hparams.vision_feature_layer[vl_idx]) {
             embedding_stack.push_back(embeddings);
             break;
@@ -883,10 +878,10 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     // If feature layers are explicitly set, stack them (if we have multiple)
-    if (embedding_stack.size() > 0) {
-        embeddings = embedding_stack.at(0);
+    if (!embedding_stack.empty()) {
+        embeddings = embedding_stack[0];
         for (size_t i = 1; i < embedding_stack.size(); i++) {
-            embeddings = ggml_concat(ctx0, embeddings, embedding_stack.at(i), 0);
+            embeddings = ggml_concat(ctx0, embeddings, embedding_stack[i], 0);
         }
     }
 
@@ -1476,14 +1471,10 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
             int idx = get_key_idx(ctx, KEY_IMAGE_GRID_PINPOINTS);
             int n = gguf_get_arr_n(ctx, idx);
             const int32_t * pinpoints = (const int32_t *)gguf_get_arr_data(ctx, idx);
-            for (int i = 0; i < MAX_IMAGE_GRID_PINPOINTS && i < n && pinpoints[i] != 0; ++i) {
-                hparams.image_grid_pinpoints[i] = pinpoints[i];
+            for (int i = 0; i < n; ++i) {
+                hparams.image_grid_pinpoints.push_back(pinpoints[i]);
             }
-            if (n < MAX_IMAGE_GRID_PINPOINTS)
-                hparams.image_grid_pinpoints[n] = 0;
-        } catch (std::runtime_error & /*e*/) {
-            hparams.image_grid_pinpoints[0]=0;
-        }
+        } catch (std::runtime_error & /*e*/) { }
 
         // Load the vision feature layer indices if they are explicitly provided;
         // if multiple vision feature layers are present, the values will be concatenated
@@ -1496,14 +1487,10 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
 
             const int32_t * vision_feature_layer = (const int32_t *)gguf_get_arr_data(ctx, idx);
 
-            for (int i = 0; i < MAX_IMAGE_FEATURE_LAYERS && i < n && vision_feature_layer[i] >= 0; ++i) {
-                hparams.vision_feature_layer[i] = vision_feature_layer[i];
+            for (int i = 0; i < n; ++i) {
+                hparams.vision_feature_layer.push_back(vision_feature_layer[i]);
             }
-            if (n < MAX_IMAGE_FEATURE_LAYERS)
-                hparams.vision_feature_layer[n] = -1;
-        } catch (std::runtime_error & /*e*/) {
-            hparams.vision_feature_layer[0] = -1;
-        }
+        } catch (std::runtime_error & /*e*/) { }
 
         try {
             int idx = get_key_idx(ctx, KEY_MM_PATCH_MERGE_TYPE);
@@ -1542,12 +1529,12 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
             LOG_INF("v_image_mean       %f %f %f\n", new_clip->image_mean[0], new_clip->image_mean[1], new_clip->image_mean[2]);
             LOG_INF("v_image_std        %f %f %f\n", new_clip->image_std[0], new_clip->image_std[1], new_clip->image_std[2]);
             LOG_INF("v_image_grid_pinpoints: ");
-            for (int i = 0; i < MAX_IMAGE_GRID_PINPOINTS && (hparams.image_grid_pinpoints[i] != 0); ++i) {
+            for (size_t i = 0; i < hparams.image_grid_pinpoints.size(); ++i) {
                 LOG_INF("%d ", hparams.image_grid_pinpoints[i]);
             }
             LOG_INF("\n");
             LOG_INF("v_vision_feature_layer: ");
-            for (int i = 0; i < MAX_IMAGE_FEATURE_LAYERS && (hparams.vision_feature_layer[i] > 0); i++) {
+            for (size_t i = 0; i < hparams.vision_feature_layer.size(); i++) {
                 LOG_INF("%d ", hparams.vision_feature_layer[i]);
             }
             LOG_INF("\n");
@@ -2293,10 +2280,10 @@ bool clip_image_preprocess(struct clip_ctx * ctx, const clip_image_u8 * img, cli
             }
         }
     } else {
-        if (params.image_grid_pinpoints[0] != 0) {
+        if (!params.image_grid_pinpoints.empty()) {
             // "spatial_unpad" with "anyres" processing for llava-1.6
             std::vector<std::pair<int, int>> possible_resolutions;
-            for (int i = 0; i < MAX_IMAGE_GRID_PINPOINTS && params.image_grid_pinpoints[i] != 0; i+=2) {
+            for (size_t i = 0; i < params.image_grid_pinpoints.size(); i+=2) {
                 possible_resolutions.push_back({params.image_grid_pinpoints[i], params.image_grid_pinpoints[i+1]});
             }
             std::pair<int, int> best_resolution = select_best_resolution({img->nx, img->ny}, possible_resolutions);
@@ -2462,7 +2449,14 @@ const char * clip_patch_merge_type(const struct clip_ctx * ctx) {
 }
 
 const int32_t * clip_image_grid(const struct clip_ctx * ctx) {
-    return ctx->vision_model.hparams.image_grid_pinpoints;
+    if(ctx->vision_model.hparams.image_grid_pinpoints.size()) {
+        return &ctx->vision_model.hparams.image_grid_pinpoints.front();
+    }
+    return nullptr;
+}
+
+size_t get_clip_image_grid_size(const struct clip_ctx * ctx) {
+    return ctx->vision_model.hparams.image_grid_pinpoints.size();
 }
 
 int clip_n_patches(const struct clip_ctx * ctx) {
@@ -2987,10 +2981,6 @@ bool clip_is_qwen2vl(const struct clip_ctx * ctx) {
     return ctx->has_qwen2vl_merger;
 }
 
-size_t get_max_image_grid_pinpoints() {
-    return MAX_IMAGE_GRID_PINPOINTS;
-}
-
 // Determine the number of encoder layers to iterate over
 int get_deepest_feature_layer(const struct clip_ctx * ctx) {
     // Get the index of the second to last layer; this is the
@@ -3006,7 +2996,7 @@ int get_deepest_feature_layer(const struct clip_ctx * ctx) {
     }
 
     // If we set explicit vision feature layers, only go up to the deepest one
-    for (int i = 0; i < MAX_IMAGE_FEATURE_LAYERS && (hparams.vision_feature_layer[i] > 0); i++) {
+    for (size_t i = 0; i < hparams.vision_feature_layer.size(); i++) {
         if (hparams.vision_feature_layer[i] > deepest_feature_layer) {
             deepest_feature_layer = hparams.vision_feature_layer[i];
         }
