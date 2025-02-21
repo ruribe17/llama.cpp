@@ -89,6 +89,66 @@ static void sigint_handler(int signo) {
 }
 #endif
 
+class chat_formatter {
+public:
+    chat_formatter(common_params & params, std::vector<common_chat_msg> & chat_msgs, struct common_chat_templates * chat_templates)
+        : params_(params), chat_msgs_(chat_msgs), chat_templates_(chat_templates) {}
+
+#ifdef LLAMA_USE_TOOLCALL
+    chat_formatter(common_params & params,
+                   std::vector<common_chat_msg> & chat_msgs,
+                   struct common_chat_templates * chat_templates,
+                   const llama_vocab * vocab,
+                   toolcall::handler::ptr tc_handler)
+
+        : params_(params), chat_msgs_(chat_msgs), chat_templates_(chat_templates), vocab_(vocab), tc_handler_(tc_handler) {}
+#endif
+
+    std::string operator () (const std::string & role, const std::string & content, [[maybe_unused]] bool use_toolcalls = false) {
+        common_chat_msg new_msg;
+        new_msg.role = role;
+        new_msg.content = content;
+
+        common_chat_params cparams;
+        common_chat_templates_inputs cinputs;
+#ifdef LLAMA_USE_TOOLCALL
+        if (tc_handler_ != nullptr && use_toolcalls) {
+            cinputs.tool_choice = common_chat_tool_choice_parse_oaicompat(tc_handler_->tool_choice());
+            cinputs.tools = common_chat_tools_parse_oaicompat(tc_handler_->tool_list());
+        }
+#endif
+        bool add_ass = role == "user";
+        auto formatted =
+            common_chat_format_single(chat_templates_, chat_msgs_, new_msg, add_ass, params_.use_jinja,
+                                      &cinputs, &cparams);
+
+        chat_msgs_.push_back(new_msg);
+        LOG_DBG("formatted: '%s'\n", formatted.c_str());
+
+#ifdef LLAMA_USE_TOOLCALL
+        if (params_.use_jinja) {
+            common_chat_grammar_to_sampler(&cparams, vocab_, &params_.sampling);
+            if (tc_handler_ != nullptr) {
+                std::string response;
+                tc_handler_->call(formatted, response);
+                return std::string(response);
+            }
+        }
+#endif
+        return formatted;
+    }
+
+private:
+    common_params & params_;
+    std::vector<common_chat_msg> & chat_msgs_;
+    struct common_chat_templates * chat_templates_;
+
+#ifdef LLAMA_USE_TOOLCALL
+    const llama_vocab * vocab_;
+    toolcall::handler::ptr tc_handler_;
+#endif
+};
+
 int main(int argc, char ** argv) {
     common_params params;
     g_params = &params;
@@ -269,47 +329,10 @@ int main(int argc, char ** argv) {
 
 #ifdef LLAMA_USE_TOOLCALL
     auto tc_handler = toolcall::create_handler(params.jinja_tools);
+    chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get(), vocab, tc_handler);
 #else
-    void * tc_handler = nullptr; // placeholder
+    chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get());
 #endif
-
-    auto chat_add_and_format = [&chat_msgs, &chat_templates, &sparams, vocab, tc_handler](
-        const std::string & role, const std::string & content, bool use_toolcalls = false)
-    {
-        bool add_ass = (role == "user");
-
-        common_chat_msg new_msg;
-        new_msg.role = role;
-        new_msg.content = content;
-
-        common_chat_templates_inputs cinputs;
-
-#ifdef LLAMA_USE_TOOLCALL
-        if (tc_handler != nullptr && use_toolcalls) {
-            cinputs.tool_choice = common_chat_tool_choice_parse_oaicompat(tc_handler->tool_choice());
-            cinputs.tools = common_chat_tools_parse_oaicompat(tc_handler->tool_list());
-        }
-#endif
-        common_chat_params cparams;
-        auto formatted =
-            common_chat_format_single(chat_templates.get(), chat_msgs, new_msg, add_ass, g_params->use_jinja,
-                                      &cinputs, &cparams);
-
-        chat_msgs.push_back(new_msg);
-        LOG_DBG("formatted: '%s'\n", formatted.c_str());
-
-#ifdef LLAMA_USE_TOOLCALL
-        if (g_params->use_jinja) {
-            common_chat_grammar_to_sampler(&cparams, vocab, &sparams);
-            if (tc_handler != nullptr) {
-                std::string response;
-                tc_handler->call(formatted, response);
-                return std::string(response);
-            }
-        }
-#endif
-        return formatted;
-    };
 
     {
         std::string system_prompt = params.prompt.empty() ? DEFAULT_SYSTEM_MESSAGE : params.prompt;
