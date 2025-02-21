@@ -585,7 +585,7 @@ int32_t llm_chat_apply_template(
             }
             std::string role(message->role);
             std::string content(message->content);
-            if (role == "system") {
+            if (role == "system" && content != " ") {
                 system_message = content + "\n\n";
             } else if (role == "user") {
                 ss << (content==last_message ? system_message : "") << content << leading_space << "</instruction>";
