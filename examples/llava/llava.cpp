@@ -406,8 +406,8 @@ bool llava_validate_embed_size(const llama_context * ctx_llama, const clip_ctx *
 }
 
 bool llava_image_embed_make_with_clip_img(clip_ctx * ctx_clip, int n_threads, const clip_image_u8 * img, float ** image_embd_out, int * n_img_pos_out) {
-    // Minicpmv / granite vision use 10 patches
-    int num_max_patches = 10;
+    // Granite vision uses up to 10 patches + base patch
+    int num_max_patches = 11;
     if (clip_is_glm(ctx_clip)) {
         num_max_patches = 1;
     }
