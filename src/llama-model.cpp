@@ -1460,7 +1460,15 @@ bool llama_model::load_tensors(llama_model_loader & ml) {
                     GGML_ABORT("invalid layer %d for tensor %s", info.layer, tn.str().c_str());
             }
 
-            ggml_backend_buffer_type_t buft = select_weight_buft(hparams, t_meta, op, *buft_list);
+            ggml_backend_buffer_type_t buft;
+
+            if (op == GGML_OP_NONE) {
+                LLAMA_LOG_WARN("tensor %s has no operation assigned, using host buffer\n", tn.str().c_str());
+                auto * cpu_dev = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
+                buft = ggml_backend_dev_buffer_type(cpu_dev);
+            } else {
+                buft = select_weight_buft(hparams, t_meta, op, *buft_list);
+            }
             if (!buft) {
                 throw std::runtime_error(format("failed to find a compatible buffer type for tensor %s", tn.str().c_str()));
             }
