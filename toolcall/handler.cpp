@@ -144,7 +144,7 @@ std::string toolcall::mcp_impl::tool_list() {
             tools.insert(tools.end(), resp.tools().begin(), resp.tools().end());
             auto cursor = resp.next_cursor();
             if (! cursor.empty()) {
-                mcp::tools_list_request req(std::to_string(next_id_++), cursor);
+                mcp::tools_list_request req(next_id_++, cursor);
                 transport_->send(req.toJson());
                 return;
             }
@@ -155,7 +155,7 @@ std::string toolcall::mcp_impl::tool_list() {
 
         transport_->subscribe("set_tools", set_tools);
 
-        mcp::tools_list_request req(std::to_string(next_id_++));
+        mcp::tools_list_request req(next_id_++);
         transport_->send(req.toJson());
 
         tools_populating_.wait_for(lock, std::chrono::seconds(15));
