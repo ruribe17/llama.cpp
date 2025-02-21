@@ -3,7 +3,7 @@
 #include "mcp_messages.h"
 #include <string>
 #include <tuple>
-#include <vector>
+#include <map>
 
 namespace toolcall
 {
@@ -13,27 +13,32 @@ namespace toolcall
     template <typename Derived, typename... MessageTypes>
     class mcp_transport_t {
     public:
-
         template <typename T>
-        void subscribe(callback<T> callback) {
-            auto& vec = std::get<std::vector<toolcall::callback<T>>>(subscribers_);
-            vec.push_back(std::move(callback));
+        void subscribe(std::string key, callback<T> callback) {
+            auto& map =
+                std::get<std::map<std::string, toolcall::callback<T>>>(
+                    subscribers_);
+
+            map.insert({key, callback});
         }
 
         template <typename T>
-        void unsubscribe(callback<T> callback) {
-            auto& vec = std::get<std::vector<toolcall::callback<T>>>(subscribers_);
-            auto found = std::find(vec.begin(), vec.end(), callback);
-            if (found != vec.end()) {
-                vec.erase(found);
-            }
+        void unsubscribe(std::string key) {
+            auto& map =
+                std::get<std::map<std::string, toolcall::callback<T>>>(
+                    subscribers_);
+
+            map.erase(key);
         }
 
         template <typename T>
         void notify(const T & message) const {
-            const auto& vec = std::get<std::vector<toolcall::callback<T>>>(subscribers_);
-            for (const auto& callback : vec) {
-                callback(message);
+            const auto& map =
+                std::get<std::map<std::string, toolcall::callback<T>>>(
+                    subscribers_);
+
+            for (const auto & pair : map) {
+                pair.second(message);
             }
         }
 
@@ -50,7 +55,7 @@ namespace toolcall
         }
 
     private:
-        std::tuple<std::vector<toolcall::callback<MessageTypes>>...> subscribers_;
+        std::tuple<std::map<std::string, toolcall::callback<MessageTypes>>...> subscribers_;
     };
 
     class mcp_transport : public mcp_transport_t <mcp_transport,

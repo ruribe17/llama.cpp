@@ -100,13 +100,13 @@ void toolcall::mcp_impl::initialize() {
         tools_populating_.notify_one();
     };
 
-    transport_->subscribe(set_caps);
+    transport_->subscribe("set_caps", set_caps);
 
     mcp::initialize_request req(next_id_++);
     transport_->send(req.toJson());
 
     tools_populating_.wait_for(lock, std::chrono::seconds(15));
-    transport_->unsubscribe(set_caps);
+    transport_->unsubscribe<mcp::initialize_response>("set_caps");
 
     on_list_changed update_dirty = [this] (const mcp::tools_list_changed_notification &) {
         tool_list_dirty_ = true;
@@ -117,7 +117,7 @@ void toolcall::mcp_impl::initialize() {
         if (cap.name == "tools") {
             has_tools = true;
             if (cap.listChanged) {
-                transport_->subscribe(update_dirty);
+                transport_->subscribe("update_dirty", update_dirty);
             }
             break;
         }
@@ -153,13 +153,13 @@ std::string toolcall::mcp_impl::tool_list() {
             tools_populating_.notify_one();
         };
 
-        transport_->subscribe(set_tools);
+        transport_->subscribe("set_tools", set_tools);
 
         mcp::tools_list_request req(std::to_string(next_id_++));
         transport_->send(req.toJson());
 
         tools_populating_.wait_for(lock, std::chrono::seconds(15));
-        transport_->unsubscribe(set_tools);
+        transport_->unsubscribe<mcp::tools_list_response>("set_tools");
 
         tools_ = tools_list_to_oai_json(tools);
     }
