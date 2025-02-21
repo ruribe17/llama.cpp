@@ -34,3 +34,4 @@ endif()
 
 target_compile_definitions(${TARGET} INTERFACE LLAMA_USE_TOOLCALL)
 target_include_directories(${TARGET} PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>)
+target_compile_features (${TARGET} PUBLIC cxx_std_17)
