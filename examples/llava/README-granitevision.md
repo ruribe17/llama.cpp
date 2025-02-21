@@ -3,8 +3,8 @@
 Download the model and point your `GRANITE_MODEL` environment variable to the path.
 
 ```bash
-git clone https://huggingface.co/ibm-granite/granite-vision-3.1-2b-preview
-export GRANITE_MODEL=/Users/alexanderjbrooks/workspace/develop/llama.cpp/examples/llava/granite-vision-3.1-2b-preview
+$ git clone https://huggingface.co/ibm-granite/granite-vision-3.1-2b-preview
+$ export GRANITE_MODEL=./granite-vision-3.1-2b-preview
 ```
 
 
@@ -13,9 +13,13 @@ First, we need to run the llava surgery script as shown below:
 
 `python llava_surgery_v2.py -C -m $GRANITE_MODEL`
 
-You should see two new files (`llava.clip` and `llava.projector`) written into your model's directory. You can load them directly with pytorch and validate that they are nonempty using the snippet below.
+You should see two new files (`llava.clip` and `llava.projector`) written into your model's directory, as shown below.
 
-`ls $GRANITE_MODEL | grep -i llava`
+```bash
+$ ls $GRANITE_MODEL | grep -i llava
+llava.clip
+llava.projector
+```
 
 We should see that the projector and visual encoder get split out into the llava files. Quick check to make sure they aren't empty:
 ```python
@@ -37,7 +41,7 @@ If you actually inspect the `.keys()` of the loaded tensors, you should see a lo
 
 
 ### 2. Creating the Visual Component GGUF
-To create the GGUF for the visual components, we need to write a config for the visual encoder; make sure the config contains the correct `image_grid_pinpoints` 
+To create the GGUF for the visual components, we need to write a config for the visual encoder; make sure the config contains the correct `image_grid_pinpoints`
 
 
 Note: we refer to this file as `$VISION_CONFIG` later on.
@@ -83,7 +87,6 @@ Note: we refer to this file as `$VISION_CONFIG` later on.
     "num_attention_heads": 16,
     "num_hidden_layers": 27,
     "patch_size": 14,
-    "transformers_version": "4.45.0.dev0",
     "layer_norm_eps": 1e-6,
     "hidden_act": "gelu_pytorch_tanh",
     "projection_dim": 0,
@@ -93,24 +96,24 @@ Note: we refer to this file as `$VISION_CONFIG` later on.
 
 Create a new directory to hold the visual components, and copy the llava.clip/projector files, as well as the vision config into it.
 
-```
-ENCODER_PATH=/Users/alexanderjbrooks/workspace/develop/llama.cpp/examples/llava/visual_encoder
-mkdir $ENCODER_PATH
+```bash
+$ ENCODER_PATH=$PWD/visual_encoder
+$ mkdir $ENCODER_PATH
 
-cp $GRANITE_MODEL/llava.clip $ENCODER_PATH/pytorch_model.bin
-cp $GRANITE_MODEL/llava.projector $ENCODER_PATH/
-cp $VISION_CONFIG $ENCODER_PATH/config.json
+$ cp $GRANITE_MODEL/llava.clip $ENCODER_PATH/pytorch_model.bin
+$ cp $GRANITE_MODEL/llava.projector $ENCODER_PATH/
+$ cp $VISION_CONFIG $ENCODER_PATH/config.json
 ```
 
 At which point you should have something like this:
 ```bash
-(venv) alexanderjbrooks@Alexanders-MacBook-Pro llava % ls $ENCODER_PATH 
+$ ls $ENCODER_PATH
 config.json             llava.projector         pytorch_model.bin
 ```
 
 Now convert the components to GGUF; Note that we also override the image mean/std dev to `[.5,.5,.5]` since we use the siglip visual encoder - in the transformers model, you can find these numbers in the [preprocessor_config.json](https://huggingface.co/ibm-granite/granite-vision-3.1-2b-preview/blob/main/preprocessor_config.json).
 ```bash
-python convert_image_encoder_to_gguf.py \
+$ python convert_image_encoder_to_gguf.py \
     -m $ENCODER_PATH \
     --llava-projector $ENCODER_PATH/llava.projector \
     --output-dir $ENCODER_PATH \
@@ -123,11 +126,11 @@ this will create the first GGUF file at `$ENCODER_PATH/mmproj-model-f16.gguf`; w
 
 
 ### 3. Creating the LLM GGUF.
-The granite vision model contains a granite LLM as its language model. For now, the easiest way to get the GGUF for LLM is by loading the composite model in `transformers` and exporting the LLM so that it can be directly converted with the normal conversion path. 
+The granite vision model contains a granite LLM as its language model. For now, the easiest way to get the GGUF for LLM is by loading the composite model in `transformers` and exporting the LLM so that it can be directly converted with the normal conversion path.
 
 First, set the `LLM_EXPORT_PATH` to the path to export the `transformers` LLM to.
 ```
-export LLM_EXPORT_PATH=/Users/alexanderjbrooks/workspace/develop/llama.cpp/examples/llava/granite_vision_llm
+$ export LLM_EXPORT_PATH=$PWD/granite_vision_llm
 ```
 
 ```python
@@ -153,12 +156,13 @@ model = transformers.AutoModelForImageTextToText.from_pretrained(MODEL_PATH, ign
 
 tokenizer.save_pretrained(LLM_EXPORT_PATH)
 model.language_model.save_pretrained(LLM_EXPORT_PATH)
-```    
+```
 
 Now you can convert the exported LLM to GGUF with the normal converter in the root of the llama cpp project.
 ```bash
-LLM_GGUF_PATH=$LLM_EXPORT_PATH/granite_llm.gguf
-python convert_hf_to_gguf.py --outfile $LLM_GGUF_PATH $LLM_EXPORT_PATH
+$ LLM_GGUF_PATH=$LLM_EXPORT_PATH/granite_llm.gguf
+...
+$ python convert_hf_to_gguf.py --outfile $LLM_GGUF_PATH $LLM_EXPORT_PATH
 ```
 
 
@@ -168,7 +172,7 @@ Build llama cpp normally; you should have a target binary named `llama-llava-cli
 Note - the test image shown below can be found [here](https://github-production-user-asset-6210df.s3.amazonaws.com/10740300/415512792-d90d5562-8844-4f34-a0a5-77f62d5a58b5.jpg?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=AKIAVCODYLSA53PQK4ZA%2F20250221%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20250221T054145Z&X-Amz-Expires=300&X-Amz-Signature=86c60be490aa49ef7d53f25d6c973580a8273904fed11ed2453d0a38240ee40a&X-Amz-SignedHeaders=host).
 
 ```bash
-./build/bin/llama-llava-cli -m $LLM_GGUF_PATH \
+$ ./build/bin/llama-llava-cli -m $LLM_GGUF_PATH \
     --mmproj $VISUAL_GGUF_PATH \
     --image cherry_blossom.jpg \
     -c 16384 \
