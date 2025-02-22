@@ -312,7 +312,8 @@ function(ggml_add_cpu_backend_variant_impl tag_name)
         endif()
     elseif (${CMAKE_SYSTEM_PROCESSOR} MATCHES "s390x")
         message(STATUS "s390x detected")
-        execute_process(COMMAND bash -c "grep -Pom 1 'machine = \\K([0-9]+)' /proc/cpuinfo" OUTPUT_VARIABLE S390X_M)
+        file(READ "/proc/cpuinfo" CPUINFO_CONTENTS)
+        string(REGEX REPLACE "machine[ \t\r\n]*=[ \t\r\n]*([0-9]+)" "\\1" S390X_M ${CPUINFO_CONTENTS})
 
         # TODO: Separation to determine activation of VX/VXE/VXE2
         if (${S390X_M} MATCHES "8561|8562")
