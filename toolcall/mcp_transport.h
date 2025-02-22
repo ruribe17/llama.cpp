@@ -11,7 +11,7 @@ namespace toolcall
     using callback = std::function<void(const T&)>;
 
     template <typename... MessageTypes>
-    class mcp_transport_t {
+    class mcp_message_observer {
     public:
         template <typename T>
         void subscribe(std::string key, callback<T> callback) {
@@ -53,12 +53,12 @@ namespace toolcall
         std::tuple<std::map<std::string, toolcall::callback<MessageTypes>>...> subscribers_;
     };
 
-    class mcp_transport : public mcp_transport_t <mcp::initialize_request,
-                                                  mcp::initialize_response,
-                                                  mcp::initialized_notification,
-                                                  mcp::tools_list_request,
-                                                  mcp::tools_list_response,
-                                                  mcp::tools_list_changed_notification> {
+    class mcp_transport : public mcp_message_observer<mcp::initialize_request,
+                                                      mcp::initialize_response,
+                                                      mcp::initialized_notification,
+                                                      mcp::tools_list_request,
+                                                      mcp::tools_list_response,
+                                                      mcp::tools_list_changed_notification> {
     public:
         virtual ~mcp_transport() = default;
 

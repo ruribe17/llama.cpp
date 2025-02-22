@@ -3,6 +3,9 @@
 #include <log.h>
 #include <chrono>
 
+const int toolcall::mcp_sse_transport::EndpointReceivedTimoutSeconds = 5;
+const int toolcall::mcp_sse_transport::StartTimeoutSeconds = 8;
+
 toolcall::mcp_sse_transport::~mcp_sse_transport() {
     if (endpoint_headers_) {
         curl_slist_free_all(endpoint_headers_);
@@ -36,7 +39,7 @@ void toolcall::mcp_sse_transport::start() {
     std::unique_lock<std::mutex> lock(initializing_mutex_);
     sse_thread_ = std::thread(&toolcall::mcp_sse_transport::sse_run, this);
     initializing_.wait_for(
-	lock, std::chrono::seconds(15), [this] { return endpoint_ != nullptr; });
+        lock, std::chrono::seconds(StartTimeoutSeconds), [this] { return endpoint_ != nullptr; });
 
     if (endpoint_ == nullptr) {
         running_ = false;
@@ -184,7 +187,10 @@ size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
 }
 
 void toolcall::mcp_sse_transport::sse_run() {
+    using namespace std::chrono;
+
     std::unique_lock<std::mutex> lock(initializing_mutex_);
+
     char errbuf[CURL_ERROR_SIZE];
     size_t errlen;
     CURLMcode mcode;
@@ -194,6 +200,7 @@ void toolcall::mcp_sse_transport::sse_run() {
     CURLM * async_handle = nullptr;
     struct curl_slist * headers = nullptr;
     CURL * sse = nullptr;
+    steady_clock::time_point start;
 
     sse = curl_easy_init();
     if (! sse) {
@@ -217,8 +224,9 @@ void toolcall::mcp_sse_transport::sse_run() {
     }
     curl_multi_add_handle(async_handle, sse);
 
+    start = steady_clock::now();
     do {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        std::this_thread::sleep_for(milliseconds(50));
 
         mcode = curl_multi_perform(async_handle, &num_handles);
         if (mcode != CURLM_OK) {
@@ -240,9 +248,17 @@ void toolcall::mcp_sse_transport::sse_run() {
                 }
             }
         }
-        if (endpoint_ && lock.owns_lock()) { // TODO: timeout if endpoint not received
-            lock.unlock();
-            initializing_.notify_one();
+
+        if (endpoint_) {
+            if (lock.owns_lock()) {
+                lock.unlock();
+                initializing_.notify_one();
+            }
+
+        } else {
+            if (steady_clock::now() - start >= seconds(EndpointReceivedTimoutSeconds)) {
+                running_ = false;
+            }
         }
 
     } while (running_);

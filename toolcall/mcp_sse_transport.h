@@ -21,6 +21,9 @@ namespace toolcall
         size_t sse_read(const char * data, size_t len);
 
     private:
+        static const int EndpointReceivedTimoutSeconds;
+        static const int StartTimeoutSeconds;
+
         void sse_run();
         void parse_field_value(std::string field, std::string value);
         void on_endpoint_event();
