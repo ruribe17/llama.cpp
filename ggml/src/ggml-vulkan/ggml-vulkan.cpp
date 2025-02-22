@@ -1428,6 +1428,10 @@ struct GpuPipelineConfig {
     // For example, this can include names like "NAVI10", "RX 5700", etc.
     std::vector<std::string> device_names;
 
+    // Mapping of pipeline names to their specific subgroup sizes.
+    // Example: {"soft_max_f32", 64}.
+    std::unordered_map<std::string, uint32_t> pipelines;
+
     // Default subgroup size for this GPU.
     // Defaults to 0 if not explicitly provided.
     uint32_t default_subgroup_size = 0;
@@ -1437,14 +1441,23 @@ struct GpuPipelineConfig {
 static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
     {
         {"NAVI10", "NAVI14", "RX 5700", "RX 5600", "RX 5500"},
+        {
+            {"soft_max_f32", 64}, {"soft_max_f32_wg512", 64},
+            {"soft_max_f32_f16", 64}, {"soft_max_f32_f16_wg512", 64},
+            {"im2col_f32", 64}, {"im2col_f32_f16", 64},
+        },
         32
     },
 };
 
-static uint32_t get_subgroup_size(const std::string &device_name) {
+static uint32_t get_subgroup_size(const std::string &pipeline_name, const std::string &device_name) {
     for (const auto &config : gpu_pipeline_configs) {
         for (const auto &alias : config.device_names) {
             if (device_name.find(alias) != std::string::npos) {
+                auto pipIt = config.pipelines.find(pipeline_name);
+                if (pipIt != config.pipelines.end() && pipIt->second != 0) {
+                    return pipIt->second;
+                }
                 return config.default_subgroup_size;
             }
         }
@@ -1582,7 +1595,7 @@ static void ggml_vk_load_shaders(vk_device& device) {
                                               uint32_t parameter_count, uint32_t push_constant_size, std::array<uint32_t, 3> wg_denoms, const std::vector<uint32_t>& specialization_constants,
                                               uint32_t align, bool disable_robustness = false, bool require_full_subgroups = false, uint32_t required_subgroup_size = 0) {
 
-        required_subgroup_size = get_subgroup_size(device_name);
+        required_subgroup_size = get_subgroup_size(name, device_name);
 
         if (!pipeline) {
             pipeline = std::make_shared<vk_pipeline_struct>();
@@ -2735,7 +2748,7 @@ static void ggml_vk_print_gpu_info(size_t idx) {
     subgroup_props.pNext = &driver_props;
     physical_device.getProperties2(&props2);
 
-    uint32_t default_subgroup_size = get_subgroup_size(props2.properties.deviceName.data());
+    uint32_t default_subgroup_size = get_subgroup_size("", props2.properties.deviceName.data());
     const size_t subgroup_size = (default_subgroup_size != 0) ? default_subgroup_size : subgroup_props.subgroupSize;
 
     const bool uma = props2.properties.deviceType == vk::PhysicalDeviceType::eIntegratedGpu;
