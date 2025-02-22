@@ -451,8 +451,7 @@ std::string common_chat_format_name(common_chat_format format) {
 
 const common_grammar_options grammar_options {
     /* .dotall = */ false,
-    /* .compact_spaces = */ false,
-    // /* .compact_spaces = */ true,
+    /* .any_spaces = */ true,
 };
 
 static std::optional<json> parse_json(std::string::const_iterator & it, const std::string::const_iterator & end) {

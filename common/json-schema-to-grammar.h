@@ -16,7 +16,7 @@ struct common_grammar_builder {
 
 struct common_grammar_options {
     bool dotall = false;
-    bool compact_spaces = false;
+    bool any_spaces = false;
 };
 
 std::string build_grammar(const std::function<void(const common_grammar_builder &)> & cb, const common_grammar_options & options = {});

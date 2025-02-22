@@ -8,7 +8,6 @@ cmake --build build -j
 
 export LLAMA_CACHE=${LLAMA_CACHE:-$HOME/Library/Caches/llama.cpp}
 export LLAMA_SERVER_BIN_PATH=$PWD/build/bin/llama-server
-export LLAMA_SERVER_BASELINE=$(which llama-server)
 
 if [ ! -x "$LLAMA_SERVER_BIN_PATH" ]; then
     echo "Could not find llama-server binary at $LLAMA_SERVER_BIN_PATH"
@@ -20,7 +19,7 @@ if [ ! -d "$LLAMA_CACHE" ]; then
 fi
 
 export ARGS=(
-    --llama-baseline="$LLAMA_SERVER_BASELINE"
+    --llama-baseline="$(which llama-server)"
     --n 30
     --temp -1  # Leaves temperature parameter unset (use the server's default, e.g. 0.6 for ollama)
     --temp 0
