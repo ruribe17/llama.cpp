@@ -57,7 +57,7 @@ export default function Header() {
         }
         setPromptSelectOptions(prt);
       });
-  }, [promptSelectOptions, selectedTheme]);
+  }, [selectedTheme]);
   const { isGenerating, viewingChat } = useAppContext();
   const isCurrConvGenerating = isGenerating(viewingChat?.conv.id ?? '');
 
