@@ -93,6 +93,7 @@ void toolcall::mcp_impl::initialize() {
 
     transport_->start();
 
+    bool caps_received = false;
     mcp::capabilities caps;
     on_response set_caps = [this, &caps] (const mcp::initialize_response & resp) {
         std::unique_lock<std::mutex> lock(tools_mutex_);
@@ -103,9 +104,9 @@ void toolcall::mcp_impl::initialize() {
     transport_->subscribe("set_caps", set_caps);
 
     mcp::initialize_request req(next_id_++);
-    transport_->send(req.toJson());
+    transport_->send(req);
 
-    tools_populating_.wait_for(lock, std::chrono::seconds(15));
+    tools_populating_.wait_for(lock, std::chrono::seconds(15), [&caps_received] { return caps_received; });
     transport_->unsubscribe<mcp::initialize_response>("set_caps");
 
     on_list_changed update_dirty = [this] (const mcp::tools_list_changed_notification &) {
@@ -125,6 +126,8 @@ void toolcall::mcp_impl::initialize() {
     if (! has_tools) {
         throw std::runtime_error("MCP server does not support toolcalls!");
     }
+
+    transport_->send(mcp::initialized_notification());
 }
 
 static std::string tools_list_to_oai_json(const mcp::tools_list & tools) {
@@ -171,7 +174,7 @@ std::string toolcall::mcp_impl::tool_list() {
             auto cursor = resp.next_cursor();
             if (! cursor.empty()) {
                 mcp::tools_list_request req(next_id_++, cursor);
-                transport_->send(req.toJson());
+                transport_->send(req);
                 return;
             }
             tool_list_dirty_ = false;
@@ -182,9 +185,9 @@ std::string toolcall::mcp_impl::tool_list() {
         transport_->subscribe("set_tools", set_tools);
 
         mcp::tools_list_request req(next_id_++);
-        transport_->send(req.toJson());
+        transport_->send(req);
 
-        tools_populating_.wait_for(lock, std::chrono::seconds(15));
+        tools_populating_.wait_for(lock, std::chrono::seconds(15), [this] { return ! tool_list_dirty_; });
         transport_->unsubscribe<mcp::tools_list_response>("set_tools");
 
         tools_ = tools_list_to_oai_json(tools);

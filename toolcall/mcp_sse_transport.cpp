@@ -35,7 +35,8 @@ void toolcall::mcp_sse_transport::start() {
 
     std::unique_lock<std::mutex> lock(initializing_mutex_);
     sse_thread_ = std::thread(&toolcall::mcp_sse_transport::sse_run, this);
-    initializing_.wait(lock);
+    initializing_.wait_for(
+	lock, std::chrono::seconds(15), [this] { return endpoint_ != nullptr; });
 
     if (endpoint_ == nullptr) {
         running_ = false;

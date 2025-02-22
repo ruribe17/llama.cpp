@@ -29,8 +29,7 @@ void toolcall::params::tools(std::string tools) {
                 json j = json::parse(tools); // Just for early validation
                 if (! j.is_array()) {
                     throw std::invalid_argument(
-                        "tools must be a URL of the form \"mcp+http(s)://hostname[:port]/\""
-                        ", or a valid JSON array containing tool definitions");
+                        "tools must be a valid URL or a JSON array containing tool definitions");
                 }
                 has_uri_ = false;
             }

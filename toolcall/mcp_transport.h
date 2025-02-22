@@ -10,7 +10,7 @@ namespace toolcall
     template <typename T>
     using callback = std::function<void(const T&)>;
 
-    template <typename Derived, typename... MessageTypes>
+    template <typename... MessageTypes>
     class mcp_transport_t {
     public:
         template <typename T>
@@ -49,24 +49,24 @@ namespace toolcall
             }
         }
 
-        template <typename T>
-        bool send(const T & message) {
-            return static_cast<Derived*>(this)->send(message.toJson());
-        }
-
     private:
         std::tuple<std::map<std::string, toolcall::callback<MessageTypes>>...> subscribers_;
     };
 
-    class mcp_transport : public mcp_transport_t <mcp_transport,
-                                                   mcp::initialize_request,
-                                                   mcp::initialize_response,
-                                                   mcp::initialized_notification,
-                                                   mcp::tools_list_request,
-                                                   mcp::tools_list_response,
-                                                   mcp::tools_list_changed_notification> {
+    class mcp_transport : public mcp_transport_t <mcp::initialize_request,
+                                                  mcp::initialize_response,
+                                                  mcp::initialized_notification,
+                                                  mcp::tools_list_request,
+                                                  mcp::tools_list_response,
+                                                  mcp::tools_list_changed_notification> {
     public:
         virtual ~mcp_transport() = default;
+
+        template <typename T>
+        bool send(const T & message) {
+            return send(std::string(message.toJson()));
+        }
+
         virtual void start() = 0;
         virtual void stop() = 0;
         virtual bool send(const std::string & request_json) = 0;
