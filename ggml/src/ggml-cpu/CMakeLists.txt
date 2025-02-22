@@ -321,7 +321,7 @@ function(ggml_add_cpu_backend_variant_impl tag_name)
             list(APPEND ARCH_FLAGS -march=z16 -mtune=z16)
         else()
             message(STATUS "Unknown target")
-            message(WARNING "Unknown target. If you are compiling for z15 and earlier, you might have to add -DGGML_VXE=OFF.")
+            message(WARNING "Unknown target. If you are compiling for z14 and earlier, you might have to add -DGGML_VXE=OFF.")
             list(APPEND ARCH_FLAGS -march=native -mtune=native)
         endif()
 
