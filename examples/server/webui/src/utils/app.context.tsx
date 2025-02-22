@@ -45,7 +45,9 @@ interface AppContextValue {
   config: typeof CONFIG_DEFAULT;
   saveConfig: (config: typeof CONFIG_DEFAULT) => void;
   showSettings: boolean;
+  settingsSeed: number;
   setShowSettings: (show: boolean) => void;
+  resetSettings: () => void;
 }
 
 // this callback is used for scrolling to the bottom of the chat and switching to the last node
@@ -84,6 +86,10 @@ export const AppContextProvider = ({
   const [config, setConfig] = useState(StorageUtils.getConfig());
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [settingsSeed, setSettingsSeed] = useState(1);
+  const resetSettings = () => {
+    setSettingsSeed(Math.random());
+  };
 
   // handle change when the convId from URL is changed
   useEffect(() => {
@@ -377,6 +383,8 @@ export const AppContextProvider = ({
         saveConfig,
         showSettings,
         setShowSettings,
+        settingsSeed,
+        resetSettings,
       }}
     >
       {children}

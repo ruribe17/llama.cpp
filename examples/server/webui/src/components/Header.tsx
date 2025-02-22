@@ -1,10 +1,18 @@
 import { useEffect, useState } from 'react';
 import StorageUtils from '../utils/storage';
 import { useAppContext } from '../utils/app.context';
-import { classNames } from '../utils/misc';
+import { classNames, isBoolean, isNumeric, isString } from '../utils/misc';
 import daisyuiThemes from 'daisyui/src/theming/themes';
-import { THEMES } from '../Config';
+import { THEMES, CONFIG_DEFAULT, isDev } from '../Config';
 import { useNavigate } from 'react-router';
+
+export const PROMPT_JSON = [
+  {
+    name: '',
+    lang: '',
+    config: CONFIG_DEFAULT,
+  },
+];
 
 export default function Header() {
   const navigate = useNavigate();
@@ -15,7 +23,18 @@ export default function Header() {
     StorageUtils.setTheme(theme);
     setSelectedTheme(theme);
   };
+  const { config, saveConfig, resetSettings } = useAppContext();
+  // clone the config object to prevent direct mutation
+  const [localConfig] = useState<typeof CONFIG_DEFAULT>(
+    JSON.parse(JSON.stringify(config))
+  );
 
+  const [promptSelectOptions, setPromptSelectOptions] = useState([
+    { key: -1, value: 'System prompt (none)' },
+  ]);
+  const [promptSelectConfig, setPromptSelectConfig] = useState<
+    typeof PROMPT_JSON | null
+  >(null);
   useEffect(() => {
     document.body.setAttribute('data-theme', selectedTheme);
     document.body.setAttribute(
@@ -23,8 +42,22 @@ export default function Header() {
       // @ts-expect-error daisyuiThemes complains about index type, but it should work
       daisyuiThemes[selectedTheme]?.['color-scheme'] ?? 'auto'
     );
-  }, [selectedTheme]);
-
+    fetch('/prompts.config.json')
+      .then((response) => response.json())
+      .then((data) => {
+        const prt: { key: number; value: string }[] = [
+          { key: -1, value: 'Choose a system config' },
+        ];
+        if (data && data.prompts) {
+          setPromptSelectConfig(data.prompts);
+          Object.keys(data.prompts).forEach(function (key) {
+            const name = data.prompts[key].name;
+            prt.push({ key: parseInt(key), value: name });
+          });
+        }
+        setPromptSelectOptions(prt);
+      });
+  }, [promptSelectOptions, selectedTheme]);
   const { isGenerating, viewingChat } = useAppContext();
   const isCurrConvGenerating = isGenerating(viewingChat?.conv.id ?? '');
 
@@ -52,6 +85,72 @@ export default function Header() {
     URL.revokeObjectURL(url);
   };
 
+  const selectPrompt = (value: string) => {
+    if (parseInt(value) == -1) {
+      const newConfig: typeof CONFIG_DEFAULT = JSON.parse(
+        JSON.stringify(localConfig)
+      );
+      if (isDev) console.log('Old config', newConfig);
+      if (isDev) console.log('Saving config', newConfig);
+      saveConfig(newConfig);
+      return;
+    }
+    if (
+      promptSelectConfig &&
+      promptSelectConfig[parseInt(value)] &&
+      promptSelectConfig[parseInt(value)].config
+    ) {
+      const newConfig: typeof CONFIG_DEFAULT = JSON.parse(
+        JSON.stringify(localConfig)
+      );
+      // validate the config
+      for (const key in promptSelectConfig[parseInt(value)].config) {
+        const val =
+          promptSelectConfig[parseInt(value)].config[
+            key as keyof typeof CONFIG_DEFAULT
+          ];
+        const mustBeBoolean = isBoolean(
+          CONFIG_DEFAULT[key as keyof typeof CONFIG_DEFAULT]
+        );
+        const mustBeString = isString(
+          CONFIG_DEFAULT[key as keyof typeof CONFIG_DEFAULT]
+        );
+        const mustBeNumeric = isNumeric(
+          CONFIG_DEFAULT[key as keyof typeof CONFIG_DEFAULT]
+        );
+        if (mustBeString) {
+          if (!isString(val)) {
+            alert(`Value for ${key} must be string`);
+            return;
+          }
+        } else if (mustBeNumeric) {
+          const trimedValue = val.toString().trim();
+          const numVal = Number(trimedValue);
+          if (isNaN(numVal) || !isNumeric(numVal) || trimedValue.length === 0) {
+            alert(`Value for ${key} must be numeric`);
+            return;
+          }
+          // force conversion to number
+          // @ts-expect-error this is safe
+          newConfig[key] = numVal;
+        } else if (mustBeBoolean) {
+          if (!isBoolean(val)) {
+            alert(`Value for ${key} must be boolean`);
+            return;
+          }
+        } else {
+          console.error(`Unknown default type for key ${key}`);
+        }
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-expect-error
+        newConfig[key] = val;
+      }
+      if (isDev) console.log('Saving config', newConfig);
+      saveConfig(newConfig);
+      resetSettings();
+    }
+  };
+
   return (
     <div className="flex flex-row items-center pt-6 pb-6 sticky top-0 z-10 bg-base-100">
       {/* open sidebar button */}
@@ -72,7 +171,20 @@ export default function Header() {
       </label>
 
       <div className="grow text-2xl font-bold ml-2">llama.cpp</div>
-
+      {promptSelectOptions.length > 1 ? (
+        <div className="grow text-2xl font-bold ml-2 pl-6 pr-6">
+          <select
+            className="select w-full max-w-xs"
+            onChange={(e) => selectPrompt(e.target.value)}
+          >
+            {[...promptSelectOptions].map((opt) => (
+              <option key={opt.key} value={opt.key}>
+                {opt.value}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
       {/* action buttons (top right) */}
       <div className="flex items-center">
         {viewingChat && (

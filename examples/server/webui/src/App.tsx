@@ -23,7 +23,7 @@ function App() {
 }
 
 function AppLayout() {
-  const { showSettings, setShowSettings } = useAppContext();
+  const { showSettings, setShowSettings, settingsSeed } = useAppContext();
   return (
     <>
       <Sidebar />
@@ -36,6 +36,7 @@ function AppLayout() {
       </div>
       {
         <SettingDialog
+          key={settingsSeed}
           show={showSettings}
           onClose={() => setShowSettings(false)}
         />
