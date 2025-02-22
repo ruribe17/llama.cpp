@@ -1423,6 +1423,36 @@ static bool ggml_vk_matmul_shmem_support(const vk_device& device, const std::vec
     return supported;
 }
 
+struct GpuPipelineConfig {
+    // List of all aliases for a given GPU.
+    // For example, this can include names like "NAVI10", "RX 5700", etc.
+    std::vector<std::string> device_names;
+
+    // Default subgroup size for this GPU.
+    // Defaults to 0 if not explicitly provided.
+    uint32_t default_subgroup_size = 0;
+};
+
+// Define configurations for different GPUs.
+static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
+    {
+        {"NAVI10", "NAVI14", "RX 5700", "RX 5600", "RX 5500"},
+        32
+    },
+};
+
+static uint32_t get_subgroup_size(const std::string &device_name) {
+    for (const auto &config : gpu_pipeline_configs) {
+        for (const auto &alias : config.device_names) {
+            if (device_name.find(alias) != std::string::npos) {
+                return config.default_subgroup_size;
+            }
+        }
+    }
+    // If no matching configuration is found, return 0.
+    return 0;
+}
+
 static void ggml_vk_load_shaders(vk_device& device) {
     VK_LOG_DEBUG("ggml_vk_load_shaders(" << device->name << ")");
 
@@ -1543,10 +1573,16 @@ static void ggml_vk_load_shaders(vk_device& device) {
         device->pipeline_matmul_id_f32 = std::make_shared<vk_matmul_pipeline_struct>();
     }
 
+    vk::PhysicalDeviceProperties2 props2;
+    device->physical_device.getProperties2(&props2);
+    std::string device_name = props2.properties.deviceName.data();
+
     std::vector<std::future<void>> compiles;
     auto const &ggml_vk_create_pipeline = [&](vk_device& device, vk_pipeline& pipeline, const std::string &name, size_t spv_size, const void* spv_data, const std::string &entrypoint,
                                               uint32_t parameter_count, uint32_t push_constant_size, std::array<uint32_t, 3> wg_denoms, const std::vector<uint32_t>& specialization_constants,
                                               uint32_t align, bool disable_robustness = false, bool require_full_subgroups = false, uint32_t required_subgroup_size = 0) {
+
+        required_subgroup_size = get_subgroup_size(device_name);
 
         if (!pipeline) {
             pipeline = std::make_shared<vk_pipeline_struct>();
@@ -2672,36 +2708,6 @@ static vk_device ggml_vk_get_device(size_t idx) {
     }
 
     return vk_instance.devices[idx];
-}
-
-struct GpuPipelineConfig {
-    // List of all aliases for a given GPU.
-    // For example, this can include names like "NAVI10", "RX 5700", etc.
-    std::vector<std::string> device_names;
-
-    // Default subgroup size for this GPU.
-    // Defaults to 0 if not explicitly provided.
-    uint32_t default_subgroup_size = 0;
-};
-
-// Define configurations for different GPUs.
-static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
-    {
-        {"NAVI10", "NAVI14", "RX 5700", "RX 5600", "RX 5500"},
-        32
-    },
-};
-
-static uint32_t get_subgroup_size(const std::string &device_name) {
-    for (const auto &config : gpu_pipeline_configs) {
-        for (const auto &alias : config.device_names) {
-            if (device_name.find(alias) != std::string::npos) {
-                return config.default_subgroup_size;
-            }
-        }
-    }
-    // If no matching configuration is found, return 0.
-    return 0;
 }
 
 static void ggml_vk_print_gpu_info(size_t idx) {
