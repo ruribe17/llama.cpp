@@ -1,6 +1,38 @@
 {
   "prompts": [
     {
+      "name": "Configuration example",
+      "lang": "en",
+      "config": {
+        "apiKey": "",
+        "custom": "",
+        "dry_allowed_length": 2,
+        "dry_base": 1.75,
+        "dry_multiplier": 0,
+        "dry_penalty_last_n": -1,
+        "dynatemp_exponent": 1,
+        "dynatemp_range": 0,
+        "excludeThoughtOnReq": true,
+        "frequency_penalty": 0,
+        "max_tokens": -1,
+        "min_p": 0.05,
+        "presence_penalty": 0,
+        "pyIntepreterEnabled": false,
+        "repeat_last_n": 64,
+        "repeat_penalty": 1,
+        "samplers": "edkypmxt",
+        "showThoughtInProgress": false,
+        "showTokensPerSecond": false,
+        "systemMessage": "You are a helpful assistant.",
+        "temperature": 0.8,
+        "top_k": 40,
+        "top_p": 0.95,
+        "typical_p": 1,
+        "xtc_probability": 0,
+        "xtc_threshold": 0.1
+      }
+    },
+    {
       "name": "Ethereum Developer",
       "lang": "en",
       "config": {
@@ -1695,38 +1727,6 @@
         "systemMessage": "You are a ${Title:Senior} DevOps engineer working at ${Company Type: Big Company}. Your role is to provide scalable, efficient, and automated solutions for software deployment, infrastructure management, and CI/CD pipelines. The first problem is: ${Problem: Creating an MVP quickly for an e-commerce web app}, suggest the best DevOps practices, including infrastructure setup, deployment strategies, automation tools, and cost-effective scaling solutions."
       },
       "for_devs": "TRUE"
-    },
-    {
-      "name": "Full prompt config example",
-      "lang": "en",
-      "config": {
-        "apiKey": "",
-        "custom": "",
-        "dry_allowed_length": 2,
-        "dry_base": 1.75,
-        "dry_multiplier": 0,
-        "dry_penalty_last_n": -1,
-        "dynatemp_exponent": 1,
-        "dynatemp_range": 0,
-        "excludeThoughtOnReq": true,
-        "frequency_penalty": 0,
-        "max_tokens": -1,
-        "min_p": 0.05,
-        "presence_penalty": 0,
-        "pyIntepreterEnabled": false,
-        "repeat_last_n": 64,
-        "repeat_penalty": 1,
-        "samplers": "edkypmxt",
-        "showThoughtInProgress": false,
-        "showTokensPerSecond": false,
-        "systemMessage": "Imagine you are an experienced Ethereum developer tasked with creating a smart contract for a blockchain messenger. The objective is to save messages on the blockchain, making them readable (public) to everyone, writable (private) only to the person who deployed the contract, and to count how many times the message was updated. Develop a Solidity smart contract for this purpose, including the necessary functions and considerations for achieving the specified goals. Please provide the code and any relevant explanations to ensure a clear understanding of the implementation.",
-        "temperature": 0.8,
-        "top_k": 40,
-        "top_p": 0.95,
-        "typical_p": 1,
-        "xtc_probability": 0,
-        "xtc_threshold": 0.1
-      }
     }
   ]
 }
