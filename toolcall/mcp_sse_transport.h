@@ -46,7 +46,7 @@ namespace toolcall
         size_t sse_cursor_;
         std::string sse_last_id_;
 
-        std::mutex initializing_mutex_;
-        std::condition_variable initializing_;
+        std::mutex mutex_;
+        std::condition_variable cv_;
     };
 }

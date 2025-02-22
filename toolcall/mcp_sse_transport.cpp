@@ -26,8 +26,8 @@ toolcall::mcp_sse_transport::mcp_sse_transport(std::string server_uri)
       sse_buffer_(""),
       sse_cursor_(0),
       sse_last_id_(""),
-      initializing_mutex_(),
-      initializing_()
+      mutex_(),
+      cv_()
 {
     curl_global_init(CURL_GLOBAL_DEFAULT);
 }
@@ -36,9 +36,9 @@ void toolcall::mcp_sse_transport::start() {
     if (running_) return;
     running_ = true;
 
-    std::unique_lock<std::mutex> lock(initializing_mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
     sse_thread_ = std::thread(&toolcall::mcp_sse_transport::sse_run, this);
-    initializing_.wait_for(
+    cv_.wait_for(
         lock, std::chrono::seconds(StartTimeoutSeconds), [this] { return endpoint_ != nullptr; });
 
     if (endpoint_ == nullptr) {
@@ -53,6 +53,7 @@ void toolcall::mcp_sse_transport::stop() {
 }
 
 bool toolcall::mcp_sse_transport::send(const std::string & request_json) {
+    std::lock_guard<std::mutex> lock(mutex_);
     if (! running_ || endpoint_ == nullptr) {
         return false;
     }
@@ -189,7 +190,7 @@ size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
 void toolcall::mcp_sse_transport::sse_run() {
     using namespace std::chrono;
 
-    std::unique_lock<std::mutex> lock(initializing_mutex_);
+    std::unique_lock<std::mutex> lock(mutex_);
 
     char errbuf[CURL_ERROR_SIZE];
     size_t errlen;
@@ -252,7 +253,7 @@ void toolcall::mcp_sse_transport::sse_run() {
         if (endpoint_) {
             if (lock.owns_lock()) {
                 lock.unlock();
-                initializing_.notify_one();
+                cv_.notify_one();
             }
 
         } else {
@@ -273,5 +274,14 @@ void toolcall::mcp_sse_transport::sse_run() {
     }
     if (sse) {
         curl_easy_cleanup(sse);
+    }
+
+    lock.lock(); // Wait for pending send calls to complete
+
+    if (endpoint_headers_) {
+        curl_slist_free_all(endpoint_headers_);
+    }
+    if (endpoint_) {
+        curl_easy_cleanup(endpoint_);
     }
 }
