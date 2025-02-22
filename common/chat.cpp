@@ -988,10 +988,11 @@ static common_chat_params common_chat_params_init_llama_3_1_tool_calls(const com
                     "  \"\\\"name\\\"\"       space \":\" space \"\\\"" + name + "\\\"\" space \",\" space "
                     "  \"\\\"parameters\\\"\" space \":\" space " + builder.add_schema(name + "-args", parameters) + " "
                     "\"}\" space"));
-            data.grammar_triggers.push_back({
-                COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START,
-                "\\{\\s*(?:\"type\"\\s*:\\s*\"function\"\\s*,\\s*)?\"name\"\\s*:\\s*\"" + name + "\"[\\s\\S]*",
-            });
+        });
+        // Small models may hallucinate function names so we match anything (*at the start*) that looks like the JSON of a function call, regardless of the name.
+        data.grammar_triggers.push_back({
+            COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START,
+            "\\{\\s*(?:\"type\"\\s*:\\s*\"function\"\\s*,\\s*)?\"name\"\\s*:\\s*\"", // + name + "\"[\\s\\S]*",
         });
         if (!builtin_tools.empty()) {
             data.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, "<|python_tag|>"});
