@@ -18,6 +18,7 @@ export default function Header() {
   const navigate = useNavigate();
   const [selectedTheme, setSelectedTheme] = useState(StorageUtils.getTheme());
   const { setShowSettings } = useAppContext();
+  const [selectedConfig, setSelectedConfig] = useState<number>(0);
 
   const setTheme = (theme: string) => {
     StorageUtils.setTheme(theme);
@@ -29,9 +30,9 @@ export default function Header() {
     JSON.parse(JSON.stringify(config))
   );
 
-  const [promptSelectOptions, setPromptSelectOptions] = useState([
-    { key: -1, value: 'System prompt (none)' },
-  ]);
+  const [promptSelectOptions, setPromptSelectOptions] = useState<
+    { key: number; value: string }[]
+  >([]);
   const [promptSelectConfig, setPromptSelectConfig] = useState<
     typeof PROMPT_JSON | null
   >(null);
@@ -45,9 +46,7 @@ export default function Header() {
     fetch('/prompts.config.json')
       .then((response) => response.json())
       .then((data) => {
-        const prt: { key: number; value: string }[] = [
-          { key: -1, value: 'Choose a system config' },
-        ];
+        const prt: { key: number; value: string }[] = [];
         if (data && data.prompts) {
           setPromptSelectConfig(data.prompts);
           Object.keys(data.prompts).forEach(function (key) {
@@ -85,30 +84,20 @@ export default function Header() {
     URL.revokeObjectURL(url);
   };
 
-  const selectPrompt = (value: string) => {
-    if (parseInt(value) == -1) {
-      const newConfig: typeof CONFIG_DEFAULT = JSON.parse(
-        JSON.stringify(localConfig)
-      );
-      if (isDev) console.log('Old config', newConfig);
-      if (isDev) console.log('Saving config', newConfig);
-      saveConfig(newConfig);
-      return;
-    }
+  const selectPrompt = (value: number) => {
+    setSelectedConfig(value);
     if (
       promptSelectConfig &&
-      promptSelectConfig[parseInt(value)] &&
-      promptSelectConfig[parseInt(value)].config
+      promptSelectConfig[value] &&
+      promptSelectConfig[value].config
     ) {
       const newConfig: typeof CONFIG_DEFAULT = JSON.parse(
         JSON.stringify(localConfig)
       );
       // validate the config
-      for (const key in promptSelectConfig[parseInt(value)].config) {
+      for (const key in promptSelectConfig[value].config) {
         const val =
-          promptSelectConfig[parseInt(value)].config[
-            key as keyof typeof CONFIG_DEFAULT
-          ];
+          promptSelectConfig[value].config[key as keyof typeof CONFIG_DEFAULT];
         const mustBeBoolean = isBoolean(
           CONFIG_DEFAULT[key as keyof typeof CONFIG_DEFAULT]
         );
@@ -171,20 +160,6 @@ export default function Header() {
       </label>
 
       <div className="grow text-2xl font-bold ml-2">llama.cpp</div>
-      {promptSelectOptions.length > 1 ? (
-        <div className="grow text-2xl font-bold ml-2 pl-6 pr-6">
-          <select
-            className="select w-full max-w-xs"
-            onChange={(e) => selectPrompt(e.target.value)}
-          >
-            {[...promptSelectOptions].map((opt) => (
-              <option key={opt.key} value={opt.key}>
-                {opt.value}
-              </option>
-            ))}
-          </select>
-        </div>
-      ) : null}
       {/* action buttons (top right) */}
       <div className="flex items-center">
         {viewingChat && (
@@ -221,23 +196,67 @@ export default function Header() {
             </ul>
           </div>
         )}
-
-        <div className="tooltip tooltip-bottom" data-tip="Settings">
-          <button className="btn" onClick={() => setShowSettings(true)}>
-            {/* settings button */}
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              fill="currentColor"
-              className="bi bi-gear"
-              viewBox="0 0 16 16"
-            >
-              <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0" />
-              <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z" />
-            </svg>
-          </button>
-        </div>
+        {promptSelectOptions.length > 0 ? (
+          <div className="tooltip tooltip-bottom" data-tip="Settings">
+            <div className="dropdown dropdown-end dropdown-bottom">
+              <div tabIndex={0} role="button" className="btn m-1">
+                {/* settings button */}
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  fill="currentColor"
+                  className="bi bi-gear"
+                  viewBox="0 0 16 16"
+                >
+                  <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0" />
+                  <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z" />
+                </svg>
+              </div>
+              <ul
+                tabIndex={0}
+                className="dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"
+              >
+                {[...promptSelectOptions].map((opt) => (
+                  <li key={opt.key}>
+                    <input
+                      type="radio"
+                      name="settings"
+                      className="theme-controller btn btn-sm btn-block btn-ghost justify-start"
+                      aria-label={opt.value}
+                      value={opt.value}
+                      checked={selectedConfig === opt.key}
+                      onChange={(e) => {
+                        selectPrompt(opt.key);
+                        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                        e.target.checked;
+                        console.log(e.target.checked);
+                        console.log(e);
+                      }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        ) : (
+          <div className="tooltip tooltip-bottom" data-tip="Settings">
+            <button className="btn" onClick={() => setShowSettings(true)}>
+              {/* settings button */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="16"
+                height="16"
+                fill="currentColor"
+                className="bi bi-gear"
+                viewBox="0 0 16 16"
+              >
+                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0" />
+                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z" />
+              </svg>
+            </button>
+          </div>
+        )}
 
         {/* theme controller is copied from https://daisyui.com/components/theme-controller/ */}
         <div className="tooltip tooltip-bottom" data-tip="Themes">
