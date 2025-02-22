@@ -590,7 +590,7 @@ def do_test_hello_world(server: ServerProcess, **kwargs):
     assert tool_calls and len(tool_calls) == 1, f'Expected 1 tool call in {choice["message"]}'
     tool_call = tool_calls[0]
     assert choice["message"].get("content") in (None, ""), f'Expected no content in {choice["message"]}'
-    assert tool_call["function"]["name"] == PYTHON_TOOL["function"]["name"]
+    assert tool_call["function"]["name"] == PYTHON_TOOL["function"]["name"], f'Expected python, got {tool_call["function"]["name"]}'
     actual_arguments = json.loads(tool_call["function"]["arguments"])
     assert 'code' in actual_arguments, f"code not found in {json.dumps(actual_arguments)}"
     code = actual_arguments["code"]
