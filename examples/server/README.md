@@ -245,6 +245,10 @@ headers (like build/examples/server/index.html.gz.hpp) that will be included
 by server.cpp. This is done by building `llama-server` as described in the
 [build](#build) section above.
 
+Prompt and other configuration parameters are easily customisable with the json file `public/prompts.config.json`.
+Examples from https://github.com/f/awesome-chatgpt-prompts have been already written in it.
+
+
 NOTE: if you are using the vite dev server, you can change the API base URL to llama.cpp. To do that, run this code snippet in browser's console:
 
 ```js
