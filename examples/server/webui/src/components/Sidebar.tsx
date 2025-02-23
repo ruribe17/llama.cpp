@@ -28,11 +28,7 @@ export default function Sidebar() {
 
   return (
     <>
-      <input
-        id="toggle-drawer"
-        type="checkbox"
-        className="drawer-toggle"
-      />
+      <input id="toggle-drawer" type="checkbox" className="drawer-toggle" />
 
       <div className="drawer-side h-screen lg:h-screen z-50 lg:max-w-64">
         <label
