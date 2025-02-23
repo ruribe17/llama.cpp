@@ -235,6 +235,16 @@ export default function Header() {
                 tabIndex={0}
                 className="dropdown-content bg-base-300 rounded-box z-[1] w-52 p-2 shadow-2xl h-80 overflow-y-auto"
               >
+                <li>
+                  <input
+                    type="radio"
+                    name="settings"
+                    className="theme-controller btn btn-sm btn-block btn-ghost justify-start"
+                    aria-label="Manual settings"
+                    value="Manual settings"
+                    onChange={() => setShowSettings(true)}
+                  />
+                </li>
                 {[...promptSelectOptions].map((opt) => (
                   <li key={opt.key}>
                     <input
