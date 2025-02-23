@@ -188,8 +188,11 @@ static void ggml_check_sycl() try {
     if (!initialized) {
         GGML_SYCL_DEBUG("[SYCL] call ggml_check_sycl\n");
         g_ggml_sycl_debug = get_sycl_env("GGML_SYCL_DEBUG", 0);
-        GGML_LOG_INFO("Build with Macros:\n");
+        g_ggml_sycl_disable_optimize= get_sycl_env("GGML_SYCL_DISABLE_OPT", 0);
+        GGML_LOG_INFO("Running with Environment Variables:\n");
         GGML_LOG_INFO("  GGML_SYCL_DEBUG: %d\n", g_ggml_sycl_debug);
+        GGML_LOG_INFO("  GGML_SYCL_DISABLE_OPT: %d\n", g_ggml_sycl_disable_optimize);
+        GGML_LOG_INFO("Build with Macros:\n");
 #if defined(GGML_SYCL_FORCE_MMQ)
         GGML_LOG_INFO("  GGML_SYCL_FORCE_MMQ: yes\n");
 #else
@@ -4423,7 +4426,7 @@ static ggml_status ggml_backend_sycl_graph_compute(ggml_backend_t backend, ggml_
     ggml_backend_sycl_context * sycl_ctx = (ggml_backend_sycl_context *)backend->context;
     ggml_sycl_set_main_device(sycl_ctx->device);
 
-    optimize_graph_once(cgraph, sycl_ctx);
+    if (!g_ggml_sycl_disable_optimize) optimize_graph_once(cgraph, sycl_ctx);
 
     for (int i = 0; i < cgraph->n_nodes; i++) {
         ggml_tensor * node = cgraph->nodes[i];

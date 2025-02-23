@@ -39,6 +39,8 @@ void ggml_sycl_host_free(void* ptr);
 
 
 static int g_ggml_sycl_debug = 0;
+static int g_ggml_sycl_disable_optimize = 0;
+
 #define GGML_SYCL_DEBUG(...)        \
   do {                              \
     if (g_ggml_sycl_debug)          \
