@@ -449,11 +449,6 @@ std::string common_chat_format_name(common_chat_format format) {
     }
 }
 
-const common_grammar_options grammar_options {
-    /* .dotall = */ false,
-    /* .any_spaces = */ true,
-};
-
 static std::optional<json> parse_json(std::string::const_iterator & it, const std::string::const_iterator & end) {
     // // https://json.nlohmann.me/features/parsing/sax_interface/
     struct json_error_locator : public nlohmann::json_sax<json> {
@@ -732,7 +727,7 @@ static common_chat_params common_chat_params_init_generic(const common_chat_temp
     data.grammar_lazy = false;
     data.grammar = build_grammar([&](const common_grammar_builder & builder) {
         builder.add_schema("root", schema);
-    }, grammar_options);
+    });
 
     auto tweaked_messages = common_chat_template::add_system(
         inputs.messages,
@@ -802,7 +797,7 @@ static common_chat_params common_chat_params_init_mistral_nemo(const common_chat
             schema["maxItems"] = 1;
         }
         builder.add_rule("root", "\"[TOOL_CALLS]\" " + builder.add_schema("tool_calls", schema));
-    }, grammar_options);
+    });
     data.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, "[TOOL_CALLS]"});
     data.preserved_tokens = {
         "[TOOL_CALLS]",
@@ -848,7 +843,7 @@ static common_chat_params common_chat_params_init_command_r7b(const common_chat_
             schema["maxItems"] = 1;
         }
         builder.add_rule("root", "\"<|START_ACTION|>\" " + builder.add_schema("tool_calls", schema) + " \"<|END_ACTION|>\"");
-    }, grammar_options);
+    });
     data.grammar_triggers.push_back({
         COMMON_GRAMMAR_TRIGGER_TYPE_WORD,
         "<|START_ACTION|>",
@@ -1000,7 +995,7 @@ static common_chat_params common_chat_params_init_llama_3_1_tool_calls(const com
         }
         // Allow a few empty lines on top of the usual constrained json schema space rule.
         builder.add_rule("root", string_join(tool_rules, " | "));
-    }, grammar_options);
+    });
     data.additional_stops.push_back("<|eom_id|>");
     data.prompt = apply(tmpl, inputs.messages, inputs.tools.empty() ? json() : inputs.tools, inputs.add_generation_prompt, {
         {"tools_in_user_message", false},
@@ -1081,7 +1076,7 @@ static common_chat_params common_chat_params_init_deepseek_r1(const common_chat_
                 "<｜tool▁call▁end｜>",
                 "<｜tool▁calls▁end｜",
             };
-        }, grammar_options);
+        });
     }
     auto prompt = apply(tmpl, inputs.messages, inputs.tools.empty() ? json() : inputs.tools, inputs.add_generation_prompt);
 
@@ -1170,7 +1165,7 @@ static common_chat_params common_chat_params_init_firefunction_v2(const common_c
                 schema["maxItems"] = 1;
             }
             builder.add_rule("root", "\" functools\"? " + builder.add_schema("tool_calls", schema));
-        }, grammar_options);
+        });
         data.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, " functools["});
         data.preserved_tokens = {
             " functools[",
@@ -1232,7 +1227,7 @@ static common_chat_params common_chat_params_init_functionary_v3_2(const common_
                 builder.add_rule("root", first_rule);
             }
 
-        }, grammar_options);
+        });
     }
     return data;
 }
@@ -1319,7 +1314,7 @@ static common_chat_params common_chat_params_init_functionary_v3_1_llama_3_1(con
         auto tool_call = builder.add_rule("tool_call", string_join(tool_rules, " | ")) + " space";
         builder.add_rule("root", inputs.parallel_tool_calls ? "(" + tool_call + ")+" : tool_call);
         data.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, "<function="});
-    }, grammar_options);
+    });
 
     data.prompt = apply(tmpl, inputs.messages, inputs.tools.empty() ? json() : inputs.tools, inputs.add_generation_prompt);
     // TODO: if (has_raw_python)
@@ -1427,7 +1422,7 @@ static common_chat_params common_chat_params_init_hermes_2_pro(const common_chat
             "```json",
             "```xml",
         };
-    }, grammar_options);
+    });
 
     data.prompt = apply(tmpl, inputs.messages, inputs.tools.empty() ? json() : inputs.tools, inputs.add_generation_prompt);
     data.format = COMMON_CHAT_FORMAT_HERMES_2_PRO;
