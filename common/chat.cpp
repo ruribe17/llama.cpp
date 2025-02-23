@@ -1383,11 +1383,6 @@ static common_chat_params common_chat_params_init_hermes_2_pro(const common_chat
                 COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN,
                 "<function\\s+name\\s*=\\s*\"" + escaped_name + "\"",
             });
-            // Trigger on some common known "good bad" outputs (only from the start and with a json that's about a specific argument name to avoid false positives)
-            data.grammar_triggers.push_back({
-                COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START,
-                "(?:<function_call>|<tools>|<xml><json>|<response>)?(?:```(?:json|xml)?\n)?\\s*\\{\\s*\"name\"\\s*:\\s*\"" + escaped_name + "\"",
-            });
         });
         auto any_tool_call = builder.add_rule("any_tool_call", "( " + string_join(tool_rules, " | ") + " ) space");
         std::vector<std::string> alt_tags {
@@ -1409,6 +1404,11 @@ static common_chat_params common_chat_params_init_hermes_2_pro(const common_chat
         builder.add_rule("root", inputs.parallel_tool_calls ? "(" + tool_call + ")+" : tool_call);
         data.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, "<tool_call>"});
         data.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, "<function"});
+        // Trigger on some common known "good bad" outputs (only from the start and with a json that's about a specific argument name to avoid false positives)
+        data.grammar_triggers.push_back({
+            COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START,
+            "(?:```(?:json|xml)?\n\\s*)?(?:<function_call>|<tools>|<xml><json>|<response>)?\\s*\\{\\s*\"", //name\"\\s*:\\s*\"" + escaped_name + "\"",
+        });
         data.preserved_tokens = {
             "<tool_call>",
             "</tool_call>",
