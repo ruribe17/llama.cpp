@@ -66,20 +66,19 @@ void mcp::initialize_request::refreshParams() {
     params["protocolVersion"] = protoVersion();
     params["clientInfo"]["name"] = name();
     params["clientInfo"]["version"] = version();
-    params["capabilities"] = {};
 
+    json capabilities = json::object();
     for (auto cap = caps_.cbegin(); cap != caps_.cend(); ++cap) {
         json cap_json;
-
         if (cap->subscribe) {
             cap_json["subscribe"] = true;
         }
         if (cap->listChanged) {
             cap_json["listChanged"] = true;
         }
-
-        params["capabilities"][cap->name] = cap_json;
+        capabilities[cap->name] = cap_json;
     }
+    params["capabilities"] = capabilities;
 
     this->params(std::move(params));
 }

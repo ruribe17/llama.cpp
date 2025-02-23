@@ -64,7 +64,8 @@ namespace toolcall
 
         template <typename T>
         bool send(const T & message) {
-            return send(std::string(message.toJson()));
+            nlohmann::json json = message.toJson();
+            return send(json.dump(-1));
         }
 
         virtual void start() = 0;
