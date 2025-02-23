@@ -37,6 +37,7 @@
 void* ggml_sycl_host_malloc(size_t size);
 void ggml_sycl_host_free(void* ptr);
 
+
 static int g_ggml_sycl_debug = 0;
 #define GGML_SYCL_DEBUG(...)        \
   do {                              \
@@ -268,7 +269,10 @@ struct ggml_tensor_extra_gpu {
                                        // tensors
   dpct::event_ptr events[GGML_SYCL_MAX_DEVICES]
                         [GGML_SYCL_MAX_STREAMS]; // events for synchronizing multiple GPUs
+  optimize_feature optimized_feature;
 };
+
+void release_extra_gpu(ggml_tensor_extra_gpu * extra, std::vector<queue_ptr> streams={});
 
 inline optimize_feature check_gpu_optimize_feature(int hw_family) {
     optimize_feature opt;
@@ -283,6 +287,7 @@ struct ggml_backend_sycl_context {
     int device;
     std::string name;
     optimize_feature opt_feature;
+    bool optimized_graph=false;
 
     queue_ptr qptrs[GGML_SYCL_MAX_DEVICES][GGML_SYCL_MAX_STREAMS] = { { nullptr } };
 

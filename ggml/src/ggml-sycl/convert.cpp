@@ -125,7 +125,6 @@ static void dequantize_row_q4_0_sycl(const void *vx, dst_t *y, const int64_t k,
     }
 }
 
-
 template <typename dst_t>
 static void dequantize_row_q4_0_sycl_reorder(const void *vx, dst_t *y, const int64_t k,
                                      dpct::queue_ptr stream) {
@@ -472,10 +471,11 @@ static void convert_unary_sycl(const void *__restrict__ vx,
     }
 }
 
-to_fp16_sycl_t ggml_get_to_fp16_sycl(ggml_type type, ggml_backend_sycl_context & ctx) {
+to_fp16_sycl_t ggml_get_to_fp16_sycl(ggml_type type, ggml_tensor *dst) {
     switch (type) {
         case GGML_TYPE_Q4_0:
-            if (ctx.opt_feature.reorder) {
+            if (dst->src[0]->extra &&
+                ((ggml_tensor_extra_gpu*)dst->src[0]->extra)->optimized_feature.reorder) {
                 return dequantize_row_q4_0_sycl_reorder;
             } else {
                 return dequantize_block_sycl<QK4_0, QR4_0, dequantize_q4_0>;
@@ -523,10 +523,11 @@ to_fp16_sycl_t ggml_get_to_fp16_sycl(ggml_type type, ggml_backend_sycl_context &
     }
 }
 
-to_fp32_sycl_t ggml_get_to_fp32_sycl(ggml_type type, ggml_backend_sycl_context & ctx) {
+to_fp32_sycl_t ggml_get_to_fp32_sycl(ggml_type type, ggml_tensor *dst) {
     switch (type) {
         case GGML_TYPE_Q4_0:
-            if (ctx.opt_feature.reorder) {
+            if (dst->src[0]->extra &&
+                ((ggml_tensor_extra_gpu*)dst->src[0]->extra)->optimized_feature.reorder) {
                 return dequantize_row_q4_0_sycl_reorder;
             } else {
                 return dequantize_row_q4_0_sycl;

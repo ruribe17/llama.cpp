@@ -3,7 +3,6 @@
 #include "dequantize.hpp"
 #include "presets.hpp"
 
-
 static void convert_f16(const void * vx, const int64_t ib, const int iqs, dfloat2 & v){
     const sycl::half *x = (const sycl::half *)vx;
 
@@ -91,7 +90,7 @@ static void dequantize_mul_mat_vec(const void * __restrict__ vx, const dfloat * 
     }
 }
 
-template <int qk, int qr, dequantize_kernel_t_reorder dequantize_kernel_recorder>
+template <int qk, int qr, dequantize_kernel_t_reorder dequantize_kernel_reorder>
 static void dequantize_mul_mat_vec_reorder(const void * __restrict__ vx, const dfloat * __restrict__ y, float * __restrict__ dst, const int ncols, const int nrows,
                                    const sycl::nd_item<3> &item_ct1) {
     // qk = quantized weights per x block
@@ -134,7 +133,7 @@ static void dequantize_mul_mat_vec_reorder(const void * __restrict__ vx, const d
             // dequantize
             // for qr = 2 the iqs needs to increase by 1 per j iter because 2 weights per data val
             dfloat2 v;
-            dequantize_kernel_recorder((const void *)d_ptr, ib, (const void *)vx, ib * QK4_0 / 2 +iqs+j/qr, v);
+            dequantize_kernel_reorder((const void *)d_ptr, ib, (const void *)vx, ib * QK4_0 / 2 +iqs+j/qr, v);
 
             // matrix multiplication
             // for qr = 2 the y index needs to increase by 1 per j iter because of y_offset = qk/2
@@ -165,7 +164,7 @@ static void dequantize_mul_mat_vec_reorder(const void * __restrict__ vx, const d
             // dequantize
             // for qr = 2 the iqs needs to increase by 1 per j iter because 2 weights per data val
             dfloat2 v;
-            dequantize_kernel_recorder((const void *)d_ptr, ib, (const void *)vx, ib * QK4_0 / 2 +iqs+j/qr, v);
+            dequantize_kernel_reorder((const void *)d_ptr, ib, (const void *)vx, ib * QK4_0 / 2 +iqs+j/qr, v);
 
             // matrix multiplication
             // for qr = 2 the y index needs to increase by 1 per j iter because of y_offset = qk/2
@@ -865,7 +864,6 @@ static void dequantize_mul_mat_vec_q6_k(const void * __restrict__ vx, const floa
     }
 }
 
-
 static void dequantize_mul_mat_vec_q4_0_sycl_reorder(const void *vx, const dfloat *y,
                                              float *dst, const int ncols,
                                              const int nrows,
@@ -1082,7 +1080,6 @@ void ggml_sycl_op_dequantize_mul_mat_vec(
 
     const int64_t ne00 = src0->ne[0];
     const int64_t row_diff = row_high - row_low;
-
     GGML_ASSERT(src1->type == GGML_TYPE_F32);
     // on some GPUs it is faster to convert src1 to half and to use half precision intrinsics
 #ifdef GGML_SYCL_F16
@@ -1096,7 +1093,7 @@ void ggml_sycl_op_dequantize_mul_mat_vec(
 
     if (src1_convert_f16) {
         src1_dfloat = src1_dfloat_a.alloc(ne00);
-        const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src1->type, ctx);
+        const to_fp16_sycl_t to_fp16_sycl = ggml_get_to_fp16_sycl(src1->type, dst);
         GGML_ASSERT(to_fp16_sycl != nullptr);
         to_fp16_sycl(src1_ddf_i, src1_dfloat, ne00, stream);
     }
@@ -1106,7 +1103,8 @@ void ggml_sycl_op_dequantize_mul_mat_vec(
 
     switch (src0->type) {
         case GGML_TYPE_Q4_0:
-            if (ctx.opt_feature.reorder) {
+            if ((ggml_tensor_extra_gpu*)dst->src[0]->extra &&
+                ((ggml_tensor_extra_gpu*)dst->src[0]->extra)->optimized_feature.reorder) {
                 dequantize_mul_mat_vec_q4_0_sycl_reorder(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
             } else {
                 dequantize_mul_mat_vec_q4_0_sycl(src0_dd_i, src1_dfloat, dst_dd_i, ne00, row_diff, stream);
