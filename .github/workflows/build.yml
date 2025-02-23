@@ -992,10 +992,6 @@ jobs:
 
     steps:
         - uses: actions/checkout@v4
-          if: ${{ matrix.cuda.package }}
-
-        - uses: actions/checkout@v4
-          if: ${{ !matrix.cuda.package }}
           with:
             fetch-depth: 0
 
