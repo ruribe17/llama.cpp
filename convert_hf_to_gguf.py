@@ -515,45 +515,65 @@ class Model:
 
     # used for GPT-2 BPE and WordPiece vocabs
     def get_vocab_base(self) -> tuple[list[str], list[int], str]:
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(self.dir_model, trust_remote_code=True)
+
         tokens: list[str] = []
         toktypes: list[int] = []
 
-        from transformers import AutoTokenizer
-        tokenizer = AutoTokenizer.from_pretrained(self.dir_model)
-        vocab_size = self.hparams.get("vocab_size", len(tokenizer.vocab))
-        assert max(tokenizer.vocab.values()) < vocab_size
+        if hasattr(tokenizer, "vocab"):
+            # Standard Hugging Face tokenizer (e.g., GPT-2, BERT)
+            vocab_size = self.hparams.get("vocab_size", len(tokenizer.vocab))
+            reverse_vocab = {id_: tok for tok, id_ in tokenizer.vocab.items()}
+            assert max(tokenizer.vocab.values()) < vocab_size, "Vocab IDs exceed vocab_size"
+            added_vocab = tokenizer.get_added_vocab()
 
-        tokpre = self.get_vocab_base_pre(tokenizer)
-
-        reverse_vocab = {id_: encoded_tok for encoded_tok, id_ in tokenizer.vocab.items()}
-        added_vocab = tokenizer.get_added_vocab()
-
-        for i in range(vocab_size):
-            if i not in reverse_vocab:
-                tokens.append(f"[PAD{i}]")
-                toktypes.append(gguf.TokenType.UNUSED)
-            else:
-                token: str = reverse_vocab[i]
-                if token in added_vocab:
-                    # The tokenizer in llama.cpp assumes the CONTROL and USER_DEFINED tokens are pre-normalized.
-                    # To avoid unexpected issues - we make sure to normalize non-normalized tokens
-                    if not tokenizer.added_tokens_decoder[i].normalized:
-                        previous_token = token
-                        token = tokenizer.decode(tokenizer.encode(token, add_special_tokens=False))
-                        if previous_token != token:
-                            logger.info(f"{repr(previous_token)} is encoded and decoded back to {repr(token)} using AutoTokenizer")
-
-                    if tokenizer.added_tokens_decoder[i].special or self.does_token_look_special(token):
-                        toktypes.append(gguf.TokenType.CONTROL)
+            for i in range(vocab_size):
+                if i not in reverse_vocab:
+                    tokens.append(f"[PAD{i}]")
+                    toktypes.append(gguf.TokenType.UNUSED)
+                else:
+                    token = reverse_vocab[i]
+                    if token in added_vocab:
+                        if hasattr(tokenizer, "added_tokens_decoder") and i in tokenizer.added_tokens_decoder:
+                            if not tokenizer.added_tokens_decoder[i].normalized:
+                                previous_token = token
+                                token = tokenizer.decode(tokenizer.encode(token, add_special_tokens=False))
+                                if previous_token != token:
+                                    logger.info(f"{repr(previous_token)} normalized to {repr(token)}")
+                            if tokenizer.added_tokens_decoder[i].special or self.does_token_look_special(token):
+                                toktypes.append(gguf.TokenType.CONTROL)
+                            else:
+                                token = token.replace(b"\xe2\x96\x81".decode("utf-8"), " ")  # Normalize spaces
+                                toktypes.append(gguf.TokenType.USER_DEFINED)
+                        else:
+                            toktypes.append(gguf.TokenType.USER_DEFINED)
                     else:
-                        # NOTE: this was added for Gemma.
-                        # Encoding and decoding the tokens above isn't sufficient for this case.
-                        token = token.replace(b"\xe2\x96\x81".decode("utf-8"), " ")  # pre-normalize user-defined spaces
-                        toktypes.append(gguf.TokenType.USER_DEFINED)
+                        toktypes.append(gguf.TokenType.NORMAL)
+                    tokens.append(token)
+
+        elif "TikTokenTokenizer" in type(tokenizer).__name__:
+            # TikTokenTokenizer case
+            vocab_size = self.hparams.get("vocab_size", tokenizer.vocab_size)  # Use vocab_size attribute
+            tokens = [tokenizer.decode([i]) for i in range(vocab_size)]  # Decode token IDs to strings
+
+            # Handle special tokens
+            special_tokens = tokenizer.special_tokens_map
+            special_token_set = {v for val in special_tokens.values() for v in (val if isinstance(val, list) else [val])}
+
+            for i in range(vocab_size):
+                token = tokens[i]
+                if token in special_token_set or self.does_token_look_special(token):
+                    toktypes.append(gguf.TokenType.CONTROL)
+                elif token.strip() == "" or token.startswith("[PAD") or token.startswith("<|PAD"):
+                    toktypes.append(gguf.TokenType.UNUSED)
                 else:
                     toktypes.append(gguf.TokenType.NORMAL)
-                tokens.append(token)
 
+        else:
+            raise ValueError(f"Unsupported tokenizer type: {type(tokenizer).__name__}")
+
+        tokpre = self.get_vocab_base_pre(tokenizer)
         return tokens, toktypes, tokpre
 
     # NOTE: this function is generated by convert_hf_to_gguf_update.py
@@ -579,9 +599,6 @@ class Model:
         # NOTE: if you get an error here, you need to update the convert_hf_to_gguf_update.py script
         #       or pull the latest version of the model from Huggingface
         #       don't edit the hashes manually!
-        if chkhsh == "0ef9807a4087ebef797fc749390439009c3b9eda9ad1a097abbe738f486c01e5":
-            # ref: https://huggingface.co/meta-llama/Meta-Llama-3-8B
-            res = "llama-bpe"
         if chkhsh == "049ecf7629871e3041641907f3de7c733e4dbfdc736f57d882ba0b0845599754":
             # ref: https://huggingface.co/deepseek-ai/deepseek-llm-7b-base
             res = "deepseek-llm"
@@ -591,12 +608,12 @@ class Model:
         if chkhsh == "8aeee3860c56296a157a1fe2fad249ec40aa59b1bb5709f4ade11c4e6fe652ed":
             # ref: https://huggingface.co/tiiuae/falcon-7b
             res = "falcon"
-        if chkhsh == "9d032fcbd5501f4a38150912590928bfb36091efb5df11b8e2124b0390e3fb1e":
-            # ref: https://huggingface.co/tiiuae/Falcon3-7B-Base
-            res = "falcon3"
         if chkhsh == "0876d13b50744004aa9aeae05e7b0647eac9d801b5ba4668afc01e709c15e19f":
             # ref: https://huggingface.co/BAAI/bge-small-en-v1.5
             res = "bert-bge"
+        if chkhsh == "9d032fcbd5501f4a38150912590928bfb36091efb5df11b8e2124b0390e3fb1e":
+            # ref: https://huggingface.co/tiiuae/Falcon3-7B-Base
+            res = "falcon3"
         if chkhsh == "8e62295832751ca1e8f92f2226f403dea30dc5165e448b5bfa05af5340c64ec7":
             # ref: https://huggingface.co/BAAI/bge-large-zh-v1.5
             res = "bert-bge-large"
@@ -624,9 +641,6 @@ class Model:
         if chkhsh == "b6dc8df998e1cfbdc4eac8243701a65afe638679230920b50d6f17d81c098166":
             # ref: https://huggingface.co/allenai/OLMo-1.7-7B-hf
             res = "olmo"
-        if chkhsh == "a8594e3edff7c29c003940395316294b2c623e09894deebbc65f33f1515df79e":
-            # ref: https://huggingface.co/databricks/dbrx-base
-            res = "dbrx"
         if chkhsh == "c7699093ba4255a91e702aa38a596aa81669f3525dae06c2953267dde580f448":
             # ref: https://huggingface.co/jinaai/jina-reranker-v1-tiny-en
             res = "jina-v1-en"
@@ -648,9 +662,6 @@ class Model:
         if chkhsh == "7967bfa498ade6b757b064f31e964dddbb80f8f9a4d68d4ba7998fcf281c531a":
             # ref: https://huggingface.co/jinaai/jina-embeddings-v2-base-code
             res = "jina-v2-code"
-        if chkhsh == "b6e8e1518dc4305be2fe39c313ed643381c4da5db34a98f6a04c093f8afbe99b" or chkhsh == "81d72c7348a9f0ebe86f23298d37debe0a5e71149e29bd283904c02262b27516":
-            # ref: https://huggingface.co/THUDM/glm-4-9b-chat
-            res = "chatglm-bpe"
         if chkhsh == "7fc505bd3104ca1083b150b17d088b59534ede9bde81f0dd2090967d7fe52cee":
             # ref: https://huggingface.co/LumiOpen/Viking-7B
             res = "viking"
@@ -678,10 +689,7 @@ class Model:
         if chkhsh == "fcace8b9cac38ce847670c970cd5892031a753a1ef381abd1d9af00f713da085":
             # ref: https://huggingface.co/microsoft/phi-2
             res = "phi-2"
-        if chkhsh == "60824e3c0d9401f89943cbb2fff727f0e2d4c545ba4df2d6e4f09a6db0f5b450":
-            # ref: https://huggingface.co/facebook/chameleon-7b
-            res = "chameleon"
-        if chkhsh == "1431a23e583c97432bc230bff598d103ddb5a1f89960c8f1d1051aaa944d0b35":
+        if chkhsh == "68fa7e0a33050885cc10a2acfa4df354042188f0afa03b809f7a71c4cde6e373":
             # ref: https://huggingface.co/sapienzanlp/Minerva-7B-base-v1.0
             res = "minerva-7b"
         if chkhsh == "8b5a93ed704057481f240da0be7e7dca721d7f8f4755263b6807227a2cbeae65":
@@ -699,6 +707,10 @@ class Model:
         if chkhsh == "b3f499bb4255f8ca19fccd664443283318f2fd2414d5e0b040fbdd0cc195d6c5":
             # ref: https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B
             res = "deepseek-r1-qwen"
+        if chkhsh == "81212dc7cdb7e0c1074ca62c5aeab0d43c9f52b8a737be7b12a777c953027890":
+            # ref: https://huggingface.co/moonshotai/Moonlight-16B-A3B
+            res = "moonlight-a3b"
+
 
         if res is None:
             logger.warning("\n")
