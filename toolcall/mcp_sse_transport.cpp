@@ -27,7 +27,7 @@ toolcall::mcp_sse_transport::mcp_sse_transport(std::string server_uri)
       sse_thread_(),
       endpoint_(nullptr),
       endpoint_headers_(nullptr),
-      endpoint_errbuf_(CURL_ERROR_SIZE),
+      endpoint_errbuf_(CURL_ERROR_SIZE, '\0'),
       event_{"", "", ""},
       sse_buffer_(""),
       sse_cursor_(0),
@@ -169,8 +169,11 @@ void toolcall::mcp_sse_transport::on_message_event() {
 size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
     sse_buffer_.insert(sse_buffer_.end(), data, data + len);
 
-    for (; sse_cursor_ < sse_buffer_.length(); ++sse_cursor_) {
-        if (sse_buffer_[sse_cursor_] == '\r' || sse_buffer_[sse_cursor_] == '\n') {
+    while (sse_cursor_ < sse_buffer_.length()) {
+        bool last_was_cr = sse_buffer_[sse_cursor_] == '\r';
+        bool last_was_lf = sse_buffer_[sse_cursor_] == '\n';
+
+        if (last_was_cr || last_was_lf) {
             auto last = sse_buffer_.begin() + sse_cursor_;
 
             std::string line(sse_buffer_.begin(), last);
@@ -190,8 +193,10 @@ size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
                 sse_last_id_ = event_.id;
                 event_ = {"", "", ""};
 
-            } else if(line[0] != ':') { // : denotes a comment
-                // Set field/value
+            } else if(line[0] != ':') {
+                // Comments begin with ":" and
+                // Field/Value pairs are delimited by ":"
+
                 auto sep_index = line.find(':');
                 if (sep_index != std::string::npos) {
                     auto sep_i = line.begin() + sep_index;
@@ -205,8 +210,8 @@ size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
             }
 
             if (last++ != sse_buffer_.end()) { // Consume line-end
-                if (*last == '\n') {
-                    last ++; // In the CRLF case consume one more
+                if (last_was_cr && *last == '\n') {
+                    last ++;
                 }
                 sse_buffer_ = std::string(last, sse_buffer_.end());
 
@@ -214,6 +219,9 @@ size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
                 sse_buffer_.clear();
             }
             sse_cursor_ = 0; // Prepare to scan for next line-end
+
+        } else {
+            sse_cursor_ ++;
         }
     }
     return len;
