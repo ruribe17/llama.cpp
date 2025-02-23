@@ -6,7 +6,7 @@ import daisyuiThemes from 'daisyui/src/theming/themes';
 import { THEMES, CONFIG_DEFAULT, isDev } from '../Config';
 import { useNavigate } from 'react-router';
 
-export const PROMPT_JSON = [
+const PROMPT_JSON = [
   {
     name: '',
     lang: '',
@@ -18,7 +18,7 @@ export default function Header() {
   const navigate = useNavigate();
   const [selectedTheme, setSelectedTheme] = useState(StorageUtils.getTheme());
   const { setShowSettings } = useAppContext();
-  const [selectedConfig, setSelectedConfig] = useState<number>(0);
+  const [selectedConfig, setSelectedConfig] = useState<number>(-1);
 
   const setTheme = (theme: string) => {
     StorageUtils.setTheme(theme);
@@ -43,6 +43,9 @@ export default function Header() {
       // @ts-expect-error daisyuiThemes complains about index type, but it should work
       daisyuiThemes[selectedTheme]?.['color-scheme'] ?? 'auto'
     );
+  }, [selectedTheme]);
+
+  useEffect(() => {
     fetch('/prompts.config.json')
       .then((response) => response.json())
       .then((data) => {
@@ -55,8 +58,23 @@ export default function Header() {
           });
         }
         setPromptSelectOptions(prt);
+      })
+      .catch((error) => {
+        if (isDev) {
+          console.log(error);
+        }
       });
-  }, [selectedTheme]);
+  }, []);
+  useEffect(() => {
+    if (promptSelectConfig !== null && selectedConfig == -1) {
+      setSelectedConfig(0);
+      //selectPrompt(0);
+      if (isDev) console.log('Saving config', promptSelectConfig[0].config);
+      saveConfig(promptSelectConfig[0].config);
+      resetSettings();
+    }
+  }, [promptSelectConfig, selectedConfig, saveConfig, resetSettings]);
+
   const { isGenerating, viewingChat } = useAppContext();
   const isCurrConvGenerating = isGenerating(viewingChat?.conv.id ?? '');
 
@@ -226,13 +244,9 @@ export default function Header() {
                       aria-label={opt.value}
                       value={opt.value}
                       checked={selectedConfig === opt.key}
-                      onChange={(e) => {
-                        selectPrompt(opt.key);
-                        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-                        e.target.checked;
-                        console.log(e.target.checked);
-                        console.log(e);
-                      }}
+                      onChange={(e) =>
+                        e.target.checked && selectPrompt(opt.key)
+                      }
                     />
                   </li>
                 ))}
