@@ -32,6 +32,11 @@ export ARGS=(
     "$@"
 ) 
 
+./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 Coder 0.5B Q4_K_M"           --output ../qwenc0.5b.jsonl   --hf bartowski/Qwen2.5-Coder-0.5B-Instruct-GGUF:Q4_K_M   --ollama qwen2.5-coder:0.5b-instruct-q4_K_M
+./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 Coder 1.5B Q4_K_M"           --output ../qwenc1.5b.jsonl   --hf bartowski/Qwen2.5-Coder-1.5B-Instruct-GGUF:Q4_K_M   --ollama qwen2.5-coder:1.5b-instruct-q4_K_M
+./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 Coder 3B Q4_K_M"             --output ../qwenc3b.jsonl   --hf bartowski/Qwen2.5-Coder-3B-Instruct-GGUF:Q4_K_M   --ollama qwen2.5-coder:3b-instruct-q4_K_M
+./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 Coder 7B Q4_K_M"             --output ../qwenc7b.jsonl   --hf bartowski/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M   --ollama qwen2.5-coder:7b-instruct-q4_K_M
+./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 Coder 32B Q4_K_M"            --output ../qwenc32b.jsonl   --hf bartowski/Qwen2.5-Coder-32B-Instruct-GGUF:Q4_K_M   --ollama qwen2.5-coder:32B-instruct-q4_K_M
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 1.5B Q4_K_M"                 --output ../qwen1.5b.jsonl  --hf bartowski/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M       --ollama qwen2.5:1.5b-instruct-q4_K_M
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 3B Q4_K_M"                   --output ../qwen3b.jsonl    --hf bartowski/Qwen2.5-3B-Instruct-GGUF:Q4_K_M         --ollama qwen2.5:3b-instruct-q4_K_M
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 7B Q4_K_M"                   --output ../qwen7b.jsonl    --hf bartowski/Qwen2.5-7B-Instruct-GGUF:Q4_K_M         --ollama qwen2.5:7b-instruct-q4_K_M
