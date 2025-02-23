@@ -32,7 +32,6 @@ export default function Sidebar() {
         id="toggle-drawer"
         type="checkbox"
         className="drawer-toggle"
-        defaultChecked
       />
 
       <div className="drawer-side h-screen lg:h-screen z-50 lg:max-w-64">
