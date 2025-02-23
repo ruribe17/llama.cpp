@@ -27,7 +27,6 @@ import wget
 
 
 DEFAULT_HTTP_TIMEOUT = 12 if "LLAMA_SANITIZE" not in os.environ else 30
-REQUEST_RETRIES = int(os.environ.get('LLAMA_SERVER_TEST_REQUEST_RETRIES', '1'))
 
 class ServerResponse:
     headers: dict
@@ -195,6 +194,8 @@ class ServerProcess:
         self.process = subprocess.Popen(
             [str(arg) for arg in [server_path, *server_args]],
             creationflags=flags,
+            # stdout=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
             stdout=sys.stdout,
             stderr=sys.stdout,
             env={**os.environ, "LLAMA_CACHE": "tmp"} if "LLAMA_CACHE" not in os.environ else None,
@@ -240,30 +241,27 @@ class ServerProcess:
         timeout: float | None = None,
     ) -> ServerResponse:
         url = f"http://{self.server_host}:{self.server_port}{path}"
-        for remaining_attempts in range(REQUEST_RETRIES, 0, -1):
-            # print(f"#\ncurl {url} -d '{json.dumps(data, indent=2)}'\n")
-            parse_body = False
-            if method == "GET":
-                response = requests.get(url, headers=headers, timeout=timeout)
-                parse_body = True
-            elif method == "POST":
-                response = requests.post(url, headers=headers, json=data, timeout=timeout)
-                parse_body = True
-            elif method == "OPTIONS":
-                response = requests.options(url, headers=headers, timeout=timeout)
-            else:
-                raise ValueError(f"Unimplemented method: {method}")
+        # print(f"#\ncurl {url} -d '{json.dumps(data, indent=2)}'\n")
+        parse_body = False
+        if method == "GET":
+            response = requests.get(url, headers=headers, timeout=timeout)
+            parse_body = True
+        elif method == "POST":
+            response = requests.post(url, headers=headers, json=data, timeout=timeout)
+            parse_body = True
+        elif method == "OPTIONS":
+            response = requests.options(url, headers=headers, timeout=timeout)
+        else:
+            raise ValueError(f"Unimplemented method: {method}")
 
-            if (response is None or response.status_code != 200) and remaining_attempts > 0:
-                continue
-            result = ServerResponse()
-            result.headers = dict(response.headers)
-            result.status_code = response.status_code
-            result.body = response.json() if parse_body else None
-            # print("Response from server", json.dumps(result.body, indent=2))
-            return result
-
-        raise RuntimeError(f"Failed to make request to {url} after {retries} attempts")
+        if (response is None or response.status_code != 200) and remaining_attempts > 0:
+            continue
+        result = ServerResponse()
+        result.headers = dict(response.headers)
+        result.status_code = response.status_code
+        result.body = response.json() if parse_body else None
+        # print("Response from server", json.dumps(result.body, indent=2))
+        return result
 
 
     def make_stream_request(
