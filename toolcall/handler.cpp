@@ -158,7 +158,7 @@ static std::string tools_list_to_oai_json(const mcp::tools_list & tools) {
                 }
             });
     }
-    return tool_list;
+    return tool_list.dump(-1);
 }
 
 std::string toolcall::mcp_impl::tool_list() {
