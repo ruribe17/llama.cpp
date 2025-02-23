@@ -28,6 +28,7 @@ import wget
 
 DEFAULT_HTTP_TIMEOUT = 12 if "LLAMA_SANITIZE" not in os.environ else 30
 
+
 class ServerResponse:
     headers: dict
     status_code: int
