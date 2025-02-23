@@ -1,5 +1,6 @@
 #include "mcp_messages.h"
 #include <iostream>
+#include <log.h>
 
 using json = nlohmann::json;
 
@@ -106,20 +107,19 @@ void mcp::initialize_response::refreshResult() {
     result["protocolVersion"] = protoVersion();
     result["serverInfo"]["name"] = name();
     result["serverInfo"]["version"] = version();
-    result["capabilities"] = {};
 
+    json capabilities = json::object();
     for (auto cap = caps_.cbegin(); cap != caps_.cend(); ++cap) {
         json cap_json;
-
         if (cap->subscribe) {
             cap_json["subscribe"] = true;
         }
         if (cap->listChanged) {
             cap_json["listChanged"] = true;
         }
-
-        result["capabilities"][cap->name] = cap_json;
+        capabilities[cap->name] = cap_json;
     }
+    result["capabilities"] = capabilities;
 
     this->result(std::move(result));
 }
@@ -256,8 +256,36 @@ void mcp::tools_list_response::refreshResult() {
     this->result(result);
 }
 
+mcp::tools_list_response mcp::tools_list_response::fromJson(const nlohmann::json & j) {
+    mcp::tools_list tools;
+    for (const auto & t : j["result"]["tools"]) {
+        mcp::tool tool;
+        tool.tool_name = t["name"];
+        tool.tool_description = t["description"];
+        for (const auto & [key, value] : t["inputSchema"]["properties"].items()) {
+            mcp::tool::param param;
+            param.name = key;
+            param.type = value["type"];
+            param.description = value["description"];
+            tool.params.push_back(param);
+        }
+        if (t["inputSchema"].contains("required") && t["inputSchema"]["required"].is_array()) {
+            for (const auto & required : t["inputSchema"]["required"]) {
+                tool.required_params.push_back(required);
+            }
+        }
+        tools.push_back(std::move(tool));
+    }
+    std::string next_cursor = j["result"].value("nextCursor", "");
+    return tools_list_response(j["id"], std::move(tools), next_cursor);
+}
+
 static bool has_initialized_response(const nlohmann::json & data) {
-    return data["result"].contains("serverInfo");
+    return data["result"].contains("capabilities");
+}
+
+static bool has_tools_list_response(const nlohmann::json & data) {
+    return data["result"].contains("tools");
 }
 
 bool mcp::create_message(const std::string & data, mcp::message_variant & message) {
@@ -266,7 +294,11 @@ bool mcp::create_message(const std::string & data, mcp::message_variant & messag
     if (has_initialized_response(j)) {
         message = mcp::initialize_response::fromJson(j);
 
+    } else if (has_tools_list_response(j)) {
+        message = mcp::tools_list_response::fromJson(j);
+
     } else {
+        message = std::monostate();
         return false;
     }
     return true;

@@ -95,9 +95,10 @@ void toolcall::mcp_impl::initialize() {
 
     bool caps_received = false;
     mcp::capabilities caps;
-    on_response set_caps = [this, &caps] (const mcp::initialize_response & resp) {
+    on_response set_caps = [this, &caps, &caps_received] (const mcp::initialize_response & resp) {
         std::unique_lock<std::mutex> lock(tools_mutex_);
         caps = resp.capabilities();
+        caps_received = true;
         tools_populating_.notify_one();
     };
 

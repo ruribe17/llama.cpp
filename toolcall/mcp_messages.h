@@ -208,6 +208,8 @@ namespace mcp
         void next_cursor(std::string next_cursor);
         const std::string & next_cursor() const { return next_cursor_; }
 
+        static tools_list_response fromJson(const nlohmann::json & j);
+
     private:
         void refreshResult();
         tools_list tools_;
