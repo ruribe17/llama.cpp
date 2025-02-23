@@ -40,7 +40,6 @@ export ARGS=(
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 1.5B Q4_K_M"                 --output ../qwen1.5b.jsonl  --hf bartowski/Qwen2.5-1.5B-Instruct-GGUF:Q4_K_M       --ollama qwen2.5:1.5b-instruct-q4_K_M
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 3B Q4_K_M"                   --output ../qwen3b.jsonl    --hf bartowski/Qwen2.5-3B-Instruct-GGUF:Q4_K_M         --ollama qwen2.5:3b-instruct-q4_K_M
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 7B Q4_K_M"                   --output ../qwen7b.jsonl    --hf bartowski/Qwen2.5-7B-Instruct-GGUF:Q4_K_M         --ollama qwen2.5:7b-instruct-q4_K_M
-./scripts/tool_bench.py run ${ARGS[@]} --model "Qwen 2.5 Coder 7B Q4_K_M"             --output ../qwenc7b.jsonl   --hf bartowski/Qwen2.5-Coder-7B-Instruct-GGUF:Q4_K_M   --ollama qwen2.5-coder:7b-instruct-q4_K_M
 
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Llama 3.2 Instruct 1B Q4_K_M"         --output ../llama1b.jsonl   --hf bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_K_M       --ollama llama3.2:1b-instruct-q4_K_M
 ./scripts/tool_bench.py run ${ARGS[@]} --model "Llama 3.2 Instruct 3B Q4_K_M"         --output ../llama3b.jsonl   --hf bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M       --ollama llama3.2:3b-instruct-q4_K_M
