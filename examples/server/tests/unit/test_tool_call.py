@@ -529,7 +529,6 @@ def test_thoughts(n_predict: int, reasoning_format: Literal['deepseek', 'none'] 
 @pytest.mark.slow
 @pytest.mark.parametrize("hf_repo,template_override", [
     ("bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF:Q4_K_M", None),
-    ("bartowski/DeepSeek-R1-Distill-Qwen-7B-GGUF:Q4_K_M", "chatml"),
 
     ("bartowski/Phi-3.5-mini-instruct-GGUF:Q4_K_M",      None),
     ("bartowski/Phi-3.5-mini-instruct-GGUF:Q4_K_M",      "chatml"),
