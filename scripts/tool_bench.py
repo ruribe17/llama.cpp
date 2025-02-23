@@ -31,11 +31,9 @@
 # ///
 from contextlib import contextmanager
 from pathlib import Path
-from pathlib import Path
 import re
 from statistics import mean, median
-from typing import Annotated, List, Optional
-from typing import Dict, List, Tuple, Set, Any
+from typing import Annotated, Dict, List, Optional, Tuple
 import atexit
 import json
 import logging
@@ -49,9 +47,9 @@ import time
 import typer
 
 sys.path.insert(0, Path(__file__).parent.parent.as_posix())
-print(sys.path)
-from examples.server.tests.utils import ServerProcess
-from examples.server.tests.unit.test_tool_call import TIMEOUT_SERVER_START, do_test_calc_result, do_test_hello_world, do_test_weather
+if True:
+    from examples.server.tests.utils import ServerProcess # type: ignore
+    from examples.server.tests.unit.test_tool_call import TIMEOUT_SERVER_START, do_test_calc_result, do_test_hello_world, do_test_weather # type: ignore
 
 
 @contextmanager
@@ -73,6 +71,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = typer.Typer()
+
 
 @app.command()
 def plot(files: List[Path], output: Optional[Path] = None, test_regex: Optional[str] = None, server_regex: Optional[str] = None):
@@ -146,14 +145,12 @@ def plot(files: List[Path], output: Optional[Path] = None, test_regex: Optional[
     tests = list(sorted(tests))
     server_names = list(sorted(server_names))
 
-
     logger.info(f"Processed {len(lines)} lines")
     logger.info(f"Found {len(data_dict)} valid data points")
     logger.info(f"Models: {models}")
     logger.info(f"Temperatures: {temps}")
     logger.info(f"Tests: {tests}")
     logger.info(f"Servers: {server_names}")
-
 
     matrix = []
     index = []
@@ -197,6 +194,7 @@ def plot(files: List[Path], output: Optional[Path] = None, test_regex: Optional[
         logger.info(f"Plot saved to {output}")
     else:
         plt.show()
+
 
 @app.command()
 def run(
@@ -259,8 +257,10 @@ def run(
                 print(f"Running {test_name} ({server_name}, {model}): ", file=sys.stderr, flush=True)
                 for i in range(n):
                     start_time = time.time()
+
                     def elapsed():
                         return time.time() - start_time
+
                     try:
                         test(server)
                         success_times.append(elapsed())
@@ -273,6 +273,8 @@ def run(
                         failure_count += 1
                         failure_times.append(elapsed())
                         failures.append(str(e))
+                        # import traceback
+                        # traceback.print_exc()
                 print('\n', file=sys.stderr, flush=True)
                 output_file.write(json.dumps({**output_kwargs, **dict(
                     model=model,
@@ -351,6 +353,7 @@ def run(
                             num_ctx = n_ctx,
                         ),
                     )
+
 
 if __name__ == "__main__":
     app()

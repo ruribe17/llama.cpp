@@ -1370,7 +1370,7 @@ static common_chat_params common_chat_params_init_hermes_2_pro(const common_chat
             }));
             tool_call_alts.push_back(builder.add_rule(
                 name + "-function-tag",
-                "\"<function\" ( \"=" + name + "\" | \" name=\\\"" + name + "\\\"\" ) \">\" space " + 
+                "\"<function\" ( \"=" + name + "\" | \" name=\\\"" + name + "\\\"\" ) \">\" space " +
                 builder.add_schema(name + "-args", parameters) + " "
                 "\"</function>\" space"));
 
@@ -1455,7 +1455,7 @@ static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input) 
     );
 
     try {
-    
+
         common_chat_msg msg;
         msg.role = "assistant";
 
@@ -1467,7 +1467,7 @@ static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input) 
             if (std::regex_search(it, end, match, open_regex)) {
                 // Add content before the match
                 msg.content += std::string(it, match[0].first);
-                
+
                 auto block_start = match[1].str();
                 std::string block_end = block_start.empty() ? "" : "```";
 
@@ -1479,10 +1479,10 @@ static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input) 
                     auto json_it = match[3].first;
                     auto tool_call = parse_json(json_it, end);
                     if (tool_call && tool_call->contains("name") && tool_call->contains("arguments")) {
-        
+
                         msg.tool_calls.emplace_back(process_tool_call(*tool_call));
                         it = json_it;  // Move iterator past parsed JSON
-                        
+
                         // Handle close tags
                         consume_spaces(it, end);
                         if (!close_tag.empty() && !parse_literal(it, end, close_tag)) {
@@ -1514,7 +1514,7 @@ static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input) 
                             {"arguments", *arguments},
                         }));
                         it = json_it;  // Move iterator past parsed JSON
-                        
+
                         // Handle close tags
                         consume_spaces(it, end);
                         if (!close_tag.empty() && !parse_literal(it, end, close_tag)) {
