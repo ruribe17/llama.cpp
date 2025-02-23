@@ -242,7 +242,7 @@ def run(
 
             tests = {}
             if test_hello_world:
-                tests["hello world"] = lambda server: do_test_hello_world(server, None, **request_kwargs)
+                tests["hello world"] = lambda server: do_test_hello_world(server, **request_kwargs)
             if test_weather:
                 tests["weather"] = lambda server: do_test_weather(server, **request_kwargs)
             if test_calc_result:
