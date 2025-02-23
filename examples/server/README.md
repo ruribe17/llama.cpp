@@ -246,8 +246,8 @@ by server.cpp. This is done by building `llama-server` as described in the
 [build](#build) section above.
 
 Prompt and other configuration parameters are easily customisable with the json file `public/prompts.config.json`.
+You can rename `public/prompts.config.json.example` to `public/prompts.config.json` to make it work.
 Examples from https://github.com/f/awesome-chatgpt-prompts have been already written in it.
-
 
 NOTE: if you are using the vite dev server, you can change the API base URL to llama.cpp. To do that, run this code snippet in browser's console:
 
