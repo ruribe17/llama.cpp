@@ -2,9 +2,15 @@
 #include "mcp_sse_transport.h"
 #include <log.h>
 #include <chrono>
+#include <regex>
 
 const int toolcall::mcp_sse_transport::EndpointReceivedTimoutSeconds = 5;
 const int toolcall::mcp_sse_transport::StartTimeoutSeconds = 8;
+
+static bool starts_with(const std::string & str, const std::string & prefix) {
+    return str.size() >= prefix.size()
+        && str.compare(0, prefix.size(), prefix) == 0;
+}
 
 toolcall::mcp_sse_transport::~mcp_sse_transport() {
     if (endpoint_headers_) {
@@ -110,7 +116,17 @@ void toolcall::mcp_sse_transport::parse_field_value(std::string field, std::stri
     }
 }
 
+static std::string uri_base (const std::string & uri) {
+    std::regex uri_regex(R"(^(https?:\/\/[^\/?#]+))");
+    std::smatch match;
+    if (std::regex_search(uri, match, uri_regex)) {
+        return match[1];
+    }
+    return uri;
+}
+
 void toolcall::mcp_sse_transport::on_endpoint_event() {
+    LOG_DBG("on_endpoint_event");
     endpoint_ = curl_easy_init();
     if (! endpoint_) {
         LOG_ERR("SSE: Failed to create endpoint handle");
@@ -118,7 +134,20 @@ void toolcall::mcp_sse_transport::on_endpoint_event() {
         return;
     }
 
-    curl_easy_setopt(endpoint_, CURLOPT_URL, event_.data.c_str());
+    std::string endpoint_uri;
+    bool is_absolute = starts_with(event_.data, "http");
+    if (is_absolute) {
+        endpoint_uri = event_.data;
+
+    } else {
+        auto endpoint_uri = uri_base(server_uri_);
+        if (event_.data[0] != '/') {
+            endpoint_uri += '/';
+        }
+        endpoint_uri += event_.data;
+    }
+
+    curl_easy_setopt(endpoint_, CURLOPT_URL, endpoint_uri.c_str());
 
     endpoint_headers_ =
         curl_slist_append(endpoint_headers_, "Content-Type: application/json");
@@ -147,7 +176,9 @@ size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
             std::string line(sse_buffer_.begin(), last);
             if (line.empty()) { // Dispatch event
                 if (event_.type == "endpoint") {
-                    on_endpoint_event();
+                    if (! endpoint_) {
+                        on_endpoint_event();
+                    }
 
                 } else if(event_.type == "message") {
                     on_message_event();
@@ -164,9 +195,10 @@ size_t toolcall::mcp_sse_transport::sse_read(const char * data, size_t len) {
                 auto sep_index = line.find(':');
                 if (sep_index != std::string::npos) {
                     auto sep_i = line.begin() + sep_index;
-
+                    auto val_i = sep_i + (*(sep_i + 1) == ' ' ? 2 : 1); // If value starts with a U+0020 SPACE
+                                                                        // character, remove it from value.
                     std::string field (line.begin(), sep_i);
-                    std::string value (sep_i + 1, line.end());
+                    std::string value (val_i, line.end());
 
                     parse_field_value(std::move(field), std::move(value));
                 }
@@ -276,7 +308,8 @@ void toolcall::mcp_sse_transport::sse_run() {
         curl_easy_cleanup(sse);
     }
 
-    lock.lock(); // Wait for pending send calls to complete
+    if (! lock.owns_lock())
+        lock.lock(); // Wait for pending send calls to complete
 
     if (endpoint_headers_) {
         curl_slist_free_all(endpoint_headers_);
