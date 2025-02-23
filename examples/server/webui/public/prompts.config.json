@@ -29,8 +29,14 @@
         "top_p": 0.95,
         "typical_p": 1,
         "xtc_probability": 0,
-        "xtc_threshold": 0.1
-      }
+        "xtc_threshold": 0.1,
+        "questionIdeas": [
+          "Who are you, what can you do?",
+          "What to do, what to see, what to visit in Italy?",
+          "Write a simple python function that\n1. Ask me for a number in mile\n2. It converts miles to kilometers"
+        ]
+      },
+      "for_devs": "TRUE"
     },
     {
       "name": "Ethereum Developer",

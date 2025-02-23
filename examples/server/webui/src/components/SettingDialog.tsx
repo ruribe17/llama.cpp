@@ -61,7 +61,7 @@ interface SettingFieldCustom {
   component:
     | string
     | React.FC<{
-        value: string | boolean | number;
+        value: string | boolean | number | never[] | string[];
         onChange: (value: string) => void;
       }>;
 }

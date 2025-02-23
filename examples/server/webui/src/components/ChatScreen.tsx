@@ -70,7 +70,6 @@ const scrollToBottom = throttle(
   },
   80
 );
-
 export default function ChatScreen() {
   const {
     viewingChat,
@@ -82,7 +81,9 @@ export default function ChatScreen() {
     replaceMessageAndGenerate,
   } = useAppContext();
   const [inputMsg, setInputMsg] = useState('');
+  const [automaticSend, setAutomaticSend] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { config } = useAppContext();
 
   const { extraContext, clearExtraContext } = useVSCodeContext(
     inputRef,
@@ -139,6 +140,40 @@ export default function ChatScreen() {
     // OK
     clearExtraContext();
   };
+  useEffect(() => {
+    const sendMsg = async () => {
+      if (inputMsg.trim().length === 0) return;
+      const lastInpMsg = inputMsg;
+      setInputMsg('');
+      scrollToBottom(false);
+      setCurrNodeId(-1);
+      // get the last message node
+      const lastMsgNodeId = messages.at(-1)?.msg.id ?? null;
+      if (
+        !(await sendMessage(
+          currConvId,
+          lastMsgNodeId,
+          inputMsg,
+          undefined,
+          onChunk
+        ))
+      ) {
+        setInputMsg(lastInpMsg);
+      }
+    };
+    if (automaticSend) {
+      setAutomaticSend(false);
+      sendMsg();
+    }
+  }, [
+    automaticSend,
+    clearExtraContext,
+    currConvId,
+    inputMsg,
+    isGenerating,
+    messages,
+    sendMessage,
+  ]);
 
   const handleEditMessage = async (msg: Message, content: string) => {
     if (!viewingChat) return;
@@ -202,10 +237,36 @@ export default function ChatScreen() {
       >
         {/* chat messages */}
         <div id="messages-list" className="grow">
-          <div className="mt-auto flex justify-center">
-            {/* placeholder to shift the message to the bottom */}
-            {viewingChat ? '' : 'Send a message to start'}
-          </div>
+          {/* placeholder to shift the message to the bottom */}
+          {viewingChat ? (
+            ''
+          ) : (
+            <div className="flex items-center text-center sm:text-left align-middle h-full mx-auto">
+              {config.questionIdeas.length > 0 ? (
+                <div className="w-full text-center">
+                  <div className="">Here are some suggestions for you:</div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3">
+                    {[...config.questionIdeas].map((idea: string, index) => (
+                      <button
+                        key={index}
+                        style={{ whiteSpace: 'pre-wrap' }}
+                        className="btn m-2 sd:m-4 sd:p-2"
+                        onClick={() => {
+                          setInputMsg(idea);
+                          setAutomaticSend(true);
+                        }}
+                      >
+                        {idea}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="">Send a message to start</div>
+                </div>
+              ) : (
+                <div className="">Send a message to start</div>
+              )}
+            </div>
+          )}
           {[...messages, ...pendingMsgDisplay].map((msg) => (
             <ChatMessage
               key={msg.msg.id}
