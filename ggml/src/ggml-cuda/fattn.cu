@@ -252,7 +252,6 @@ void ggml_cuda_flash_attn_ext(ggml_backend_cuda_context & ctx, ggml_tensor * dst
     const int cc = ggml_cuda_info().devices[ggml_cuda_get_device()].cc;
     const enum ggml_prec prec = ggml_flash_attn_ext_get_prec(KQV);
 
-    // On AMD the tile kernels perform poorly, use the vec kernel instead:
     if (cc >= GGML_CUDA_CC_OFFSET_AMD) {
 #if defined(GGML_HIP_ROCWMMA_FATTN) && defined(FP16_MMA_AVAILABLE)
         if (fp16_mma_available(cc) && dst->src[0]->ne[1] > 8) {
@@ -261,6 +260,7 @@ void ggml_cuda_flash_attn_ext(ggml_backend_cuda_context & ctx, ggml_tensor * dst
         }
 #endif // defined(GGML_HIP_ROCWMMA_FATTN) && defined(FP16_MMA_AVAILABLE)
 
+        // On AMD the tile kernels perform poorly, use the vec kernel instead:
         if (prec == GGML_PREC_DEFAULT && fast_fp16_available(cc)) {
             ggml_cuda_flash_attn_ext_vec_f16(ctx, dst);
         } else {
