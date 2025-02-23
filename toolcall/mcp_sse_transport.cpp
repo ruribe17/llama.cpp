@@ -82,7 +82,7 @@ static size_t sse_callback(char * data, size_t size, size_t nmemb, void * client
 }
 
 void toolcall::mcp_sse_transport::parse_field_value(std::string field, std::string value) {
-    LOG_DBG("SSE: field \"%s\"; value \"%s\"", field.c_str(), value.c_str());
+    LOG_DBG("SSE: field \"%s\"; value \"%s\"\n", field.c_str(), value.c_str());
 
     if (field == "event") {
         // Set the event type buffer to field value.
@@ -126,7 +126,9 @@ static std::string uri_base (const std::string & uri) {
 }
 
 void toolcall::mcp_sse_transport::on_endpoint_event() {
-    LOG_DBG("on_endpoint_event");
+    LOG_DBG("on_endpoint_event\n");
+    event_.data.erase(event_.data.end() - 1); // Event data has trailing newline that will impact URI
+
     endpoint_ = curl_easy_init();
     if (! endpoint_) {
         LOG_ERR("SSE: Failed to create endpoint handle");
@@ -140,13 +142,14 @@ void toolcall::mcp_sse_transport::on_endpoint_event() {
         endpoint_uri = event_.data;
 
     } else {
-        auto endpoint_uri = uri_base(server_uri_);
+        endpoint_uri = uri_base(server_uri_);
         if (event_.data[0] != '/') {
             endpoint_uri += '/';
         }
         endpoint_uri += event_.data;
     }
 
+    LOG_INF("SSE: using endpoint \"%s\"\n", endpoint_uri.c_str());
     curl_easy_setopt(endpoint_, CURLOPT_URL, endpoint_uri.c_str());
 
     endpoint_headers_ =
