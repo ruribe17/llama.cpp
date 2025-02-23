@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <sstream>
+#include <variant>
 
 #ifdef _WIN32
 #define DIRECTORY_SEPARATOR '\\'
