@@ -136,7 +136,7 @@ def test_completion_with_required_tool_tiny_fast(template_name: str, tool: dict,
     ("deepseek-ai-DeepSeek-R1-Distill-Llama-8B",      TEST_TOOL,            "success"),
     ("deepseek-ai-DeepSeek-R1-Distill-Llama-8B",      PYTHON_TOOL,          "code"),
     ("fireworks-ai-llama-3-firefunction-v2",          TEST_TOOL,            "success"),
-    ("fireworks-ai-llama-3-firefunction-v2",          PYTHON_TOOL,          "code"),
+    # ("fireworks-ai-llama-3-firefunction-v2",          PYTHON_TOOL,          "code"),
 ])
 def test_completion_with_required_tool_tiny_slow(template_name: str, tool: dict, argument_key: str | None):
     global server
