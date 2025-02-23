@@ -194,8 +194,6 @@ class ServerProcess:
         self.process = subprocess.Popen(
             [str(arg) for arg in [server_path, *server_args]],
             creationflags=flags,
-            # stdout=subprocess.DEVNULL,
-            # stderr=subprocess.DEVNULL,
             stdout=sys.stdout,
             stderr=sys.stdout,
             env={**os.environ, "LLAMA_CACHE": "tmp"} if "LLAMA_CACHE" not in os.environ else None,
@@ -241,7 +239,6 @@ class ServerProcess:
         timeout: float | None = None,
     ) -> ServerResponse:
         url = f"http://{self.server_host}:{self.server_port}{path}"
-        # print(f"#\ncurl {url} -d '{json.dumps(data, indent=2)}'\n")
         parse_body = False
         if method == "GET":
             response = requests.get(url, headers=headers, timeout=timeout)
@@ -253,16 +250,12 @@ class ServerProcess:
             response = requests.options(url, headers=headers, timeout=timeout)
         else:
             raise ValueError(f"Unimplemented method: {method}")
-
-        if (response is None or response.status_code != 200) and remaining_attempts > 0:
-            continue
         result = ServerResponse()
         result.headers = dict(response.headers)
         result.status_code = response.status_code
         result.body = response.json() if parse_body else None
-        # print("Response from server", json.dumps(result.body, indent=2))
+        print("Response from server", json.dumps(result.body, indent=2))
         return result
-
 
     def make_stream_request(
         self,
