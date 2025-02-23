@@ -1,20 +1,20 @@
 #!/usr/bin/env uv run
 '''
     Simplistic tool call benchmarks for llama-server and ollama.
-    
+
     Essentially runs the tests at server/examples/server/tests/unit/test_tool_call.py N times, at different temperatures and on different backends (current llama-server, baseline llama-server and ollama),
     and plots the results of multiple runs (from same .jsonl file or multiple ones) as a success rate heatmap.
-    
+
     Simple usage example:
-    
+
         cmake -B build -DLLAMA_CURL=1 && cmake --build build --config Release -j -t llama-server
-        
+
         ./scripts/tool_bench.py run --n 30 --temp -1 --temp 0 --temp 1 --model "Qwen 2.5 1.5B Q4_K_M"      --output qwen1.5b.jsonl  --hf bartowski/Qwen2.5-1.5B-Instruct-GGUF      --ollama qwen2.5:1.5b-instruct-q4_K_M
         ./scripts/tool_bench.py run --n 30 --temp -1 --temp 0 --temp 1 --model "Qwen 2.5 Coder 7B Q4_K_M"  --output qwenc7b.jsonl   --hf bartowski/Qwen2.5-Coder-7B-Instruct-GGUF  --ollama qwen2.5-coder:7b
 
         ./scripts/tool_bench.py plot *.jsonl                         # Opens window w/ heatmap
         ./scripts/tool_bench.py plot qwen*.jsonl  --output qwen.png  # Saves heatmap to qwen.png
-    
+
     (please see ./scripts/tool_bench.sh for a more complete example)
 '''
 # /// script
@@ -295,7 +295,7 @@ def run(
 
         for t in [None] if temp is None else [t if t >= 0 else None for t in temp]:
             if hf is not None:
-                
+
                 servers: list[Tuple[str, Optional[str]]] = [('llama-server', None)]
                 if llama_baseline is not None:
                     servers.append(('llama-server (baseline)', llama_baseline))

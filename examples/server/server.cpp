@@ -405,7 +405,7 @@ struct server_task {
                             break;
                         }
                         case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN:
-                        case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START: 
+                        case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START:
                         {
                             const std::string & pattern = t.at("value");
                             params.sampling.grammar_triggers.push_back({type, pattern});
