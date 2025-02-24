@@ -222,6 +222,54 @@ namespace mcp
             : notification("notifications/tools/list_changed") {}
     };
 
+    struct tool_arg {
+        std::string name;
+        std::string value;
+    };
+
+    using tool_arg_list = std::vector<tool_arg>;
+
+    class tools_call_request : public request {
+    public:
+        tools_call_request(nlohmann::json id, std::string name, tool_arg_list args = tool_arg_list());
+
+        void name(std::string name);
+        const std::string & name() const { return name_; }
+
+        void args(tool_arg_list args);
+        const tool_arg_list args() const { return args_; }
+
+    private:
+        void refreshParams();
+        std::string name_;
+        tool_arg_list args_;
+    };
+
+    struct tool_result {
+        std::string type; // text, image, audio, or resource
+        std::string value;
+        std::optional<std::string> mime_type; // Only for: image, audio, and resource
+        std::optional<std::string> uri;       // Only for: resource
+    };
+
+    using tool_result_list = std::vector<tool_result>;
+
+    class tools_call_response : public response {
+    public:
+        tools_call_response(nlohmann::json id, tool_result_list result = tool_result_list(), bool error = false);
+
+        void tool_result(tool_result_list result);
+        const tool_result_list & tool_result() const { return tool_result_; }
+
+        void tool_error(bool error);
+        bool tool_error() const { return error_; }
+
+    private:
+        void refreshResult();
+        tool_result_list tool_result_;
+        bool error_;
+    };
+
     using message_variant =
         std::variant<std::monostate,
                      initialize_request,
@@ -229,7 +277,9 @@ namespace mcp
                      initialized_notification,
                      tools_list_request,
                      tools_list_response,
-                     tools_list_changed_notification>;
+                     tools_list_changed_notification,
+                     tools_call_request,
+                     tools_call_response>;
 
     bool create_message(const std::string & data, message_variant & message);
 }

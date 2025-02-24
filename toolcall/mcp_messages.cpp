@@ -280,6 +280,82 @@ mcp::tools_list_response mcp::tools_list_response::fromJson(const nlohmann::json
     return tools_list_response(j["id"], std::move(tools), next_cursor);
 }
 
+mcp::tools_call_request::tools_call_request(nlohmann::json id, std::string name, tool_arg_list args)
+    : request(id, "tools/call"), name_(std::move(name)), args_(std::move(args))
+{
+    refreshParams();
+}
+
+void mcp::tools_call_request::name(std::string name) {
+    name_ = std::move(name);
+    refreshParams();
+}
+
+void mcp::tools_call_request::args(mcp::tool_arg_list args) {
+    args_ = std::move(args);
+    refreshParams();
+}
+
+void mcp::tools_call_request::refreshParams() {
+    json params = json::object();
+    params["name"] = name_;
+    if (! args_.empty()) {
+        json args = json::object();
+        for (const auto & arg : args_) {
+            args[arg.name] = arg.value;
+        }
+        params["arguments"] = args;
+    }
+    this->params(params);
+}
+
+mcp::tools_call_response::tools_call_response(nlohmann::json id, tool_result_list result, bool error)
+    : response(id), tool_result_(std::move(result)), error_(error)
+{
+    refreshResult();
+}
+
+void mcp::tools_call_response::tool_result(mcp::tool_result_list result) {
+    tool_result_ = std::move(result);
+    refreshResult();
+}
+
+void mcp::tools_call_response::tool_error(bool error) {
+    error_ = error;
+    refreshResult();
+}
+
+void mcp::tools_call_response::refreshResult() {
+    json result = json::object();
+    result["isError"] = error_;
+    json content = json::array();
+    for (const auto & res : tool_result_) {
+        json r;
+        r["type"] = res.type;
+        if (res.type == "text") {
+            r["text"] = res.value;
+
+        } else if (res.type == "image" || res.type == "audio") {
+            r["data"] = res.value;
+            r["mimeType"] = res.mime_type.value(); // throws
+
+        } else if (res.type == "resource") {
+            json rr;
+            rr["uri"] = res.uri.value(); // throws
+            rr["mimeType"] = res.mime_type.value(); //throws
+            rr["text"] = res.value;
+
+            r["resource"] = rr;
+
+        } else {
+            // throw
+        }
+        content.push_back(r);
+    }
+    result["content"] = content;
+    this->result(std::move(result));
+}
+
 static bool has_initialized_response(const nlohmann::json & data) {
     return data["result"].contains("capabilities");
 }
