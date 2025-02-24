@@ -668,7 +668,7 @@ struct test_case {
             return size;
         };
         for (int i = 0; i < ggml_graph_n_nodes(gf); ++i) {
-            if (ggml_is_view_op(ggml_graph_node(gf, i)->op) || ggml_graph_node(gf, i) == out) {
+            if (ggml_backend_is_view_op(ggml_graph_node(gf, i)->op) || ggml_graph_node(gf, i) == out) {
                 continue;
             }
             mem += tensor_op_size(ggml_graph_node(gf, i));
@@ -1112,7 +1112,7 @@ struct test_get_rows : public test_case {
     void initialize_tensors(ggml_context * ctx) override {
         for (ggml_tensor * t = ggml_get_first_tensor(ctx); t != NULL; t = ggml_get_next_tensor(ctx, t)) {
             if (t->type == GGML_TYPE_I32) {
-                if (ggml_is_view_op(t->op)) { continue; }
+                if (ggml_backend_is_view_op(t->op)) { continue; }
                 // rows
                 std::vector<int> data(r*b);
                 for (int i = 0; i < r*b; i++) {
@@ -1165,7 +1165,7 @@ struct test_get_rows_back : public test_case {
     void initialize_tensors(ggml_context * ctx) override {
         for (ggml_tensor * t = ggml_get_first_tensor(ctx); t != NULL; t = ggml_get_next_tensor(ctx, t)) {
             if (t->type == GGML_TYPE_I32) {
-                if (ggml_is_view_op(t->op)) { continue; }
+                if (ggml_backend_is_view_op(t->op)) { continue; }
                 // rows
                 std::vector<int> data(r*b);
                 for (int i = 0; i < r*b; i++) {
@@ -2037,7 +2037,7 @@ struct test_mul_mat_id : public test_case {
         std::default_random_engine rng(rd());
         for (ggml_tensor * t = ggml_get_first_tensor(ctx); t != NULL; t = ggml_get_next_tensor(ctx, t)) {
             if (t->type == GGML_TYPE_I32) {
-                if (ggml_is_view_op(t->op)) { continue; }
+                if (ggml_backend_is_view_op(t->op)) { continue; }
                 // ids
                 for (int64_t r = 0; r < ggml_nrows(t); r++) {
                     std::vector<int32_t> data(t->ne[0]);

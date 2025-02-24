@@ -600,7 +600,7 @@ static struct ggml_tensor * ggml_dup_tensor_layout(struct ggml_context * ctx, co
     return dup;
 }
 
-bool ggml_is_view_op(enum ggml_op op) {
+bool ggml_backend_is_view_op(enum ggml_op op) {
     return op == GGML_OP_VIEW || op == GGML_OP_RESHAPE || op == GGML_OP_PERMUTE || op == GGML_OP_TRANSPOSE;
 }
 
@@ -808,7 +808,7 @@ static void ggml_backend_sched_print_assignments(ggml_backend_sched_t sched, str
             cur_split++;
         }
         struct ggml_tensor * node = graph->nodes[i];
-        if (ggml_is_view_op(node->op)) {
+        if (ggml_backend_is_view_op(node->op)) {
             continue;
         }
         if (sched->debug > 1) {
@@ -924,7 +924,7 @@ static void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct gg
         int cur_backend_id = -1;
         for (int i = 0; i < graph->n_nodes; i++) {
             struct ggml_tensor * node = graph->nodes[i];
-            if (ggml_is_view_op(node->op)) {
+            if (ggml_backend_is_view_op(node->op)) {
                 continue;
             }
             int * node_backend_id = &tensor_backend_id(node);
@@ -945,7 +945,7 @@ static void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct gg
         int cur_backend_id = -1;
         for (int i = graph->n_nodes - 1; i >= 0; i--) {
             struct ggml_tensor * node = graph->nodes[i];
-            if (ggml_is_view_op(node->op)) {
+            if (ggml_backend_is_view_op(node->op)) {
                 continue;
             }
             int * node_backend_id = &tensor_backend_id(node);
@@ -966,7 +966,7 @@ static void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct gg
         int cur_backend_id = -1;
         for (int i = 0; i < graph->n_nodes; i++) {
             struct ggml_tensor * node = graph->nodes[i];
-            if (ggml_is_view_op(node->op)) {
+            if (ggml_backend_is_view_op(node->op)) {
                 continue;
             }
             int * node_backend_id = &tensor_backend_id(node);
@@ -982,7 +982,7 @@ static void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct gg
         int cur_backend_id = -1;
         for (int i = graph->n_nodes - 1; i >= 0; i--) {
             struct ggml_tensor * node = graph->nodes[i];
-            if (ggml_is_view_op(node->op)) {
+            if (ggml_backend_is_view_op(node->op)) {
                 continue;
             }
             int * node_backend_id = &tensor_backend_id(node);
@@ -1004,7 +1004,7 @@ static void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct gg
     // only nodes that could not be assigned during expansion due to the backend not supporting the op should be unassigned at this point
     for (int i = 0; i < graph->n_nodes; i++) {
         struct ggml_tensor * node = graph->nodes[i];
-        if (ggml_is_view_op(node->op)) {
+        if (ggml_backend_is_view_op(node->op)) {
             continue;
         }
         int * node_backend_id = &tensor_backend_id(node);
@@ -1090,7 +1090,7 @@ static void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct gg
         int i = 0;
         for (; i < graph->n_nodes; i++) {
             struct ggml_tensor * node = graph->nodes[i];
-            if (!ggml_is_view_op(node->op)) {
+            if (!ggml_backend_is_view_op(node->op)) {
                 split->backend_id = tensor_backend_id(node);
                 break;
             }
@@ -1101,7 +1101,7 @@ static void ggml_backend_sched_split_graph(ggml_backend_sched_t sched, struct gg
         for (; i < graph->n_nodes; i++) {
             struct ggml_tensor * node = graph->nodes[i];
 
-            if (ggml_is_view_op(node->op)) {
+            if (ggml_backend_is_view_op(node->op)) {
                 continue;
             }
 
@@ -1835,7 +1835,7 @@ bool ggml_backend_compare_graph_backend(ggml_backend_t backend1, ggml_backend_t 
         ggml_backend_graph_compute(backend1, &g1v);
         ggml_backend_graph_compute(backend2, &g2v);
 
-        if (ggml_is_view_op(t1->op)) {
+        if (ggml_backend_is_view_op(t1->op)) {
             continue;
         }
 
