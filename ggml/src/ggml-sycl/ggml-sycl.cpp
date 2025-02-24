@@ -44,6 +44,7 @@
 
 static bool g_sycl_loaded = false;
 int g_ggml_sycl_debug = 0;
+int g_ggml_sycl_disable_optimize = 0;
 
 static ggml_sycl_device_info ggml_sycl_init() {
     ggml_sycl_device_info info = {};
@@ -187,7 +188,7 @@ static void ggml_check_sycl() try {
     static bool initialized = false;
 
     if (!initialized) {
-        g_ggml_sycl_debug = get_sycl_env("GGML_SYCL_DEBUG", 0);        
+        g_ggml_sycl_debug = get_sycl_env("GGML_SYCL_DEBUG", 0);
         g_ggml_sycl_disable_optimize= get_sycl_env("GGML_SYCL_DISABLE_OPT", 0);
         GGML_SYCL_DEBUG("[SYCL] call ggml_check_sycl\n");
         GGML_LOG_INFO("Running with Environment Variables:\n");
