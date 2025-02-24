@@ -2445,7 +2445,7 @@ const char * clip_patch_merge_type(const struct clip_ctx * ctx) {
 }
 
 const int32_t * clip_image_grid(const struct clip_ctx * ctx) {
-    if(ctx->vision_model.hparams.image_grid_pinpoints.size()) {
+    if (ctx->vision_model.hparams.image_grid_pinpoints.size()) {
         return &ctx->vision_model.hparams.image_grid_pinpoints.front();
     }
     return nullptr;
@@ -2992,12 +2992,12 @@ int get_deepest_feature_layer(const struct clip_ctx * ctx) {
     }
 
     // If we set explicit vision feature layers, only go up to the deepest one
-    for (const auto & feature_layer: hparams.vision_feature_layer) {
+    for (const auto & feature_layer : hparams.vision_feature_layer) {
         if (feature_layer > deepest_feature_layer) {
             deepest_feature_layer = feature_layer;
         }
     }
-    return deepest_feature_layer < 0 ? n_layer: deepest_feature_layer;
+    return deepest_feature_layer < 0 ? n_layer : deepest_feature_layer;
 }
 
 bool clip_encode_float_image (struct clip_ctx * ctx, int n_threads, float * img, int h, int w, float * vec) {
