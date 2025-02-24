@@ -134,30 +134,29 @@ void toolcall::mcp_impl::initialize() {
 static std::string tools_list_to_oai_json(const mcp::tools_list & tools) {
     json tool_list = json::array();
     for (const auto & tool : tools) {
-        json props;
+        json t = json::object();
+
+        t["type"] = "function";
+        t["function"]["name"] = tool.tool_name;
+        t["function"]["description"] = tool.tool_description;
+
+        json props = json::object();
         for (const auto & param : tool.params) {
             props[param.name]["type"] = param.type;
             props[param.name]["description"] = param.description;
         }
+        t["function"]["parameters"]["type"] = "object";
+        t["function"]["parameters"]["properties"] = props;
+
         json required = json::array();
         for (const auto & name : tool.required_params) {
             required.push_back(name);
         }
-        tool_list.push_back({
-                {"type", "function"},
-                {"function", {
-                        {"name", tool.tool_name},
-                        {"description", tool.tool_description},
-                        {"parameters", {
-                                {"type", "object"},
-                                {"properties", props}
-                            }
-                        },
-                        {"required", required}
-                    }
-                }
-            });
+        t["function"]["required"] = required;
+
+        tool_list.push_back(t);
     }
+
     return tool_list.dump(-1);
 }
 

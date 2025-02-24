@@ -5,6 +5,7 @@
 #include "sampling.h"
 #include "llama.h"
 #include "chat.h"
+#include <json.hpp>
 
 #include <cstdio>
 #include <cstring>
@@ -126,12 +127,17 @@ public:
         LOG_DBG("formatted: '%s'\n", formatted.c_str());
 
 #ifdef LLAMA_USE_TOOLCALL
-        if (params_.use_jinja) {
+        if (params_.use_jinja && use_toolcalls) {
             common_chat_grammar_to_sampler(&cparams, vocab_, &params_.sampling);
             if (tc_handler_ != nullptr) {
-                std::string response;
-                tc_handler_->call(formatted, response);
-                return std::string(response);
+                if (nlohmann::json::accept(formatted)) {   // May need a better way to ensure
+                    std::string response;                  // this is intended for a tool-call.
+                    tc_handler_->call(formatted, response);
+                    return std::string(response);
+
+                } else {
+                    return formatted;
+                }
             }
         }
 #endif
