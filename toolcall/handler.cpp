@@ -102,16 +102,12 @@ void toolcall::mcp_impl::initialize() {
         tools_populating_.notify_one();
     };
 
-    transport_->subscribe("set_caps", set_caps);
-
-    mcp::initialize_request req(next_id_++);
-    transport_->send(req);
-
+    transport_->send(mcp::initialize_request(next_id_++), set_caps);
     tools_populating_.wait_for(lock, std::chrono::seconds(15), [&caps_received] { return caps_received; });
-    transport_->unsubscribe<mcp::initialize_response>("set_caps");
 
-    on_list_changed update_dirty = [this] (const mcp::tools_list_changed_notification &) {
+    on_list_changed update_dirty = [&update_dirty, this] (const mcp::tools_list_changed_notification &) {
         tool_list_dirty_ = true;
+        transport_->subscribe("notifications/tools/list_changed", update_dirty);
     };
 
     bool has_tools = false;
@@ -119,7 +115,7 @@ void toolcall::mcp_impl::initialize() {
         if (cap.name == "tools") {
             has_tools = true;
             if (cap.listChanged) {
-                transport_->subscribe("update_dirty", update_dirty);
+                transport_->subscribe("notifications/tools/list_changed", update_dirty);
             }
             break;
         }
@@ -167,14 +163,13 @@ std::string toolcall::mcp_impl::tool_list() {
         std::unique_lock<std::mutex> lock(tools_mutex_);
 
         mcp::tools_list tools;
-        on_response set_tools = [this, &tools] (const mcp::tools_list_response & resp) {
+        on_response set_tools = [this, &tools, &set_tools] (const mcp::tools_list_response & resp) {
             std::unique_lock<std::mutex> lock(tools_mutex_);
 
             tools.insert(tools.end(), resp.tools().begin(), resp.tools().end());
             auto cursor = resp.next_cursor();
             if (! cursor.empty()) {
-                mcp::tools_list_request req(next_id_++, cursor);
-                transport_->send(req);
+                transport_->send(mcp::tools_list_request(next_id_++, cursor), set_tools);
                 return;
             }
             tool_list_dirty_ = false;
@@ -182,13 +177,8 @@ std::string toolcall::mcp_impl::tool_list() {
             tools_populating_.notify_one();
         };
 
-        transport_->subscribe("set_tools", set_tools);
-
-        mcp::tools_list_request req(next_id_++);
-        transport_->send(req);
-
+        transport_->send(mcp::tools_list_request(next_id_++), set_tools);
         tools_populating_.wait_for(lock, std::chrono::seconds(15), [this] { return ! tool_list_dirty_; });
-        transport_->unsubscribe<mcp::tools_list_response>("set_tools");
 
         tools_ = tools_list_to_oai_json(tools);
     }

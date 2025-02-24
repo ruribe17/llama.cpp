@@ -220,6 +220,8 @@ namespace mcp
     public:
         tools_list_changed_notification()
             : notification("notifications/tools/list_changed") {}
+
+        static tools_list_changed_notification fromJson(const nlohmann::json & j);
     };
 
     struct tool_arg {
@@ -270,16 +272,4 @@ namespace mcp
         bool error_;
     };
 
-    using message_variant =
-        std::variant<std::monostate,
-                     initialize_request,
-                     initialize_response,
-                     initialized_notification,
-                     tools_list_request,
-                     tools_list_response,
-                     tools_list_changed_notification,
-                     tools_call_request,
-                     tools_call_response>;
-
-    bool create_message(const std::string & data, message_variant & message);
 }

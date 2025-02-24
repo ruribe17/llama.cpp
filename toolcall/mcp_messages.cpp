@@ -1,6 +1,7 @@
 #include "mcp_messages.h"
 #include <iostream>
 #include <log.h>
+#include <stdexcept>
 
 using json = nlohmann::json;
 
@@ -280,6 +281,14 @@ mcp::tools_list_response mcp::tools_list_response::fromJson(const nlohmann::json
     return tools_list_response(j["id"], std::move(tools), next_cursor);
 }
 
+mcp::tools_list_changed_notification mcp::tools_list_changed_notification::fromJson(const nlohmann::json & j) {
+    if (! (j.is_object() && j.contains("method") &&
+           j["method"] == "notifications/tools/list_changed")) {
+        throw std::invalid_argument("Invalid tools_list_changed message");
+    }
+    return tools_list_changed_notification();
+}
+
 mcp::tools_call_request::tools_call_request(nlohmann::json id, std::string name, tool_arg_list args)
     : request(id, "tools/call"), name_(std::move(name)), args_(std::move(args))
 {
@@ -354,28 +363,4 @@ void mcp::tools_call_response::refreshResult() {
     }
     result["content"] = content;
     this->result(std::move(result));
-}
-
-static bool has_initialized_response(const nlohmann::json & data) {
-    return data["result"].contains("capabilities");
-}
-
-static bool has_tools_list_response(const nlohmann::json & data) {
-    return data["result"].contains("tools");
-}
-
-bool mcp::create_message(const std::string & data, mcp::message_variant & message) {
-    json j = json::parse(data);
-
-    if (has_initialized_response(j)) {
-        message = mcp::initialize_response::fromJson(j);
-
-    } else if (has_tools_list_response(j)) {
-        message = mcp::tools_list_response::fromJson(j);
-
-    } else {
-        message = std::monostate();
-        return false;
-    }
-    return true;
 }

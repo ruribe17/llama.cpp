@@ -31,39 +31,52 @@ namespace toolcall
             map.erase(key);
         }
 
-        template <typename T>
-        void notify(const T & message) const {
-            const auto& map =
-                std::get<std::map<std::string, toolcall::callback<T>>>(
-                    subscribers_);
+        void notify(const nlohmann::json & message) {
+            std::string key;
+            if (message.contains("id")) {
+                key = message["id"].dump();
 
-            for (const auto & pair : map) {
-                pair.second(message);
-            }
-        }
+            } else if (message.contains("method")) {
+                key = message["method"].dump();
 
-        template <typename T>
-        void notify_if(const mcp::message_variant & message) {
-            if (std::holds_alternative<T>(message)) {
-                notify(std::get<T>(message));
+            } else {
+                return;
             }
+            std::apply([&key, &message, this](auto&... maps) {
+                (..., [&] {
+                    auto it = maps.find(key);
+                    if (it != maps.end()) {
+                        using callback_type = decltype(it->second);
+                        using T = typename std::decay<typename callback_type::argument_type>::type;
+
+                        it->second(T::fromJson(message));
+                        maps.erase(it);
+                    }
+                }());
+            }, subscribers_);
         }
 
     private:
         std::tuple<std::map<std::string, toolcall::callback<MessageTypes>>...> subscribers_;
     };
 
-    class mcp_transport : public mcp_message_observer<mcp::initialize_request,
-                                                      mcp::initialize_response,
-                                                      mcp::initialized_notification,
-                                                      mcp::tools_list_request,
+    class mcp_transport : public mcp_message_observer<mcp::initialize_response,
                                                       mcp::tools_list_response,
                                                       mcp::tools_list_changed_notification> {
     public:
         virtual ~mcp_transport() = default;
 
-        template <typename T>
-        bool send(const T & message) {
+        template <typename Req, typename Resp>
+        bool send(const Req & message, callback<Resp> on_response) {
+            if (message.id().has_value()) {
+                std::string id = message.id().value().dump();
+                subscribe(id, on_response);
+            }
+            return send(message);
+        }
+
+        template <typename Req>
+        bool send(const Req & message) {
             nlohmann::json json = message.toJson();
             return send(json.dump(-1));
         }

@@ -162,10 +162,12 @@ void toolcall::mcp_sse_transport::on_endpoint_event() {
 }
 
 void toolcall::mcp_sse_transport::on_message_event() {
-    mcp::message_variant message;
-    if (mcp::create_message(event_.data, message)) {
-        notify_if<mcp::initialize_response>(message);
-        notify_if<mcp::tools_list_response>(message);
+    try {
+        nlohmann::json message = nlohmann::json::parse(event_.data);
+        notify(message);
+
+    } catch (const nlohmann::json::exception & err) {
+        LOG_WRN("SSE: Invalid message \"%s\" received: \"%s\"\n", event_.data.c_str(), err.what());
     }
 }
 
