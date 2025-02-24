@@ -185,10 +185,35 @@ std::string toolcall::mcp_impl::tool_list() {
     return tools_;
 }
 
-toolcall::action toolcall::mcp_impl::call(const std::string & /*request*/, std::string & /*response*/) {
+static mcp::tools_call_request tools_call_request_from_local_json(nlohmann::json id, const std::string & local_json) {
+    nlohmann::json j = json::parse(local_json);
+    mcp::tool_arg_list args;
+    for (const auto & [key, val] : j["parameters"].items()) {
+        args.push_back({key, val.dump()});
+    }
+    return mcp::tools_call_request(id, j["name"], args);
+}
+
+static std::string tools_call_response_to_local_json(const mcp::tools_call_response & resp) {
+    return resp.toJson().dump(-1); // The AI will figure it out?
+}
+
+toolcall::action toolcall::mcp_impl::call(const std::string & request, std::string & response) {
+    using on_response = toolcall::callback<mcp::tools_call_response>;
+
     if (transport_ == nullptr) {
         return toolcall::DEFER;
     }
-    // Construct tool call and send to transport
-    return toolcall::ACCEPT; // TODO
+    std::unique_lock<std::mutex> lock(tools_mutex_);
+
+    response.clear();
+    on_response set_response = [this, &response] (const mcp::tools_call_response & resp) {
+        std::unique_lock<std::mutex> lock(tools_mutex_);
+        response = tools_call_response_to_local_json(resp);
+        tools_populating_.notify_one();
+    };
+    transport_->send(tools_call_request_from_local_json(next_id_++, request), set_response);
+    tools_populating_.wait_for(lock, std::chrono::seconds(15), [&response] { return ! response.empty(); });
+
+    return toolcall::ACCEPT;
 }
