@@ -43,7 +43,14 @@ The following release is verified with good quality:
 ## News
 
 - 2025.2
-  - Optimize MUL_MAT Q4_0 on Intel CPU. Increase the performance of LLM (llama-2-7b.Q4_0.gguf) 21%-87% on Intel GPUs (MTL, ARL-H, Arc, Flex, PVC).
+  - Optimize MUL_MAT Q4_0 on Intel GPU for all dGPUs and built-in GPUs since MTL. Increase the performance of LLM (llama-2-7b.Q4_0.gguf) 21%-87% on Intel GPUs (MTL, ARL-H, Arc, Flex, PVC).
+    |GPU|Base tokens/s|Increased tokens/s|Percent|
+    |-|-|-|-|
+    |PVC 1550|39|73|+87%|
+    |Flex 170|39|50|+28%|
+    |Arc770|42|55|+30%|
+    |MTL|13|16|+23%|
+    |ARL-H|14|17|+21%|
 
 - 2024.11
   - Use syclcompat to improve the performance on some platforms. This requires to use oneAPI 2025.0 or newer.
