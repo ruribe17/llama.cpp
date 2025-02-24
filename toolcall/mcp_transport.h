@@ -22,6 +22,15 @@ namespace toolcall
             map.insert({key, callback});
         }
 
+	template <typename T>
+	void subscribe(callback<T> callback) {
+	    auto& map =
+                std::get<std::map<std::string, toolcall::callback<T>>>(
+                    subscribers_);
+
+	    map.insert({T::Method, callback});
+	}
+
         template <typename T>
         void unsubscribe(std::string key) {
             auto& map =
@@ -62,7 +71,8 @@ namespace toolcall
 
     class mcp_transport : public mcp_message_observer<mcp::initialize_response,
                                                       mcp::tools_list_response,
-                                                      mcp::tools_list_changed_notification> {
+                                                      mcp::tools_list_changed_notification,
+                                                      mcp::tools_call_response> {
     public:
         virtual ~mcp_transport() = default;
 

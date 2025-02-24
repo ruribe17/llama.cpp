@@ -166,12 +166,15 @@ namespace mcp
 
     class initialized_notification : public notification {
     public:
-        initialized_notification()
-            : notification("notifications/initialized") {}
+        static inline const std::string Method = "notifications/initialized";
+
+        initialized_notification() : notification(Method) {}
     };
 
     class tools_list_request : public request {
     public:
+        static inline const std::string Method = "tools/list";
+
         tools_list_request(std::optional<nlohmann::json> id, std::string cursor = "");
 
         void cursor(std::string cursor);
@@ -218,8 +221,9 @@ namespace mcp
 
     class tools_list_changed_notification : public notification {
     public:
-        tools_list_changed_notification()
-            : notification("notifications/tools/list_changed") {}
+        static inline const std::string Method = "notifications/tools/list_changed";
+
+        tools_list_changed_notification() : notification(Method) {}
 
         static tools_list_changed_notification fromJson(const nlohmann::json & j);
     };
@@ -233,6 +237,8 @@ namespace mcp
 
     class tools_call_request : public request {
     public:
+        static inline const std::string Method = "tools/call";
+
         tools_call_request(nlohmann::json id, std::string name, tool_arg_list args = tool_arg_list());
 
         void name(std::string name);
@@ -265,6 +271,8 @@ namespace mcp
 
         void tool_error(bool error);
         bool tool_error() const { return error_; }
+
+        static tools_call_response fromJson(const nlohmann::json & j);
 
     private:
         void refreshResult();

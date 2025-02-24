@@ -107,7 +107,7 @@ void toolcall::mcp_impl::initialize() {
 
     on_list_changed update_dirty = [&update_dirty, this] (const mcp::tools_list_changed_notification &) {
         tool_list_dirty_ = true;
-        transport_->subscribe("notifications/tools/list_changed", update_dirty);
+        transport_->subscribe(update_dirty);
     };
 
     bool has_tools = false;
@@ -115,7 +115,7 @@ void toolcall::mcp_impl::initialize() {
         if (cap.name == "tools") {
             has_tools = true;
             if (cap.listChanged) {
-                transport_->subscribe("notifications/tools/list_changed", update_dirty);
+                transport_->subscribe(update_dirty);
             }
             break;
         }

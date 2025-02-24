@@ -181,7 +181,7 @@ mcp::initialize_response mcp::initialize_response::fromJson(const nlohmann::json
 }
 
 mcp::tools_list_request::tools_list_request(std::optional<nlohmann::json> id, std::string cursor)
-    : request(id, "tools/list"),
+    : request(id, Method),
       cursor_(std::move(cursor))
 {
     refreshParams();
@@ -282,15 +282,14 @@ mcp::tools_list_response mcp::tools_list_response::fromJson(const nlohmann::json
 }
 
 mcp::tools_list_changed_notification mcp::tools_list_changed_notification::fromJson(const nlohmann::json & j) {
-    if (! (j.is_object() && j.contains("method") &&
-           j["method"] == "notifications/tools/list_changed")) {
+    if (! (j.is_object() && j.contains("method") && j["method"] == Method)) {
         throw std::invalid_argument("Invalid tools_list_changed message");
     }
     return tools_list_changed_notification();
 }
 
 mcp::tools_call_request::tools_call_request(nlohmann::json id, std::string name, tool_arg_list args)
-    : request(id, "tools/call"), name_(std::move(name)), args_(std::move(args))
+    : request(id, Method), name_(std::move(name)), args_(std::move(args))
 {
     refreshParams();
 }
@@ -363,4 +362,31 @@ void mcp::tools_call_response::refreshResult() {
     }
     result["content"] = content;
     this->result(std::move(result));
+}
+
+mcp::tools_call_response mcp::tools_call_response::fromJson(const nlohmann::json & j) {
+    mcp::tool_result_list result_list;
+    for (const auto & content : j["result"]["content"]) {
+        mcp::tool_result result;
+
+        result.type = content["type"];
+        if (content["type"] == "text") {
+            result.value = content["text"];
+
+        } else if (content["type"] == "image" || content["type"] == "audio") {
+            result.value = content["data"];
+            result.mime_type = content["mimeType"];
+
+        } else if (content["type"] == "resource") {
+            result.value = content["resource"]["text"];
+            result.mime_type = content["resource"]["mimeType"];
+            result.uri = content["resource"]["uri"];
+        }
+
+        result_list.push_back(std::move(result));
+    }
+
+    bool error = j["result"].value("isError", false);
+
+    return mcp::tools_call_response(j["id"], std::move(result_list), error);
 }
