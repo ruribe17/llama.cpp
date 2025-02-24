@@ -655,7 +655,6 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     const int hidden_size          = hparams.hidden_size;
     const int n_head               = hparams.n_head;
     const int d_head               = hidden_size / n_head;
-    int n_layer                    = hparams.n_layer;
     const float eps                = hparams.eps;
     int mrope_sections[4] = {d_head/4, d_head/4, d_head/4, d_head/4};
 
@@ -859,7 +858,7 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     // post-layernorm
-    if (ctx->has_post_norm && ctx->max_feature_layer == n_layer) {
+    if (ctx->has_post_norm) {
         embeddings = ggml_norm(ctx0, embeddings, eps);
         ggml_set_name(embeddings, "post_ln");
 
@@ -867,7 +866,7 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     // final layer is a vision feature layer
-    if (vision_feature_layer.find(n_layer) != vision_feature_layer.end()) {
+    if (vision_feature_layer.find(ctx->max_feature_layer) != vision_feature_layer.end()) {
         embedding_stack.push_back(embeddings);
     }
 
