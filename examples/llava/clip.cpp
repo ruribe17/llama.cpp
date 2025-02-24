@@ -40,6 +40,7 @@
 #include <map>
 #include <regex>
 #include <stdexcept>
+#include <unordered_set>
 #include <vector>
 #include <sstream>
 #include <cinttypes>
@@ -447,7 +448,7 @@ struct clip_hparams {
 
     std::vector<int32_t> image_grid_pinpoints;
     int32_t image_crop_resolution;
-    std::vector<int32_t> vision_feature_layer;
+    std::unordered_set<int32_t> vision_feature_layer;
 };
 
 struct clip_layer {
@@ -756,6 +757,7 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     std::vector<struct ggml_tensor *> embedding_stack;
+    const auto & vision_feature_layer = hparams.vision_feature_layer;
 
     // loop over layers
     for (int il = 0; il < ctx->max_feature_layer; il++) {
@@ -763,11 +765,8 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
 
         // If this is an embedding feature layer, save the output.
         // NOTE: 0 index here refers to the input to the encoder.
-        for (size_t vl_idx = 0; vl_idx < hparams.vision_feature_layer.size(); vl_idx++) {
-            if (il == ctx->vision_model.hparams.vision_feature_layer[vl_idx]) {
-                embedding_stack.push_back(embeddings);
-                break;
-            }
+        if (vision_feature_layer.find(il) != vision_feature_layer.end()) {
+            embedding_stack.push_back(embeddings);
         }
 
         //const size_t nb_q_w = model.layers[il].q_w->nb[0];
@@ -868,11 +867,8 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     }
 
     // final layer is a vision feature layer
-    for (size_t vl_idx = 0; vl_idx < hparams.vision_feature_layer.size(); vl_idx++) {
-        if (n_layer == ctx->vision_model.hparams.vision_feature_layer[vl_idx]) {
-            embedding_stack.push_back(embeddings);
-            break;
-        }
+    if (vision_feature_layer.find(n_layer) != vision_feature_layer.end()) {
+        embedding_stack.push_back(embeddings);
     }
 
     // If feature layers are explicitly set, stack them (if we have multiple)
@@ -1486,7 +1482,7 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
             const int32_t * vision_feature_layer = (const int32_t *)gguf_get_arr_data(ctx, idx);
 
             for (int i = 0; i < n; ++i) {
-                hparams.vision_feature_layer.push_back(vision_feature_layer[i]);
+                hparams.vision_feature_layer.insert(vision_feature_layer[i]);
             }
         } catch (std::runtime_error & /*e*/) { }
 
@@ -1530,13 +1526,13 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
             LOG_INF("v_image_mean       %f %f %f\n", new_clip->image_mean[0], new_clip->image_mean[1], new_clip->image_mean[2]);
             LOG_INF("v_image_std        %f %f %f\n", new_clip->image_std[0], new_clip->image_std[1], new_clip->image_std[2]);
             LOG_INF("v_image_grid_pinpoints: ");
-            for (size_t i = 0; i < hparams.image_grid_pinpoints.size(); ++i) {
-                LOG_INF("%d ", hparams.image_grid_pinpoints[i]);
+            for (const auto & pp : hparams.image_grid_pinpoints) {
+                LOG_INF("%d ", pp);
             }
             LOG_INF("\n");
             LOG_INF("v_vision_feature_layer: ");
-            for (size_t i = 0; i < hparams.vision_feature_layer.size(); i++) {
-                LOG_INF("%d ", hparams.vision_feature_layer[i]);
+            for (const auto & feature_layer: hparams.vision_feature_layer) {
+                LOG_INF("%d ", feature_layer);
             }
             LOG_INF("\n");
             LOG_INF("v_mm_patch_merge_type: %s\n", hparams.mm_patch_merge_type);
@@ -2997,9 +2993,9 @@ int get_deepest_feature_layer(const struct clip_ctx * ctx) {
     }
 
     // If we set explicit vision feature layers, only go up to the deepest one
-    for (size_t i = 0; i < hparams.vision_feature_layer.size(); i++) {
-        if (hparams.vision_feature_layer[i] > deepest_feature_layer) {
-            deepest_feature_layer = hparams.vision_feature_layer[i];
+    for (const auto & feature_layer: hparams.vision_feature_layer) {
+        if (feature_layer > deepest_feature_layer) {
+            deepest_feature_layer = feature_layer;
         }
     }
     return deepest_feature_layer < 0 ? n_layer: deepest_feature_layer;
