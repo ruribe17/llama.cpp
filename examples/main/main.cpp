@@ -111,21 +111,6 @@ public:
         new_msg.role = role;
         new_msg.content = content;
 
-#ifdef LLAMA_USE_TOOLCALL
-        if (params_.use_jinja && use_toolcalls) {
-            if (tc_handler_ != nullptr) {
-                if (nlohmann::json::accept(content)) { // Need a better way to know this is for a toolcall
-                    toolcall::result_set res = tc_handler_->call(content);
-                    std::string new_content;
-                    for (const auto & r : res) {
-                        new_content += (r.data + "\n");
-                    }
-                    new_msg.content = new_content; // TODO: this is not wiring correctly into the prompt
-                }
-            }
-        }
-#endif
-
         common_chat_params cparams;
         common_chat_templates_inputs cinputs;
 #ifdef LLAMA_USE_TOOLCALL
@@ -142,8 +127,9 @@ public:
         chat_msgs_.push_back(new_msg);
         LOG_DBG("formatted: '%s'\n", formatted.c_str());
 
+#ifdef LLAMA_USE_TOOLCALL
         common_chat_grammar_to_sampler(&cparams, vocab_, &params_.sampling);
-
+#endif
         return formatted;
     }
 
@@ -859,8 +845,27 @@ int main(int argc, char ** argv) {
 
                     if (params.enable_chat_template) {
                         chat_add_and_format("assistant", assistant_ss.str(), true);
+#ifdef LLAMA_USE_TOOLCALL
+                        if (! params.use_jinja || tc_handler == nullptr || ! nlohmann::json::accept(assistant_ss.str())) {
+                            is_interacting = true;
+                            LOG("\n");
+
+                        } else {
+                            toolcall::result_set res = tc_handler->call(assistant_ss.str());
+                            if (! res.empty()) {
+                                std::string toolcall_result_str;
+                                for (const auto & r : res) {
+                                    toolcall_result_str += (r.data + "\n");
+                                }
+                                auto toolcall_result_tok = common_tokenize(ctx, toolcall_result_str, false, true);
+                                embd_inp.insert(embd_inp.end(), toolcall_result_tok.begin(), toolcall_result_tok.end());
+                            }
+                        }
+#else
+
                         is_interacting = true;
                         LOG("\n");
+#endif
                     }
                 }
             }
