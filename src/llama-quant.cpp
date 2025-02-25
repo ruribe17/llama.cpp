@@ -776,7 +776,7 @@ static void llama_model_quantize_impl(const std::string & fname_inp, const std::
 
             // get more optimal quantization type based on the tensor shape, layer, etc.
             if (!params->pure && ggml_is_quantized(default_type)) {
-                new_type = llama_tensor_get_type(qs, new_type, tensor, ftype);
+                new_type = name.find("_exps") != std::string::npos ? name.find("ffn_down") != std::string::npos ? GGML_TYPE_Q6_K : GGML_TYPE_Q5_K : GGML_TYPE_BF16;
             }
             if (params->token_embedding_type < GGML_TYPE_COUNT && strcmp(tensor->name, "token_embd.weight") == 0) {
                 new_type = params->token_embedding_type;
