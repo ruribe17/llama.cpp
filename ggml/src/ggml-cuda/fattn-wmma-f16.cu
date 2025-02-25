@@ -578,10 +578,10 @@ void ggml_cuda_flash_attn_ext_wmma_f16(ggml_backend_cuda_context & ctx, ggml_ten
         return;
     }
 
+#if !(defined(GGML_USE_HIP) && defined(__HIP_PLATFORM_AMD__))
     if (Q->ne[1] <= 8 && Q->ne[0] % WARP_SIZE == 0) {
         constexpr int cols_per_block = 8;
         switch (Q->ne[0]) {
-#if !(defined(GGML_USE_HIP) && defined(__HIP_PLATFORM_AMD__))
             case 64:
                 ggml_cuda_flash_attn_ext_wmma_f16_case< 64, cols_per_block, half>(ctx, dst);
                 break;
@@ -594,13 +594,13 @@ void ggml_cuda_flash_attn_ext_wmma_f16(ggml_backend_cuda_context & ctx, ggml_ten
             case 256:
                 ggml_cuda_flash_attn_ext_wmma_f16_case<256, cols_per_block, half>(ctx, dst);
                 break;
-#endif // !(defined(GGML_USE_HIP) && defined(__HIP_PLATFORM_AMD__))
             default:
                 GGML_ABORT("fatal error");
                 break;
         }
         return;
     }
+#endif // !(defined(GGML_USE_HIP) && defined(__HIP_PLATFORM_AMD__))
 
     if (Q->ne[1] <= 32) {
         constexpr int cols_per_block = 16;

@@ -254,7 +254,7 @@ void ggml_cuda_flash_attn_ext(ggml_backend_cuda_context & ctx, ggml_tensor * dst
 
     if (cc >= GGML_CUDA_CC_OFFSET_AMD) {
 #if defined(GGML_HIP_ROCWMMA_FATTN)
-        if (fp16_mma_available(cc) && dst->src[0]->ne[1] > 8) {
+        if (fp16_mma_available(cc)) {
             ggml_cuda_flash_attn_ext_wmma_f16(ctx, dst);
             return;
         }
