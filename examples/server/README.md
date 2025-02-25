@@ -13,6 +13,7 @@ Set of LLM REST APIs and a simple web front end to interact with llama.cpp.
  * Multimodal (wip)
  * Monitoring endpoints
  * Schema-constrained JSON response format
+ * [Function calling](../../docs/function-calling.md) / tool use for ~any model
 
 The project is under active development, and we are [looking for feedback and contributors](https://github.com/ggml-org/llama.cpp/issues/4216).
 
