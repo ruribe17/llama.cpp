@@ -846,20 +846,33 @@ int main(int argc, char ** argv) {
                     if (params.enable_chat_template) {
                         chat_add_and_format("assistant", assistant_ss.str(), true);
 #ifdef LLAMA_USE_TOOLCALL
-                        if (! params.use_jinja || tc_handler == nullptr || ! nlohmann::json::accept(assistant_ss.str())) {
-                            is_interacting = true;
-                            LOG("\n");
+                        auto should_use_toolcall = [&params, tc_handler] (const std::string & asst_msg) {
+                            if (! params.use_jinja || tc_handler == nullptr) {
+                                return false;
+                            }
+                            try {
+                                nlohmann::json j = nlohmann::json::parse(asst_msg);
+                                return (j.contains("name") && j.contains("parameters"));
 
-                        } else {
+                            } catch (const nlohmann::json::exception & err) {
+                                return false;
+                            }
+                        };
+
+                        if (should_use_toolcall(assistant_ss.str())) {
                             toolcall::result_set res = tc_handler->call(assistant_ss.str());
                             if (! res.empty()) {
                                 std::string toolcall_result_str;
                                 for (const auto & r : res) {
-                                    toolcall_result_str += (r.data + "\n");
+                                    toolcall_result_str += ("\n" + r.data);
                                 }
                                 auto toolcall_result_tok = common_tokenize(ctx, toolcall_result_str, false, true);
                                 embd_inp.insert(embd_inp.end(), toolcall_result_tok.begin(), toolcall_result_tok.end());
                             }
+
+                        } else {
+                            is_interacting = true;
+                            LOG("\n");
                         }
 #else
 
