@@ -397,7 +397,10 @@ struct server_task {
                                     throw std::runtime_error("Grammar trigger word should be marked as preserved token: " + word);
                                 }
                                 SRV_DBG("Grammar trigger token: %d (`%s`)\n", token, word.c_str());
-                                params.sampling.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN, token});
+                                common_grammar_trigger trigger;
+                                trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN;
+                                trigger.value = token;
+                                params.sampling.grammar_triggers.push_back(trigger);
                             } else {
                                 SRV_DBG("Grammar trigger word: `%s`\n", word.c_str());
                                 params.sampling.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, word});
