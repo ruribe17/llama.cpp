@@ -276,9 +276,11 @@ This table can be generated with:
 
 </details>
 
-# Usage: need a tool-use Jinja template!
+# Usage - need tool-aware Jinja template
 
-Start a server with any model (make sure it has a tool call template: can verify this by inspecting the `chat_template` or `chat_template_tool_use` properties in `http://localhost:8080/props`):
+First, start a server with any model, but make sure it has a tools-enabled template: you can verify this by inspecting the `chat_template` or `chat_template_tool_use` properties in `http://localhost:8080/props`).
+
+Here are some models known to work (w/ chat template override when needed):
 
 ```shell
 # Native support:
@@ -317,7 +319,7 @@ llama-server --jinja -fa -hf bartowski/c4ai-command-r-v01-GGUF:Q2_K
 ```
 
 > [!TIP]
-> If there is no official `tool_use` Jinja template, you may want to set `--chat-template chatml` to use a default that works with many models (YMMV!)
+> If there is no official `tool_use` Jinja template, you may want to set `--chat-template chatml` to use a default that works with many models (YMMV!), or write your own (e.g. we provide a custom [llama-cpp-deepseek-r1.jinja](../models/templates/llama-cpp-deepseek-r1.jinja) for DeepSeek R1 distills)
 
 Test in CLI (or with any library / software that can use OpenAI-compatible API backends):
 
