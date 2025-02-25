@@ -2,7 +2,7 @@
 
 #include "toolcall-params.h"
 #include <string>
-#include <variant>
+#include <optional>
 #include <memory>
 #include <vector>
 #include <condition_variable>
@@ -77,9 +77,9 @@ namespace toolcall
         }
 
         virtual result_set call(const std::string & request) override {
-            return {
-		{"text", request, "text/plain", std::nullopt, false}
-	    };
+            return result_set {
+                {"text", request, "text/plain", std::nullopt, false}
+            };
         }
 
     private:
