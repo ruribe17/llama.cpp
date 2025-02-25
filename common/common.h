@@ -4,10 +4,6 @@
 
 #include "llama-cpp.h"
 
-#ifdef LLAMA_USE_TOOLCALL
-#    include "toolcall-params.h"
-#endif
-
 #include <set>
 #include <string>
 #include <vector>
@@ -212,6 +208,11 @@ enum common_reasoning_format {
     COMMON_REASONING_FORMAT_DEEPSEEK, // Extract thinking tag contents and return as `message.reasoning_content`
 };
 
+struct common_toolcall_params {
+    std::string tools  = "";
+    std::string choice = "auto";
+};
+
 struct common_params {
     int32_t n_predict             =    -1; // new tokens to predict
     int32_t n_ctx                 =  4096; // context size
@@ -358,9 +359,7 @@ struct common_params {
     bool use_jinja = false;                                                                                 // NOLINT
     bool enable_chat_template = true;
 
-#ifdef LLAMA_USE_TOOLCALL
-    toolcall::params jinja_tools;
-#endif
+    struct common_toolcall_params toolcall;
 
     common_reasoning_format reasoning_format = COMMON_REASONING_FORMAT_DEEPSEEK;
 

@@ -155,6 +155,11 @@ int main(int argc, char ** argv) {
 
     auto & sparams = params.sampling;
 
+#ifdef LLAMA_USE_TOOLCALL
+    // Ensure parameters are validated before the model loads
+    toolcall::params tc_params(params.toolcall.tools, params.toolcall.choice);
+#endif
+
     // save choice to use color for later
     // (note for later: this is a slightly awkward choice)
     console::init(params.simple_io, params.use_color);
@@ -323,7 +328,7 @@ int main(int argc, char ** argv) {
     std::vector<llama_token> embd_inp;
 
 #ifdef LLAMA_USE_TOOLCALL
-    auto tc_handler = toolcall::create_handler(params.jinja_tools);
+    auto tc_handler = toolcall::create_handler(tc_params);
     if (tc_handler) {
         tc_handler->initialize();
     }
