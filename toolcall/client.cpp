@@ -1,6 +1,6 @@
 
 #include <json.hpp>
-#include "toolcall-handler.h"
+#include "toolcall-client.h"
 #include <chrono>
 #include <stdexcept>
 
@@ -12,48 +12,48 @@
 
 using json = nlohmann::json;
 
-std::shared_ptr<toolcall::handler> toolcall::create_handler(const toolcall::params & params) {
-    std::shared_ptr<toolcall::handler> handler;
+std::shared_ptr<toolcall::client> toolcall::create_client(const toolcall::params & params) {
+    std::shared_ptr<toolcall::client> client;
 
     auto tools = params.tools();
     auto choice = params.choice();
     if (params) {
         if (params.has_uri()) {
 #ifdef LLAMA_USE_CURL
-            handler.reset(new toolcall::handler(
+            client.reset(new toolcall::client(
                               std::make_unique<toolcall::mcp_impl>(tools, choice)));
 #endif
         } else {
-            handler.reset(new toolcall::handler(
+            client.reset(new toolcall::client(
                               std::make_unique<toolcall::loopback_impl>(tools, choice)));
         }
     }
-    return handler;
+    return client;
 }
 
-std::string toolcall::handler::tool_list() {
+std::string toolcall::client::tool_list() {
     return impl_->tool_list();
 }
 
-bool toolcall::handler::tool_list_dirty() const {
+bool toolcall::client::tool_list_dirty() const {
     return impl_->tool_list_dirty();
 }
 
-toolcall::result_set toolcall::handler::call(const std::string & request) {
+toolcall::result_set toolcall::client::call(const std::string & request) {
     return impl_->call(request);
 }
 
-const std::string & toolcall::handler::tool_choice() const {
+const std::string & toolcall::client::tool_choice() const {
     return impl_->tool_choice();
 }
 
-void toolcall::handler::initialize() {
+void toolcall::client::initialize() {
     impl_->initialize();
 }
 
 #ifdef LLAMA_USE_CURL
 toolcall::mcp_impl::mcp_impl(std::string server_uri, std::string tool_choice)
-    : handler_impl(tool_choice),
+    : client_impl(tool_choice),
       transport_(new mcp_sse_transport(server_uri)),
       tools_("[]"),
       tools_mutex_(),
@@ -63,7 +63,7 @@ toolcall::mcp_impl::mcp_impl(std::string server_uri, std::string tool_choice)
 }
 #else
 toolcall::mcp_impl::mcp_impl(std::string /*server_uri*/, std::string tool_choice)
-    : handler_impl(tool_choice),
+    : client_impl(tool_choice),
       transport_(nullptr),
       tools_("[]"),
       tools_mutex_(),
@@ -74,7 +74,7 @@ toolcall::mcp_impl::mcp_impl(std::string /*server_uri*/, std::string tool_choice
 #endif
 
 toolcall::mcp_impl::mcp_impl(std::vector<std::string> argv, std::string tool_choice)
-    : handler_impl(tool_choice),
+    : client_impl(tool_choice),
       transport_(new mcp_stdio_transport(argv))
 {
 }

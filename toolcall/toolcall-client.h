@@ -20,12 +20,12 @@ namespace toolcall
 
     using result_set = std::vector<result>;
 
-    class handler_impl;
-    class handler {
+    class client_impl;
+    class client {
     public:
-        using ptr = std::shared_ptr<handler>;
+        using ptr = std::shared_ptr<client>;
 
-        handler(std::unique_ptr<handler_impl> impl) : impl_(std::move(impl)) {}
+        client(std::unique_ptr<client_impl> impl) : impl_(std::move(impl)) {}
 
         result_set call(const std::string & request);
 
@@ -37,17 +37,17 @@ namespace toolcall
         void initialize();
 
     private:
-        std::unique_ptr<handler_impl> impl_;
+        std::unique_ptr<client_impl> impl_;
     };
 
-    std::shared_ptr<toolcall::handler> create_handler(const toolcall::params & params);
+    std::shared_ptr<toolcall::client> create_client(const toolcall::params & params);
 
-    class handler_impl {
+    class client_impl {
     public:
-        handler_impl(std::string tool_choice)
+        client_impl(std::string tool_choice)
             : tool_choice_(std::move(tool_choice)), tool_list_dirty_(true) {}
 
-        virtual ~handler_impl() = default;
+        virtual ~client_impl() = default;
 
         virtual std::string tool_list() = 0;
 
@@ -66,10 +66,10 @@ namespace toolcall
         bool tool_list_dirty_;
     };
 
-    class loopback_impl : public handler_impl {
+    class loopback_impl : public client_impl {
     public:
         loopback_impl(std::string tools, std::string tool_choice)
-            : handler_impl(tool_choice), tools_(std::move(tools)) {}
+            : client_impl(tool_choice), tools_(std::move(tools)) {}
 
         virtual std::string tool_list() override {
             tool_list_dirty_ = false;
@@ -87,7 +87,7 @@ namespace toolcall
     };
 
     class mcp_transport;
-    class mcp_impl : public handler_impl {
+    class mcp_impl : public client_impl {
     public:
         mcp_impl(std::string server_uri, std::string tool_choice);
         mcp_impl(std::vector<std::string> argv, std::string tool_choice);

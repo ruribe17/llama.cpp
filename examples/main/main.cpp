@@ -17,7 +17,7 @@
 #include <vector>
 
 #ifdef LLAMA_USE_TOOLCALL
-#    include "toolcall-handler.h"
+#    include "toolcall-client.h"
 #endif
 
 #if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
@@ -100,9 +100,9 @@ public:
                    std::vector<common_chat_msg> & chat_msgs,
                    struct common_chat_templates * chat_templates,
                    const llama_vocab * vocab,
-                   toolcall::handler::ptr tc_handler)
+                   toolcall::client::ptr tc_client)
 
-        : params_(params), chat_msgs_(chat_msgs), chat_templates_(chat_templates), vocab_(vocab), tc_handler_(tc_handler) {}
+        : params_(params), chat_msgs_(chat_msgs), chat_templates_(chat_templates), vocab_(vocab), tc_client_(tc_client) {}
 #endif
 
     std::string operator () (const std::string & role, const std::string & content, [[maybe_unused]] bool use_toolcalls = false) {
@@ -114,9 +114,9 @@ public:
         common_chat_params cparams;
         common_chat_templates_inputs cinputs;
 #ifdef LLAMA_USE_TOOLCALL
-        if (tc_handler_ != nullptr && use_toolcalls) {
-            cinputs.tool_choice = common_chat_tool_choice_parse_oaicompat(tc_handler_->tool_choice());
-            cinputs.tools = common_chat_tools_parse_oaicompat(tc_handler_->tool_list());
+        if (tc_client_ != nullptr && use_toolcalls) {
+            cinputs.tool_choice = common_chat_tool_choice_parse_oaicompat(tc_client_->tool_choice());
+            cinputs.tools = common_chat_tools_parse_oaicompat(tc_client_->tool_list());
         }
 #endif
         bool add_ass = role == "user";
@@ -140,7 +140,7 @@ private:
 
 #ifdef LLAMA_USE_TOOLCALL
     const llama_vocab * vocab_;
-    toolcall::handler::ptr tc_handler_;
+    toolcall::client::ptr tc_client_;
 #endif
 };
 
@@ -328,11 +328,11 @@ int main(int argc, char ** argv) {
     std::vector<llama_token> embd_inp;
 
 #ifdef LLAMA_USE_TOOLCALL
-    auto tc_handler = toolcall::create_handler(tc_params);
-    if (tc_handler) {
-        tc_handler->initialize();
+    auto tc_client = toolcall::create_client(tc_params);
+    if (tc_client) {
+        tc_client->initialize();
     }
-    chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get(), vocab, tc_handler);
+    chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get(), vocab, tc_client);
 #else
     chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get());
 #endif
@@ -851,8 +851,8 @@ int main(int argc, char ** argv) {
                     if (params.enable_chat_template) {
                         chat_add_and_format("assistant", assistant_ss.str(), true);
 #ifdef LLAMA_USE_TOOLCALL
-                        auto should_use_toolcall = [&params, tc_handler] (const std::string & asst_msg) {
-                            if (! params.use_jinja || tc_handler == nullptr) {
+                        auto should_use_toolcall = [&params, tc_client] (const std::string & asst_msg) {
+                            if (! params.use_jinja || tc_client == nullptr) {
                                 return false;
                             }
                             try {
@@ -865,7 +865,7 @@ int main(int argc, char ** argv) {
                         };
 
                         if (should_use_toolcall(assistant_ss.str())) {
-                            toolcall::result_set res = tc_handler->call(assistant_ss.str());
+                            toolcall::result_set res = tc_client->call(assistant_ss.str());
                             if (! res.empty()) {
                                 std::string toolcall_result_str;
                                 for (const auto & r : res) {

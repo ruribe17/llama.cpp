@@ -2,7 +2,7 @@
 set(TARGET toolcall)
 
 set(SOURCES
-    handler.cpp
+    client.cpp
     mcp_messages.cpp
     mcp_stdio_transport.cpp
     params.cpp
@@ -10,7 +10,7 @@ set(SOURCES
 
 set(HEADERS
     toolcall-params.h
-    toolcall-handler.h
+    toolcall-client.h
     mcp_transport.h
     mcp_messages.h
     mcp_stdio_transport.h
