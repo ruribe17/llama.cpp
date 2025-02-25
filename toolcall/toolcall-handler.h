@@ -10,11 +10,15 @@
 
 namespace toolcall
 {
-    enum action {
-        ACCEPT,
-        PENDING,
-        DEFER
+    struct result {
+        std::string type;
+        std::string data;
+        std::string mime_type;
+        std::optional<std::string> uri;
+        bool error;
     };
+
+    using result_set = std::vector<result>;
 
     class handler_impl;
     class handler {
@@ -23,19 +27,17 @@ namespace toolcall
 
         handler(std::unique_ptr<handler_impl> impl) : impl_(std::move(impl)) {}
 
-        action call(const std::string & request, std::string & response);
+        result_set call(const std::string & request);
 
         std::string tool_list();
         bool tool_list_dirty() const;
 
         const std::string & tool_choice() const;
-        action last_action() const;
 
         void initialize();
 
     private:
         std::unique_ptr<handler_impl> impl_;
-        action last_action_;
     };
 
     std::shared_ptr<toolcall::handler> create_handler(const toolcall::params & params);
@@ -53,7 +55,7 @@ namespace toolcall
             return tool_list_dirty_;
         }
 
-        virtual action call(const std::string & request, std::string & response) = 0;
+        virtual result_set call(const std::string & request) = 0;
 
         const std::string & tool_choice() const { return tool_choice_; }
 
@@ -74,9 +76,10 @@ namespace toolcall
             return tools_;
         }
 
-        virtual action call(const std::string & request, std::string & response) override {
-            response = request;
-            return toolcall::DEFER;
+        virtual result_set call(const std::string & request) override {
+            return {
+		{"text", request, "text/plain", std::nullopt, false}
+	    };
         }
 
     private:
@@ -90,7 +93,7 @@ namespace toolcall
         mcp_impl(std::vector<std::string> argv, std::string tool_choice);
 
         virtual std::string tool_list() override;
-        virtual action call(const std::string & request, std::string & response) override;
+        virtual result_set call(const std::string & request) override;
 
         virtual void initialize() override;
 

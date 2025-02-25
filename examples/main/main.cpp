@@ -106,9 +106,25 @@ public:
 #endif
 
     std::string operator () (const std::string & role, const std::string & content, [[maybe_unused]] bool use_toolcalls = false) {
+
         common_chat_msg new_msg;
         new_msg.role = role;
         new_msg.content = content;
+
+#ifdef LLAMA_USE_TOOLCALL
+        if (params_.use_jinja && use_toolcalls) {
+            if (tc_handler_ != nullptr) {
+                if (nlohmann::json::accept(content)) { // Need a better way to know this is for a toolcall
+                    toolcall::result_set res = tc_handler_->call(content);
+                    std::string new_content;
+                    for (const auto & r : res) {
+                        new_content += (r.data + "\n");
+                    }
+                    new_msg.content = new_content; // TODO: this is not wiring correctly into the prompt
+                }
+            }
+        }
+#endif
 
         common_chat_params cparams;
         common_chat_templates_inputs cinputs;
@@ -126,21 +142,8 @@ public:
         chat_msgs_.push_back(new_msg);
         LOG_DBG("formatted: '%s'\n", formatted.c_str());
 
-#ifdef LLAMA_USE_TOOLCALL
-        if (params_.use_jinja && use_toolcalls) {
-            common_chat_grammar_to_sampler(&cparams, vocab_, &params_.sampling);
-            if (tc_handler_ != nullptr) {
-                if (nlohmann::json::accept(formatted)) {   // May need a better way to ensure
-                    std::string response;                  // this is intended for a tool-call.
-                    tc_handler_->call(formatted, response);
-                    return std::string(response);
+        common_chat_grammar_to_sampler(&cparams, vocab_, &params_.sampling);
 
-                } else {
-                    return formatted;
-                }
-            }
-        }
-#endif
         return formatted;
     }
 
@@ -855,22 +858,9 @@ int main(int argc, char ** argv) {
                     }
 
                     if (params.enable_chat_template) {
-#ifdef LLAMA_USE_TOOLCALL
-                        auto output = chat_add_and_format("assistant", assistant_ss.str(), true);
-                        if (tc_handler == nullptr || tc_handler->last_action() != toolcall::ACCEPT) {
-                            is_interacting = true;
-                            LOG("\n");
-
-                        } else {
-                            LOG_DBG("tokenizing toolcall response");
-                            auto response = common_tokenize(ctx, output, false, true);
-                            embd_inp.insert(embd_inp.end(), response.begin(), response.end());
-                        }
-#else
-                        chat_add_and_format("assistant", assistant_ss.str());
+                        chat_add_and_format("assistant", assistant_ss.str(), true);
                         is_interacting = true;
                         LOG("\n");
-#endif
                     }
                 }
             }

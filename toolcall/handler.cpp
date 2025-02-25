@@ -5,7 +5,7 @@
 #include <stdexcept>
 
 #ifdef LLAMA_USE_CURL
-#  include "mcp_sse_transport.h"
+#    include "mcp_sse_transport.h"
 #endif
 
 #include "mcp_stdio_transport.h"
@@ -39,17 +39,12 @@ bool toolcall::handler::tool_list_dirty() const {
     return impl_->tool_list_dirty();
 }
 
-toolcall::action toolcall::handler::call(const std::string & request, std::string & response) {
-    last_action_ = impl_->call(request, response);
-    return last_action_;
+toolcall::result_set toolcall::handler::call(const std::string & request) {
+    return impl_->call(request);
 }
 
 const std::string & toolcall::handler::tool_choice() const {
     return impl_->tool_choice();
-}
-
-toolcall::action toolcall::handler::last_action() const {
-    return last_action_;
 }
 
 void toolcall::handler::initialize() {
@@ -194,26 +189,32 @@ static mcp::tools_call_request tools_call_request_from_local_json(nlohmann::json
     return mcp::tools_call_request(id, j["name"], args);
 }
 
-static std::string tools_call_response_to_local_json(const mcp::tools_call_response & resp) {
-    return resp.toJson().dump(-1); // The AI will figure it out?
+static toolcall::result_set tools_call_response_to_result(const mcp::tools_call_response & resp) {
+    toolcall::result_set result;
+    for (const auto & res : resp.tool_result()) {
+        result.push_back(toolcall::result{
+                res.type, res.value, res.mime_type.value_or("text/plain"), res.uri, resp.tool_error()
+            });
+    }
+    return std::move(result);
 }
 
-toolcall::action toolcall::mcp_impl::call(const std::string & request, std::string & response) {
+toolcall::result_set toolcall::mcp_impl::call(const std::string & request) {
     using on_response = toolcall::callback<mcp::tools_call_response>;
 
     if (transport_ == nullptr) {
-        return toolcall::DEFER;
+        return toolcall::result_set();
     }
     std::unique_lock<std::mutex> lock(tools_mutex_);
 
-    response.clear();
+    toolcall::result_set response;
     on_response set_response = [this, &response] (const mcp::tools_call_response & resp) {
         std::unique_lock<std::mutex> lock(tools_mutex_);
-        response = tools_call_response_to_local_json(resp);
+        response = tools_call_response_to_result(resp);
         tools_populating_.notify_one();
     };
     transport_->send(tools_call_request_from_local_json(next_id_++, request), set_response);
     tools_populating_.wait_for(lock, std::chrono::seconds(15), [&response] { return ! response.empty(); });
 
-    return toolcall::ACCEPT;
+    return response;
 }
