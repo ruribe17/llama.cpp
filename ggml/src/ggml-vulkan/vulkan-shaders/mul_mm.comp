@@ -336,9 +336,9 @@ void main() {
             const uint iqs = idx & 0x07;
 
             const float d = float(data_a_packed16[ib].d);
-            const uint v0 = uint(data_a_packed16[ib].qs[2*iqs]);
-            const uint v1 = uint(data_a_packed16[ib].qs[2*iqs + 1]);
-            const vec4 v = vec4(int8_t(v0 & 0xFF), int8_t(v0 >> 8), int8_t(v1 & 0xFF), int8_t(v1 >> 8)) * d;
+            const i8vec2 v0 = unpack8(data_a_packed16[ib].qs[2*iqs]);
+            const i8vec2 v1 = unpack8(data_a_packed16[ib].qs[2*iqs + 1]);
+            const vec4 v = vec4(v0.x, v0.y, v1.x, v1.y) * d;
 
             buf_a[buf_idx    ] = FLOAT_TYPE(v.x);
             buf_a[buf_idx + 1] = FLOAT_TYPE(v.y);
