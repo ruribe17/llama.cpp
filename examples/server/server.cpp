@@ -1671,9 +1671,8 @@ struct server_response {
     }
 
     void add_waiting_tasks(const std::vector<server_task> & tasks) {
-        std::unique_lock<std::mutex> lock(mutex_results);
-
         for (const auto & task : tasks) {
+            std::unique_lock<std::mutex> lock(mutex_results);
             SRV_DBG("add task %d to waiting list. current waiting = %d (before add)\n", task.id, (int) waiting_task_ids.size());
             waiting_task_ids.insert(task.id);
         }
@@ -1683,20 +1682,24 @@ struct server_response {
     void remove_waiting_task_id(int id_task) {
         SRV_DBG("remove task %d from waiting list. current waiting = %d (before remove)\n", id_task, (int) waiting_task_ids.size());
 
-        std::unique_lock<std::mutex> lock(mutex_results);
-        waiting_task_ids.erase(id_task);
+        {
+            std::unique_lock<std::mutex> lock(mutex_results);
+            waiting_task_ids.erase(id_task);
+        }
         // make sure to clean up all pending results
-        queue_results.erase(
-            std::remove_if(queue_results.begin(), queue_results.end(), [id_task](const server_task_result_ptr & res) {
-                return res->id == id_task;
-            }),
-            queue_results.end());
+        {
+            std::unique_lock<std::mutex> lock(mutex_results);
+            queue_results.erase(
+                std::remove_if(queue_results.begin(), queue_results.end(), [id_task](const server_task_result_ptr & res) {
+                    return res->id == id_task;
+                }),
+                queue_results.end());
+        }
     }
 
     void remove_waiting_task_ids(const std::unordered_set<int> & id_tasks) {
-        std::unique_lock<std::mutex> lock(mutex_results);
-
         for (const auto & id_task : id_tasks) {
+            std::unique_lock<std::mutex> lock(mutex_results);
             SRV_DBG("remove task %d from waiting list. current waiting = %d (before remove)\n", id_task, (int) waiting_task_ids.size());
             waiting_task_ids.erase(id_task);
         }
@@ -3840,6 +3843,10 @@ int main(int argc, char ** argv) {
             const auto & prompt = data.at("prompt");
             // TODO: this log can become very long, put it behind a flag or think about a more compact format
             //SRV_DBG("Prompt: %s\n", prompt.is_string() ? prompt.get<std::string>().c_str() : prompt.dump(2).c_str());
+
+            if (prompt.contains("chat_history")) {
+                return;
+            }
 
             std::vector<llama_tokens> tokenized_prompts = tokenize_input_prompts(ctx_server.vocab, prompt, true, true);
             tasks.reserve(tokenized_prompts.size());
