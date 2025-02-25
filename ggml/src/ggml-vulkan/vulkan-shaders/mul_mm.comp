@@ -656,24 +656,18 @@ void main() {
             buf_a[buf_idx + 1] = FLOAT_TYPE(v.y);
 #elif defined(DATA_A_IQ4_NL)
             const uint idx = pos_a + (loadc_a + l) * p.stride_a / LOAD_VEC_A + loadr_a;
-            const uint buf_idx = (loadc_a + l) * SHMEM_STRIDE + 4 * loadr_a;
+            const uint buf_idx = (loadc_a + l) * SHMEM_STRIDE + 2 * loadr_a;
 
-            const uint ib = idx / 4;
-            const uint iqs = idx & 0x03;
+            const uint ib = idx / 8;
+            const uint iqs = idx & 0x07;
 
             const FLOAT_TYPE d = FLOAT_TYPE(data_a_packed16[ib].d);
-            const uint vui = uint(data_a_packed16[ib].qs[2*iqs]) | (uint(data_a_packed16[ib].qs[2*iqs + 1]) << 16);
-            const u8vec4 v0 = unpack8(vui & 0x0F0F0F0F);
-            const u8vec4 v1 = unpack8((vui >> 4) & 0x0F0F0F0F);
+            const uint vui = uint(data_a_packed16[ib].qs[iqs]);
 
-            buf_a[buf_idx     ] = FLOAT_TYPE(kvalues_iq4nl[v0.x]) * d;
-            buf_a[buf_idx + 1 ] = FLOAT_TYPE(kvalues_iq4nl[v0.y]) * d;
-            buf_a[buf_idx + 2 ] = FLOAT_TYPE(kvalues_iq4nl[v0.z]) * d;
-            buf_a[buf_idx + 3 ] = FLOAT_TYPE(kvalues_iq4nl[v0.w]) * d;
-            buf_a[buf_idx + 16] = FLOAT_TYPE(kvalues_iq4nl[v1.x]) * d;
-            buf_a[buf_idx + 17] = FLOAT_TYPE(kvalues_iq4nl[v1.y]) * d;
-            buf_a[buf_idx + 18] = FLOAT_TYPE(kvalues_iq4nl[v1.z]) * d;
-            buf_a[buf_idx + 19] = FLOAT_TYPE(kvalues_iq4nl[v1.w]) * d;
+            buf_a[buf_idx     ] = FLOAT_TYPE(kvalues_iq4nl[vui & 0xF]) * d;
+            buf_a[buf_idx + 1 ] = FLOAT_TYPE(kvalues_iq4nl[bitfieldExtract(vui, 8, 4)]) * d;
+            buf_a[buf_idx + 16] = FLOAT_TYPE(kvalues_iq4nl[bitfieldExtract(vui, 4, 4)]) * d;
+            buf_a[buf_idx + 17] = FLOAT_TYPE(kvalues_iq4nl[vui >> 12]) * d;
 #endif
         }
         [[unroll]] for (uint l = 0; l < BN; l += loadstride_b) {
