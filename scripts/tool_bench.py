@@ -152,8 +152,8 @@ def plot(files: List[Path], output: Optional[Path] = None, test_regex: Optional[
     logger.info(f"Tests: {tests}")
     logger.info(f"Servers: {server_names}")
 
-    matrix = []
-    index = []
+    matrix: list[list[float]] = []
+    index: list[str] = []
 
     all_cols = [
         (server_name, test)
@@ -227,7 +227,7 @@ def run(
 
     with output.open('a' if append else 'w') as output_file:
 
-        def run(server: ServerProcess, *, server_name: str, model_id: str, temp: float | None = None, output_kwargs={}, request_kwargs={}):
+        def run(server: ServerProcess, *, server_name: str, model_id: str, temp: Optional[float] = None, output_kwargs={}, request_kwargs={}):
             request_kwargs = {**request_kwargs}
             if temp is not None:
                 request_kwargs['temperature'] = temp
@@ -254,7 +254,7 @@ def run(
                 failures = []
                 success_times = []
                 failure_times = []
-                print(f"Running {test_name} ({server_name}, {model}): ", file=sys.stderr, flush=True)
+                logger.info(f"Running {test_name} ({server_name}, {model}): ")
                 for i in range(n):
                     start_time = time.time()
 
@@ -265,17 +265,14 @@ def run(
                         test(server)
                         success_times.append(elapsed())
                         success_count += 1
-                        print('.', end='', file=sys.stderr, flush=True)
+                        logger.info('success')
                     except Exception as e:
-                        print('!', end='', file=sys.stderr, flush=True)
-                        if failure_count == 0:
-                            print(f" ({e}) ", end='', file=sys.stderr, flush=True)
+                        logger.error(f'failure: {e}')
                         failure_count += 1
                         failure_times.append(elapsed())
                         failures.append(str(e))
                         # import traceback
                         # traceback.print_exc()
-                print('\n', file=sys.stderr, flush=True)
                 output_file.write(json.dumps({**output_kwargs, **dict(
                     model=model,
                     server_name=server_name,
