@@ -3,9 +3,6 @@ set -euo pipefail
 
 cmake --build build -j
 
-# Useful for ollama
-# export LLAMA_SERVER_TEST_REQUEST_RETRIES=${RETRIES:-3}
-
 export LLAMA_CACHE=${LLAMA_CACHE:-$HOME/Library/Caches/llama.cpp}
 export LLAMA_SERVER_BIN_PATH=$PWD/build/bin/llama-server
 

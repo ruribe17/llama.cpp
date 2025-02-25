@@ -9,6 +9,9 @@
 
         cmake -B build -DLLAMA_CURL=1 && cmake --build build --config Release -j -t llama-server
 
+        export LLAMA_SERVER_BIN_PATH=$PWD/build/bin/llama-server
+        export LLAMA_CACHE=${LLAMA_CACHE:-$HOME/Library/Caches/llama.cpp}
+
         ./scripts/tool_bench.py run --n 30 --temp -1 --temp 0 --temp 1 --model "Qwen 2.5 1.5B Q4_K_M"      --output qwen1.5b.jsonl  --hf bartowski/Qwen2.5-1.5B-Instruct-GGUF      --ollama qwen2.5:1.5b-instruct-q4_K_M
         ./scripts/tool_bench.py run --n 30 --temp -1 --temp 0 --temp 1 --model "Qwen 2.5 Coder 7B Q4_K_M"  --output qwenc7b.jsonl   --hf bartowski/Qwen2.5-Coder-7B-Instruct-GGUF  --ollama qwen2.5-coder:7b
 
@@ -48,8 +51,8 @@ import typer
 
 sys.path.insert(0, Path(__file__).parent.parent.as_posix())
 if True:
-    from examples.server.tests.utils import ServerProcess # type: ignore
-    from examples.server.tests.unit.test_tool_call import TIMEOUT_SERVER_START, do_test_calc_result, do_test_hello_world, do_test_weather # type: ignore
+    from examples.server.tests.utils import ServerProcess
+    from examples.server.tests.unit.test_tool_call import TIMEOUT_SERVER_START, do_test_calc_result, do_test_hello_world, do_test_weather
 
 
 @contextmanager
@@ -169,9 +172,9 @@ def plot(files: List[Path], output: Optional[Path] = None, test_regex: Optional[
             ]
             matrix.append(row_vals)
 
-    columns = [f"{server_name}\n{test}" for server_name, test in all_cols]
+    columns: list[str] = [f"{server_name}\n{test}" for server_name, test in all_cols]
 
-    df = pd.DataFrame(matrix, index=index, columns=columns)
+    df = pd.DataFrame(matrix, index=np.array(index), columns=np.array(columns))
 
     plt.figure(figsize=(12, 6))
 
