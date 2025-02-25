@@ -392,8 +392,8 @@ struct server_task {
                             const std::string & word = t.at("value");
                             auto ids = common_tokenize(vocab, word, /* add_special= */ false, /* parse_special= */ true);
                             if (ids.size() == 1) {
-                                auto token = (llama_token) ids[0];
-                                if (std::find(params.sampling.preserved_tokens.begin(), params.sampling.preserved_tokens.end(), token) == params.sampling.preserved_tokens.end()) {
+                                auto token = ids[0];
+                                if (std::find(params.sampling.preserved_tokens.begin(), params.sampling.preserved_tokens.end(), (llama_token) token) == params.sampling.preserved_tokens.end()) {
                                     throw std::runtime_error("Grammar trigger word should be marked as preserved token: " + word);
                                 }
                                 SRV_DBG("Grammar trigger token: %d (`%s`)\n", token, word.c_str());
