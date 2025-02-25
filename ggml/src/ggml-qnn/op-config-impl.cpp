@@ -385,36 +385,26 @@ bool ggml_qnn_matmul_op_config::create_mat_mul_nodes(QNNBackend device, Qnn_Grap
      *   [5, 4],
      * ])
      * # Perform matrix multiplication
-     * result = torch.matmul(A, B.T)
-     * print(result.T)
+     * C = torch.matmul(A, B.T)
+     * print(C.T)
      * ```
      * Here, the B.T is the transpose of B.
+     * So C.T = A * B.T which is equivalent to C = B * A.T.
+     * See: https://github.com/ggml-org/llama.cpp/blob/master/CONTRIBUTING.md
      *
      * So here we need to create graph like:
      *   ```mermaid
      *   graph TD;
-     *        i1>ggml_tensor_in0] --src0--> mat_mul0;
-     *        i2>ggml_tensor_in1] --src1--> mat_mul0;
-     *        mat_mul0 --dst_trans--> transpose_out;
-     *        transpose1 --dst0--> o1>ggml_tensor_out];
+     *        i1>ggml_tensor_in0] --src1--> mat_mul0;
+     *        i2>ggml_tensor_in1] --src0.T--> mat_mul0;
+     *        mat_mul0 --dst0--> o1>ggml_tensor_out];
      *   ```
      */
 
     // create src0_trans tensor
-    auto src1 = tensor_inputs.back();
     static_assert(GGML_MAX_DIMS == 4, "GGML_MAX_DIMS does not match the expected value");
-
-    qnn_dimension_array_t dimensions = get_transposed_dimensions(src1->get_dimensions(), rank);
-
-    // create dst_trans tensor
-    auto dst = tensor_outputs.front();
-    dimensions = get_transposed_dimensions(dst->get_dimensions(), rank);
-    auto dst_trans = std::make_shared<ggml_qnn_tensor>(ggml_qnn_tensor::INTERMEDIATE, "dst_trans", dimensions,
-                                                       dst->get_data_type(), rank, device, graph_handle, _qnn_instance);
-
-    // create transpose_out
-    auto transpose_out = std::make_shared<ggml_qnn_single_op_config>(_name + "_trans1", QNN_OP_PACKAGE_NAME_QTI_AISW,
-                                                                     QNN_OP_TRANSPOSE, _qnn_instance);
+    GGML_ASSERT(tensor_inputs.size() == 2);
+    GGML_ASSERT(tensor_outputs.size() == 1);
 
     // create mat_mul
     auto mat_mul =
@@ -425,24 +415,12 @@ bool ggml_qnn_matmul_op_config::create_mat_mul_nodes(QNNBackend device, Qnn_Grap
     scalar.bool8Value = 1;
     mat_mul->add_scalar_param(QNN_OP_MAT_MUL_PARAM_TRANSPOSE_IN1, scalar);
 
-    // set transpose_out parameters
-    auto *params_data = reinterpret_cast<const uint8_t *>(kTransposeParamData[rank - 1].data());
-    const qnn_dimension_array_t param_dims = {(uint32_t)rank, 1, 1, 1};
-    transpose_out->add_tensor_param(QNN_OP_TRANSPOSE_PARAM_PERM, param_dims, 1, params_data, QNN_DATATYPE_UINT_32,
-                                    device, graph_handle);
-
     // set tensor to mat_mul
+    std::swap(tensor_inputs[0], tensor_inputs[1]);
     mat_mul->set_input_tensors(tensor_inputs);
-    qnn_tensor_array_t tensors = {dst_trans};
-    mat_mul->set_output_tensors(tensors);
-
-    // set tensor to transpose_out
-    tensors = {dst_trans};
-    transpose_out->set_input_tensors(tensors);
-    transpose_out->set_output_tensors(tensor_outputs);
+    mat_mul->set_output_tensors(tensor_outputs);
 
     _operations.push_back(mat_mul);
-    _operations.push_back(transpose_out);
     return true;
 }
 
