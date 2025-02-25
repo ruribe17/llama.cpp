@@ -230,7 +230,7 @@ namespace mcp
 
     struct tool_arg {
         std::string name;
-        std::string value;
+        nlohmann::json value;
     };
 
     using tool_arg_list = std::vector<tool_arg>;

@@ -189,7 +189,7 @@ static mcp::tools_call_request tools_call_request_from_local_json(nlohmann::json
     nlohmann::json j = json::parse(local_json);
     mcp::tool_arg_list args;
     for (const auto & [key, val] : j["parameters"].items()) {
-        args.push_back({key, val.dump()});
+        args.push_back({key, val});
     }
     return mcp::tools_call_request(id, j["name"], args);
 }
