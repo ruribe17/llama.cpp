@@ -296,9 +296,9 @@ export default function SettingDialog({
           return;
         }
       } else if (mustBeNumeric) {
-        const trimedValue = value.toString().trim();
-        const numVal = Number(trimedValue);
-        if (isNaN(numVal) || !isNumeric(numVal) || trimedValue.length === 0) {
+        const trimmedValue = value.toString().trim();
+        const numVal = Number(trimmedValue);
+        if (isNaN(numVal) || !isNumeric(numVal) || trimmedValue.length === 0) {
           alert(`Value for ${key} must be numeric`);
           return;
         }
