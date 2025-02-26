@@ -4,6 +4,7 @@ import { OpenInNewTab, XCloseButton } from '../utils/common';
 import { CanvasType } from '../utils/types';
 import { PlayIcon, StopIcon } from '@heroicons/react/24/outline';
 import StorageUtils from '../utils/storage';
+import { useTranslation } from 'react-i18next';
 
 const canInterrupt = typeof SharedArrayBuffer === 'function';
 
@@ -111,6 +112,7 @@ const runCodeInWorker = (
 export default function CanvasPyInterpreter() {
   const { canvasData, setCanvasData } = useAppContext();
 
+  const { t } = useTranslation();
   const [code, setCode] = useState(canvasData?.content ?? ''); // copy to avoid direct mutation
   const [running, setRunning] = useState(false);
   const [output, setOutput] = useState('');
@@ -147,7 +149,9 @@ export default function CanvasPyInterpreter() {
     <div className="card bg-base-200 w-full h-full shadow-xl">
       <div className="card-body">
         <div className="flex justify-between items-center mb-4">
-          <span className="text-lg font-bold">Python Interpreter</span>
+          <span className="text-lg font-bold">
+            {t('MarkdownDisplay.PythonInterpreter')}
+          </span>
           <XCloseButton
             className="bg-base-100"
             onClick={() => setCanvasData(null)}
@@ -166,7 +170,7 @@ export default function CanvasPyInterpreter() {
                 onClick={() => runCode(code)}
                 disabled={running}
               >
-                <PlayIcon className="h-6 w-6" /> Run
+                <PlayIcon className="h-6 w-6" /> {t('MarkdownDisplay.Run')}
               </button>
               {showStopBtn && (
                 <button

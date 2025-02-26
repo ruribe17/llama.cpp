@@ -1,4 +1,10 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from 'react';
 import {
   APIMessage,
   CanvasData,
@@ -15,6 +21,17 @@ import {
 } from './misc';
 import { BASE_URL, CONFIG_DEFAULT, isDev } from '../Config';
 import { matchPath, useLocation, useNavigate } from 'react-router';
+import i18next from 'i18next';
+import useStateCallback from './UseStateCallback.tsx';
+type languageOption = { language: string; code: string };
+
+const PROMPT_JSON = [
+  {
+    name: '',
+    lang: '',
+    config: CONFIG_DEFAULT,
+  },
+];
 
 interface AppContextValue {
   // conversations and messages
@@ -44,10 +61,26 @@ interface AppContextValue {
   // config
   config: typeof CONFIG_DEFAULT;
   saveConfig: (config: typeof CONFIG_DEFAULT) => void;
-  showSettings: boolean;
   settingsSeed: number;
-  setShowSettings: (show: boolean) => void;
   resetSettings: () => void;
+  closeDropDownMenu: (e: string) => void;
+  setPromptSelectOptions: (e: { key: number; value: string }[]) => void;
+  promptSelectOptions: { key: number; value: string }[];
+  promptSelectConfig: typeof PROMPT_JSON | null;
+  setPromptSelectConfig: (
+    value: React.SetStateAction<typeof PROMPT_JSON | null>,
+    callback?: (value?: React.SetStateAction<typeof PROMPT_JSON | null>) => void
+  ) => void;
+  promptSelectFirstConfig: number;
+  setPromptSelectFirstConfig: (e: number) => void;
+  languageOptions: languageOption[];
+  language: string;
+  setLanguage: (
+    value: React.SetStateAction<string>,
+    callback?: (value?: React.SetStateAction<string>) => void
+  ) => void;
+  promptSeed: number;
+  resetPromptSeed: () => void;
 }
 
 // this callback is used for scrolling to the bottom of the chat and switching to the last node
@@ -85,10 +118,13 @@ export const AppContextProvider = ({
   >({});
   const [config, setConfig] = useState(StorageUtils.getConfig());
   const [canvasData, setCanvasData] = useState<CanvasData | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
   const [settingsSeed, setSettingsSeed] = useState(1);
-  const resetSettings = () => {
+  const [promptSeed, setPromptSeed] = useState(42);
+  const resetSettings = useCallback(() => {
     setSettingsSeed(Math.random());
+  }, []);
+  const resetPromptSeed = () => {
+    setPromptSeed(Math.random());
   };
 
   // handle change when the convId from URL is changed
@@ -363,10 +399,127 @@ export const AppContextProvider = ({
     await generateMessage(convId, parentNodeId, onChunk);
   };
 
-  const saveConfig = (config: typeof CONFIG_DEFAULT) => {
+  const saveConfig = useCallback((config: typeof CONFIG_DEFAULT) => {
     StorageUtils.setConfig(config);
     setConfig(config);
+  }, []);
+
+  const closeDropDownMenu = (e: string) => {
+    // if we specify the dropdown ID we can remove "open" attribute
+    if (e !== '') {
+      const elem = document.getElementById(e);
+      if (elem) {
+        elem.removeAttribute('open');
+      }
+    }
+    // used for some dropdown menu, focus elsewhere
+    document
+      .getElementById('dropdown-close-helper')
+      ?.focus({ preventScroll: true });
   };
+
+  const languageOptions: languageOption[] = [
+    { language: 'Chinese', code: 'cn' },
+    { language: 'English', code: 'en' },
+    { language: 'French', code: 'fr' },
+    { language: 'German', code: 'de' },
+    { language: 'Italian', code: 'it' },
+    { language: 'Russian', code: 'ru' },
+    { language: 'Spanish', code: 'es' },
+  ];
+  const [language, setLanguage] = useStateCallback(i18next.language);
+  // const [language, setLanguage] = useState(i18next.language);
+  const [promptSelectOptions, setPromptSelectOptions] = useState<
+    { key: number; value: string }[]
+  >([]);
+  const [promptSelectConfig, setPromptSelectConfig] = useStateCallback<
+    typeof PROMPT_JSON | null
+  >(null);
+  const [promptSelectFirstConfig, setPromptSelectFirstConfig] =
+    useState<number>(-1);
+
+  useEffect(() => {
+    if (!promptSelectConfig) {
+      fetch('/prompts.config.json')
+        .then((response) => {
+          if (!response.ok) throw new Error(response.status.toString());
+          else return response.json();
+        })
+        .then((data) => {
+          if (data && data.presets) {
+            setPromptSelectConfig(data.presets);
+          }
+        })
+        .catch((error) => {
+          console.log('error: ' + error);
+        });
+    }
+  }, [
+    language,
+    setPromptSelectConfig,
+    setPromptSelectFirstConfig,
+    setPromptSelectOptions,
+    promptSelectConfig,
+  ]);
+
+  useEffect(() => {
+    const prt: { key: number; value: string }[] = [];
+    if (promptSelectConfig) {
+      let firstConfigSet = false;
+      saveConfig(CONFIG_DEFAULT);
+      Object.keys(promptSelectConfig).forEach(function (key: string) {
+        if (
+          language == promptSelectConfig[parseInt(key)].lang ||
+          promptSelectConfig[parseInt(key)].lang == ''
+        ) {
+          if (!firstConfigSet) {
+            firstConfigSet = true;
+            setPromptSelectFirstConfig(parseInt(key));
+            saveConfig(promptSelectConfig[parseInt(key)].config);
+          }
+          const name = promptSelectConfig[parseInt(key)].name;
+          prt.push({ key: parseInt(key), value: name });
+        }
+      });
+      setPromptSelectConfig(promptSelectConfig, () => {
+        resetSettings();
+      });
+    }
+    setPromptSelectOptions(prt);
+  }, [
+    promptSelectConfig,
+    language,
+    resetSettings,
+    setPromptSelectConfig,
+    saveConfig,
+  ]);
+
+  const [selectedConfig, setSelectedConfig] = useState<number>(-1);
+
+  useEffect(() => {
+    if (
+      promptSelectConfig !== null &&
+      selectedConfig == -1 &&
+      promptSelectFirstConfig != -1
+    ) {
+      setSelectedConfig(0);
+      //selectPrompt(0);
+      if (isDev)
+        console.log(
+          'Saving config',
+          promptSelectConfig[promptSelectFirstConfig].config
+        );
+      saveConfig(CONFIG_DEFAULT);
+      saveConfig(promptSelectConfig[promptSelectFirstConfig].config);
+      resetSettings();
+    }
+  }, [
+    promptSelectConfig,
+    selectedConfig,
+    saveConfig,
+    resetSettings,
+    promptSelectFirstConfig,
+  ]);
 
   return (
     <AppContext.Provider
@@ -381,10 +534,20 @@ export const AppContextProvider = ({
         setCanvasData,
         config,
         saveConfig,
-        showSettings,
-        setShowSettings,
         settingsSeed,
         resetSettings,
+        closeDropDownMenu,
+        languageOptions,
+        language,
+        setLanguage,
+        promptSeed,
+        resetPromptSeed,
+        promptSelectOptions,
+        setPromptSelectOptions,
+        promptSelectConfig,
+        setPromptSelectConfig,
+        promptSelectFirstConfig,
+        setPromptSelectFirstConfig,
       }}
     >
       {children}

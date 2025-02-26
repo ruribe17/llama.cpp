@@ -4,6 +4,7 @@ import { Message, PendingMessage } from '../utils/types';
 import { classNames } from '../utils/misc';
 import MarkdownDisplay, { CopyButton } from './MarkdownDisplay';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
 interface SplitMessage {
   content: PendingMessage['content'];
@@ -30,6 +31,7 @@ export default function ChatMessage({
   onChangeSibling(sibling: Message['id']): void;
   isPending?: boolean;
 }) {
+  const { t } = useTranslation();
   const { viewingChat, config } = useAppContext();
   const [editingContent, setEditingContent] = useState<string | null>(null);
   const timings = useMemo(
@@ -105,7 +107,7 @@ export default function ChatMessage({
                 className="btn btn-ghost mt-2 mr-2"
                 onClick={() => setEditingContent(null)}
               >
-                Cancel
+                {t('ChatMessage.Cancel')}
               </button>
               <button
                 className="btn mt-2"
@@ -116,7 +118,7 @@ export default function ChatMessage({
                   }
                 }}
               >
-                Submit
+                {t('ChatMessage.Submit')}
               </button>
             </>
           )}
@@ -145,10 +147,10 @@ export default function ChatMessage({
                                 className="loading loading-spinner loading-md mr-2"
                                 style={{ verticalAlign: 'middle' }}
                               ></span>
-                              <b>Thinking</b>
+                              <b>{t('ChatMessage.Thinking')}</b>
                             </span>
                           ) : (
-                            <b>Thought Process</b>
+                            <b>{t('ChatMessage.ThoughtProcess')}</b>
                           )}
                         </summary>
                         <div className="collapse-content">
@@ -168,7 +170,7 @@ export default function ChatMessage({
                         })}
                       >
                         <summary className="collapse-title">
-                          Extra content
+                          {t('ChatMessage.ExtraContent')}
                         </summary>
                         <div className="collapse-content">
                           {msg.extra.map(
@@ -203,18 +205,21 @@ export default function ChatMessage({
                     role="button"
                     className="cursor-pointer font-semibold text-sm opacity-60"
                   >
-                    Speed: {timings.predicted_per_second.toFixed(1)} t/s
+                    {t('ChatMessage.Speed')}:{' '}
+                    {timings.predicted_per_second.toFixed(1)} t/s
                   </div>
                   <div className="dropdown-content bg-base-100 z-10 w-64 p-2 shadow mt-4">
                     <b>Prompt</b>
-                    <br />- Tokens: {timings.prompt_n}
-                    <br />- Time: {timings.prompt_ms} ms
-                    <br />- Speed: {timings.prompt_per_second.toFixed(1)} t/s
+                    <br />- {t('ChatMessage.Tokens')}: {timings.prompt_n}
+                    <br />- {t('ChatMessage.Time')}: {timings.prompt_ms} ms
+                    <br />- {t('ChatMessage.Speed')}:{' '}
+                    {timings.prompt_per_second.toFixed(1)} t/s
                     <br />
                     <b>Generation</b>
-                    <br />- Tokens: {timings.predicted_n}
-                    <br />- Time: {timings.predicted_ms} ms
-                    <br />- Speed: {timings.predicted_per_second.toFixed(1)} t/s
+                    <br />- {t('ChatMessage.Tokens')}: {timings.predicted_n}
+                    <br />- {t('ChatMessage.Time')}: {timings.predicted_ms} ms
+                    <br />- {t('ChatMessage.Speed')}:{' '}
+                    {timings.predicted_per_second.toFixed(1)} t/s
                     <br />
                   </div>
                 </div>
@@ -264,7 +269,7 @@ export default function ChatMessage({
               onClick={() => setEditingContent(msg.content)}
               disabled={msg.content === null}
             >
-              ✍️ Edit
+              {t('ChatMessage.Edit')}
             </button>
           )}
           {/* assistant message */}
@@ -280,7 +285,7 @@ export default function ChatMessage({
                   }}
                   disabled={msg.content === null}
                 >
-                  🔄 Regenerate
+                  {t('ChatMessage.Regenerate')}
                 </button>
               )}
             </>
