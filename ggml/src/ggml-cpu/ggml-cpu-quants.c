@@ -4768,7 +4768,7 @@ void ggml_vec_dot_q2_K_q8_K(int n, float * restrict s, size_t bs, const void * r
                 acc_sum = svmla_f32_m(svptrue_pat_b32(SV_VL8), acc_sum, temp, dmin_broad);
 
                 svint32_t sumi1 = svdup_n_s32(0);
-                
+
                 {
                     const svuint8_t q2bits_1 = svld1_u8(svptrue_pat_b8(SV_VL32), q2);
                     svint8_t q2bytes_sv = svreinterpret_s8_u8(svand_u8_m(svptrue_pat_b8(SV_VL32), q2bits_1, m3s));
@@ -5511,7 +5511,6 @@ void ggml_vec_dot_q3_K_q8_K(int n, float * restrict s, size_t bs, const void * r
 #if defined(__ARM_FEATURE_SVE)
 
     uint32_t utmp[4];
-    //uint32_t aux[3];
 
     const int8_t m32 = 32;
     const int vector_length = svcntb()*8;
