@@ -89,7 +89,7 @@ class  qnn_instance;
 struct ggml_backend_qnn_context;
 void   ggmlqnn_log_internal(ggml_log_level level, const char * file, const char * func, int line, const char * format, ...);
 
-#ifdef NDEBUG
+#if 0//def NDEBUG
 #define GGMLQNN_DEBUG                           0
 #define ENABLE_QNNBACKEND_PERF                  0  // enable/disable op's perf info
 #define GGMLQNN_PRINT_QNN_INTERNAL_LOG          0  // enable/disable QNN's internal log
