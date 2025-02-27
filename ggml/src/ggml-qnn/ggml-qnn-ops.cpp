@@ -91,7 +91,7 @@ void ggml_qnn_general_node(ggml_backend_qnn_context * ctx, ggml_tensor * op) {
         p_tensor1 = ggmlqnn_create_compute_tensor(src1);
         p_tensor2 = ggmlqnn_create_compute_tensor(dst);
     }
-    ggmlqnn_print_tensors_info(__func__, ctx, src0, src1, dst);
+    //ggmlqnn_print_tensors_info(__func__, ctx, src0, src1, dst);
 
     //ensure QNN tensor has correct tensor type
     QNN_VER_PTR(*p_tensor0)->type = QNN_TENSOR_TYPE_APP_WRITE;
