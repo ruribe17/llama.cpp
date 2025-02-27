@@ -373,9 +373,9 @@ public:
     }
 
 private:
-    const QnnInterface_t *_qnn_interface = nullptr;
+    const QnnInterface_t * _qnn_interface           = nullptr;
 
-    const QnnSystemInterface_t *_qnn_sys_interface = nullptr;
+    const QnnSystemInterface_t * _qnn_sys_interface = nullptr;
 };
 
 class qnn_instance {
@@ -582,7 +582,6 @@ const char   * ggmlqnn_get_error_string(Qnn_ErrorHandle_t qnn_error_code);
 Qnn_DataType_t ggmlqnn_datatype_from_ggml_datatype(enum ggml_type ggmltype);
 void         * ggmlqnn_type_trait(ggml_backend_qnn_context * ctx, ggml_tensor * op);
 void           ggmlqnn_get_graphkey_from_op(const ggml_tensor * op, std::string & output);
-bool           ggmlqnn_is_valid_params(ggml_backend_qnn_context * ctx, const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst);
 uint8_t      * ggmlqnn_create_rpc_buffer(qnn_instance * instance, const ggml_tensor * ggml_tensor, Qnn_Tensor_t * qnn_tensor, bool b_copydata);
 void           ggmlqnn_print_tensors_info(const char * func_name, ggml_backend_qnn_context * ctx, const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst);
 

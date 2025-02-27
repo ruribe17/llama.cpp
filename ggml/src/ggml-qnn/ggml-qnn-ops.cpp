@@ -23,6 +23,22 @@
 #include "ggml-common.h"
 #include "ggml-qnn-ops.h"
 
+static inline bool ggmlqnn_is_valid_params(ggml_backend_qnn_context * ctx, const ggml_tensor * src0,
+                             const ggml_tensor * src1, ggml_tensor * dst) {
+    if ((nullptr == ctx) || (nullptr == src0) || (nullptr == src1) || (nullptr == dst)) {
+        GGMLQNN_LOG_WARN("invalid params\n");
+        return false;
+    }
+
+    qnn_instance * instance = ctx->instance;
+    if (nullptr == instance) {
+        GGMLQNN_LOG_WARN("invalid params\n");
+        return false;
+    }
+
+    return true;
+}
+
 #define GGMLQNN_CHECK_PARAMS(ctx, src0, src1, dst)                          \
     do {                                                                    \
         if (!ggmlqnn_is_valid_params((ctx), (src0), (src1), (dst))) {       \
@@ -491,11 +507,10 @@ void ggml_qnn_mul_mat(ggml_backend_qnn_context * ctx, ggml_tensor * op) {
     QNN_VER_PTR(*p_tensor2)->dimensions = tensor_2_dimensions;
     op_perf.info();
 }
+
 void ggml_qnn_repeat(ggml_backend_qnn_context * ctx, ggml_tensor * dst) {
 }
 
-void ggml_qnn_add(ggml_backend_qnn_context * ctx, ggml_tensor * dst) {
-}
 
 void ggml_qnn_div(ggml_backend_qnn_context * ctx, ggml_tensor * dst) {
 }
@@ -537,12 +552,6 @@ void ggml_qnn_upsample_nearest2d(ggml_backend_qnn_context * ctx, ggml_tensor * d
 }
 
 void ggml_qnn_pad(ggml_backend_qnn_context * ctx, ggml_tensor * dst) {
-}
-
-static void ggml_qnn_avg_pool2d(ggml_backend_qnn_context * ctx, ggml_tensor * dst) {
-}
-
-static void ggml_qnn_max_pool2d(ggml_backend_qnn_context * ctx, ggml_tensor * dst) {
 }
 
 void ggml_qnn_pool2d(ggml_backend_qnn_context * ctx, ggml_tensor * dst) {

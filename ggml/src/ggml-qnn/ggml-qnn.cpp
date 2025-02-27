@@ -1139,22 +1139,6 @@ void ggmlqnn_get_graphkey_from_op(const ggml_tensor * op, std::string & output) 
     }
 }
 
-bool ggmlqnn_is_valid_params(ggml_backend_qnn_context * ctx, const ggml_tensor * src0,
-                             const ggml_tensor * src1, ggml_tensor * dst) {
-    if ((nullptr == ctx) || (nullptr == src0) || (nullptr == src1) || (nullptr == dst)) {
-        GGMLQNN_LOG_WARN("invalid params\n");
-        return false;
-    }
-
-    qnn_instance * instance = ctx->instance;
-    if (nullptr == instance) {
-        GGMLQNN_LOG_WARN("invalid params\n");
-        return false;
-    }
-
-    return true;
-}
-
 template<typename Fn>
 Fn load_qnn_functionpointers(void * handle, const char * function_name) {
 #if defined(__ANDROID__) || defined(__linux__)
