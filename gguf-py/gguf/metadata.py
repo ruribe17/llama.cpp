@@ -139,11 +139,10 @@ class Metadata:
                     break # End of frontmatter
                 else:
                     lines_yaml.append(line)
-            yaml_content = "\n".join(lines_yaml)
+            yaml_content = "\n".join(lines_yaml) + "\n"
 
         # Quick hack to fix the Norway problem
         # https://hitchdev.com/strictyaml/why/implicit-typing-removed/
-        yaml_content += "\n"
         yaml_content = yaml_content.replace("- no\n", "- \"no\"\n")
 
         if yaml_content:
