@@ -219,38 +219,7 @@ services:
 
 ## Web UI
 
-The project includes a web-based user interface that enables interaction with the model through the `/chat/completions` endpoint.
-
-The web UI is developed using:
-- `react` framework for frontend development
-- `tailwindcss` and `daisyui` for styling
-- `vite` for build tooling
-
-A pre-built version is available as a single HTML file under `/public` directory.
-
-To build or to run the dev server (with hot reload):
-
-```sh
-# make sure you have nodejs installed
-cd examples/server/webui
-npm i
-
-# to run the dev server
-npm run dev
-
-# to build the public/index.html.gz
-npm run build
-```
-After `public/index.html.gz` has been generated we need to generate the c++
-headers (like build/examples/server/index.html.gz.hpp) that will be included
-by server.cpp. This is done by building `llama-server` as described in the
-[build](#build) section above.
-
-NOTE: if you are using the vite dev server, you can change the API base URL to llama.cpp. To do that, run this code snippet in browser's console:
-
-```js
-localStorage.setItem('base', 'http://localhost:8080')
-```
+See [README.md](./webui/README.md)
 
 ## Quick Start
 

@@ -11,6 +11,7 @@ import { ElementContent, Root } from 'hast';
 import { visit } from 'unist-util-visit';
 import { useAppContext } from '../utils/app.context';
 import { CanvasType } from '../utils/types';
+import { useTranslation } from 'react-i18next';
 
 export default function MarkdownDisplay({
   content,
@@ -99,6 +100,7 @@ export const CopyButton = ({
   content: string;
   className?: string;
 }) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   return (
     <button
@@ -109,7 +111,7 @@ export const CopyButton = ({
       }}
       onMouseLeave={() => setCopied(false)}
     >
-      {copied ? 'Copied!' : '📋 Copy'}
+      {copied ? t('MarkdownDisplay.copied') : t('MarkdownDisplay.copy')}
     </button>
   );
 };
@@ -122,6 +124,7 @@ export const RunPyCodeButton = ({
   className?: string;
 }) => {
   const { setCanvasData } = useAppContext();
+  const { t } = useTranslation();
   return (
     <>
       <button
@@ -133,7 +136,7 @@ export const RunPyCodeButton = ({
           })
         }
       >
-        ▶️ Run
+        ▶️ {t('MarkdownDisplay.Run')}
       </button>
     </>
   );

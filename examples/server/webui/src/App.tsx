@@ -1,7 +1,7 @@
 import { HashRouter, Outlet, Route, Routes } from 'react-router';
 import Header from './components/Header';
-import Sidebar from './components/Sidebar';
-import { AppContextProvider, useAppContext } from './utils/app.context';
+import ConversationList from './components/ConversationList';
+import { AppContextProvider } from './utils/app.context';
 import ChatScreen from './components/ChatScreen';
 import SettingDialog from './components/SettingDialog';
 
@@ -23,23 +23,30 @@ function App() {
 }
 
 function AppLayout() {
-  const { showSettings, setShowSettings } = useAppContext();
   return (
     <>
-      <Sidebar />
-      <div
-        className="drawer-content grow flex flex-col h-screen w-screen mx-auto px-4 overflow-auto"
-        id="main-scroll"
-      >
-        <Header />
-        <Outlet />
+      <div className="flex w-full">
+        <div
+          id="convBlock"
+          className="hidden lg:block w-64 min-w-64 h-screen overflow-y-auto overflow-x-clip bg-base-200"
+        >
+          <ConversationList />
+        </div>
+        <div
+          id="mainBlock"
+          className="block w-full min-w-0 h-screen overflow-y-auto overflow-x-clip"
+        >
+          <Header />
+          <Outlet />
+        </div>
+        <div
+          id="settingBlock"
+          className="w-full hidden xl:block xl:max-w-md xl:min-w-md bg-base-200 overflow-y-auto overflow-x-clip "
+        >
+          <SettingDialog />
+        </div>
+        <button type="button" id="dropdown-close-helper" className="h-0 w-0" />
       </div>
-      {
-        <SettingDialog
-          show={showSettings}
-          onClose={() => setShowSettings(false)}
-        />
-      }
     </>
   );
 }

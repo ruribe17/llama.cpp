@@ -10,7 +10,8 @@ export const isString = (x: any) => !!x.toLowerCase;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const isBoolean = (x: any) => x === true || x === false;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export const isNumeric = (n: any) => !isString(n) && !isNaN(n) && !isBoolean(n);
+export const isNumeric = (n: any) =>
+  !isString(n) && !isNaN(n) && !isBoolean(n) && !Array.isArray(n);
 export const escapeAttr = (str: string) =>
   str.replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 

@@ -6,6 +6,7 @@ import { classNames, throttle } from '../utils/misc';
 import CanvasPyInterpreter from './CanvasPyInterpreter';
 import StorageUtils from '../utils/storage';
 import { useVSCodeContext } from '../utils/llama-vscode';
+import { useTranslation } from 'react-i18next';
 
 /**
  * A message display is a message node with additional information for rendering.
@@ -70,7 +71,6 @@ const scrollToBottom = throttle(
   },
   80
 );
-
 export default function ChatScreen() {
   const {
     viewingChat,
@@ -80,9 +80,13 @@ export default function ChatScreen() {
     pendingMessages,
     canvasData,
     replaceMessageAndGenerate,
+    settingsSeed,
   } = useAppContext();
+  const { t } = useTranslation();
   const [inputMsg, setInputMsg] = useState('');
+  const [automaticSend, setAutomaticSend] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { config } = useAppContext();
 
   const { extraContext, clearExtraContext } = useVSCodeContext(
     inputRef,
@@ -139,6 +143,40 @@ export default function ChatScreen() {
     // OK
     clearExtraContext();
   };
+  useEffect(() => {
+    const sendMsg = async () => {
+      if (inputMsg.trim().length === 0) return;
+      const lastInpMsg = inputMsg;
+      setInputMsg('');
+      scrollToBottom(false);
+      setCurrNodeId(-1);
+      // get the last message node
+      const lastMsgNodeId = messages.at(-1)?.msg.id ?? null;
+      if (
+        !(await sendMessage(
+          currConvId,
+          lastMsgNodeId,
+          inputMsg,
+          undefined,
+          onChunk
+        ))
+      ) {
+        setInputMsg(lastInpMsg);
+      }
+    };
+    if (automaticSend) {
+      setAutomaticSend(false);
+      sendMsg();
+    }
+  }, [
+    automaticSend,
+    clearExtraContext,
+    currConvId,
+    inputMsg,
+    isGenerating,
+    messages,
+    sendMessage,
+  ]);
 
   const handleEditMessage = async (msg: Message, content: string) => {
     if (!viewingChat) return;
@@ -201,11 +239,52 @@ export default function ChatScreen() {
         })}
       >
         {/* chat messages */}
-        <div id="messages-list" className="grow">
-          <div className="mt-auto flex justify-center">
-            {/* placeholder to shift the message to the bottom */}
-            {viewingChat ? '' : 'Send a message to start'}
-          </div>
+        <div
+          id="messages-list"
+          className="grow overflow-y-auto overflow-x-hidden "
+        >
+          {/* placeholder to shift the message to the bottom */}
+          {viewingChat ? (
+            ''
+          ) : (
+            <div
+              key={'viewingChat_' + settingsSeed}
+              id={'viewingChat_' + settingsSeed}
+              className="grid grid-col-1 items-center text-center sm:text-left align-middle mx-auto"
+            >
+              {config.questionIdeas?.length > 0 ? (
+                <>
+                  <div className="text-center">
+                    {t('ChatScreen.suggestions')}
+                  </div>
+                  <div className="text-center grid grid-col-1 items-center">
+                    {[...config.questionIdeas].map((idea: string, index) => (
+                      <div
+                        className="card border-1 border-dotted bg-base-200 shadow-xl m-4 hover:bg-base-100 hover:border-base-200 hover:outline-offset-2 hover:outline-2"
+                        key={index}
+                        style={{ whiteSpace: 'pre-wrap' }}
+                        onClick={() => {
+                          setInputMsg(idea);
+                          setAutomaticSend(true);
+                        }}
+                      >
+                        <div className="card-body items-center text-center">
+                          {idea}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-center pt-8">
+                    {t('ChatScreen.sendMsgStart')}
+                  </div>
+                </>
+              ) : (
+                <div className="text-center pt-8">
+                  {t('ChatScreen.sendMsgStart')}
+                </div>
+              )}
+            </div>
+          )}
           {[...messages, ...pendingMsgDisplay].map((msg) => (
             <ChatMessage
               key={msg.msg.id}
@@ -221,37 +300,74 @@ export default function ChatScreen() {
 
         {/* chat input */}
         <div className="flex flex-row items-center pt-8 pb-6 sticky bottom-0 bg-base-100">
-          <textarea
-            className="textarea textarea-bordered w-full"
-            placeholder="Type a message (Shift+Enter to add a new line)"
-            ref={inputRef}
-            value={inputMsg}
-            onChange={(e) => setInputMsg(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-              if (e.key === 'Enter' && e.shiftKey) return;
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendNewMessage();
-              }
-            }}
-            id="msg-input"
-            dir="auto"
-          ></textarea>
+          <div
+            className="
+    w-full
+    grid
+    text-sm
+    [&>textarea]:text-inherit
+    after:text-inherit
+    [&>textarea]:resize-none
+    [&>textarea]:overflow-x-hidden
+    [&>textarea]:overflow-y-auto
+    [&>textarea]:[grid-area:1/1/2/2]
+    after:[grid-area:1/1/2/2]
+    after:whitespace-pre-wrap
+    after:invisible
+    after:content-[attr(data-cloned-val)_'_']
+    after:border
+"
+          >
+            <textarea
+              className="textarea textarea-bordered"
+              placeholder={t('ChatScreen.textAreaPlaceHolder')}
+              ref={inputRef}
+              value={inputMsg}
+              onChange={(e) => {
+                setInputMsg(e.target.value);
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-expect-error
+                e.target.parentNode.dataset.clonedVal =
+                  e.target.value + '<br/>';
+              }}
+              onKeyDown={(e) => {
+                if (e.nativeEvent.isComposing || e.keyCode === 229) return;
+                if (e.key === 'Enter' && e.shiftKey) return;
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendNewMessage();
+                }
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-expect-error
+                e.target.parentNode.dataset.clonedVal =
+                  (document.getElementById('msg-input') as HTMLTextAreaElement)
+                    .value + '<br/>';
+              }}
+              id="msg-input"
+              dir="auto"
+              onInput={(e) => {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-expect-error
+                e.target.parentNode.dataset.clonedVal =
+                  (document.getElementById('msg-input') as HTMLTextAreaElement)
+                    .value + '<br/>';
+              }}
+            ></textarea>
+          </div>
           {isGenerating(currConvId ?? '') ? (
             <button
               className="btn btn-neutral ml-2"
               onClick={() => stopGenerating(currConvId ?? '')}
             >
-              Stop
+              {t('ChatScreen.stopBtn')}
             </button>
           ) : (
             <button
-              className="btn btn-primary ml-2"
+              className="btn btn-primary m-2"
               onClick={sendNewMessage}
               disabled={inputMsg.trim().length === 0}
             >
-              Send
+              {t('ChatScreen.sendBtn')}
             </button>
           )}
         </div>
