@@ -918,6 +918,8 @@ int main(int argc, char ** argv) {
     LOG("\n\n");
     common_perf_print(ctx, smpl);
 
+    llama_free(ctx);
+    llama_free_model(model);
     common_sampler_free(smpl);
 
     llama_backend_free();
