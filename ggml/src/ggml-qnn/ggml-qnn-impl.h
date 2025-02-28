@@ -64,7 +64,8 @@
 #include "android/log.h"
 #endif
 
-#if defined(_WIN32) || defined(_MSC_VER)
+#if defined(_WIN32)
+#include <wchar.h>
 #include <Windows.h>
 #endif
 
@@ -139,6 +140,17 @@ void   ggmlqnn_log_internal(ggml_log_level level, const char * file, const char 
     void operator=(class_name &&) = delete
 
 #define GQCGT                                   ggmlqnn_create_general_tensor
+
+#if defined(_WIN32)
+#define RTLD_GLOBAL 0x100
+#define RTLD_LOCAL  0x000
+#define RTLD_LAZY   0x000
+#define RTLD_NOW    0x001
+void *              dlopen(const char * filename, int flag);
+int                 dlclose(void * handle);
+void *              dlsym(void* handle, const char* name);
+const char *        dlerror(void);
+#endif
 
 using pfn_rpc_mem_init                          = void (*)(void);
 using pfn_rpc_mem_deinit                        = void (*)(void);
