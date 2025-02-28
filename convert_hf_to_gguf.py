@@ -2234,6 +2234,29 @@ class Qwen2VLModel(Model):
             yield name, data
 
 
+@Model.register("Qwen2_5_VLForConditionalGeneration")
+class Qwen2_5_VLModel(Model):
+    model_arch = gguf.MODEL_ARCH.QWEN2VL
+
+    def set_gguf_parameters(self):
+        super().set_gguf_parameters()
+        mrope_section = self.hparams["rope_scaling"]["mrope_section"]
+        mrope_section += [0] * max(0, 4 - len(mrope_section))
+        self.gguf_writer.add_rope_dimension_sections(mrope_section)
+
+    def set_vocab(self):
+        try:
+            self._set_vocab_sentencepiece()
+        except FileNotFoundError:
+            self._set_vocab_gpt2()
+
+    def get_tensors(self) -> Iterator[tuple[str, Tensor]]:
+        for name, data in super().get_tensors():
+            if name.startswith("visual."):
+                continue
+            yield name, data
+
+
 @Model.register("WavTokenizerDec")
 class WavTokenizerDecModel(Model):
     model_arch = gguf.MODEL_ARCH.WAVTOKENIZER_DEC
