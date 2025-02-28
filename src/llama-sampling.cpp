@@ -129,35 +129,45 @@ struct ring_buffer {
 };
 
 static int llama_sample_dist(llama_token_data_array * cur_p, std::mt19937 & rng) {
-    // iterator for the probabilities
-#ifdef __GNUC__
-    #pragma GCC diagnostic push
-    #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
-#endif
+    // Get uniform random number between 0 and 1
+    double u = std::uniform_real_distribution<>(0.0, 1.0)(rng);
+    fprintf(stderr, "\nRNG internal:\n");
+    fprintf(stderr, "- Raw uniform random number: %f\n", u);
 
-    struct probs_iterator {
-        typedef std::input_iterator_tag iterator_category;
-        typedef float value_type;
-        typedef float * pointer;
-        typedef float & reference;
-        typedef ptrdiff_t difference_type;
+    // Calculate cumulative probabilities
+    std::vector<float> cumulative_probs;
+    cumulative_probs.reserve(cur_p->size);
+    float sum = 0.0f;
 
-        const llama_token_data * data;
+    fprintf(stderr, "- Token probabilities:\n");
+    for (size_t i = 0; i < cur_p->size; ++i) {
+        sum += cur_p->data[i].p;
+        cumulative_probs.push_back(sum);
+        fprintf(stderr, "  [%zu] token %d = %f (cumulative: %f)\n", 
+                i, cur_p->data[i].id, cur_p->data[i].p, sum);
+    }
 
-        bool operator==(const probs_iterator & other) const { return data == other.data; }
-        bool operator!=(const probs_iterator & other) const { return data != other.data; }
-        const float & operator*() const { return data->p; }
-        probs_iterator & operator++() { ++data; return *this; }
-        probs_iterator operator++(int) { probs_iterator tmp = *this; ++data; return tmp; }
-    };
+    // Normalize cumulative probabilities
+    if (sum != 1.0f) {
+        for (float& p : cumulative_probs) {
+            p /= sum;
+        }
+        fprintf(stderr, "- Normalized cumulative probabilities\n");
+    }
 
-#ifdef __GNUC__
-    #pragma GCC diagnostic pop
-#endif
+    // Scale random number to probability sum
+    double scaled = u * 1.0; // since we normalized, multiply by 1.0
+    fprintf(stderr, "- Scaled random number: %f\n", scaled);
 
-    std::discrete_distribution<int> dist(probs_iterator{cur_p->data}, probs_iterator{cur_p->data + cur_p->size});
-
-    return dist(rng);
+    // Find the selected index using binary search
+    auto it = std::lower_bound(cumulative_probs.begin(), cumulative_probs.end(), scaled);
+    size_t selected_idx = it - cumulative_probs.begin();
+    
+    fprintf(stderr, "- Selected index: %zu\n", selected_idx);
+    fprintf(stderr, "RNG generated sample: %zu (token id: %d, probability: %f)\n", 
+            selected_idx, cur_p->data[selected_idx].id, cur_p->data[selected_idx].p);
+    
+    return selected_idx;
 }
 
 /*
