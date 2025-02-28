@@ -143,6 +143,7 @@ class Metadata:
 
         # Quick hack to fix the Norway problem
         # https://hitchdev.com/strictyaml/why/implicit-typing-removed/
+        yaml_content += "\n"
         yaml_content = yaml_content.replace("- no\n", "- \"no\"\n")
 
         if yaml_content:
