@@ -20,9 +20,9 @@ if(NOT DEFINED GGML_QNN_SDK_PATH)
     endif()
 endif()
 
+message("CMAKE_BUILD_TYPE: ${CMAKE_BUILD_TYPE}")
+message("CMAKE_CXX_FLAGS_RELEASE: ${CMAKE_CXX_FLAGS_RELEASE}")
 message("QNN_SDK_PATH: ${GGML_QNN_SDK_PATH}")
-
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
 
 file(GLOB QNN_SOURCES "${CMAKE_CURRENT_LIST_DIR}/*.cpp")
 ggml_add_backend_library(ggml-qnn
