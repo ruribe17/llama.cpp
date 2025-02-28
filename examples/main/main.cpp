@@ -31,8 +31,6 @@
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
-static const char * DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant";
-
 static llama_context           ** g_ctx;
 static llama_model             ** g_model;
 static common_sampler          ** g_smpl;
@@ -263,6 +261,7 @@ int main(int argc, char ** argv) {
 
     std::vector<llama_token> embd_inp;
 
+    bool waiting_for_first_input = params.conversation_mode && params.enable_chat_template && params.prompt.empty();
     auto chat_add_and_format = [&chat_msgs, &chat_templates](const std::string & role, const std::string & content) {
         common_chat_msg new_msg;
         new_msg.role = role;
@@ -274,9 +273,9 @@ int main(int argc, char ** argv) {
     };
 
     {
-        auto prompt = (params.conversation_mode && params.enable_chat_template)
-            // format the system prompt in conversation mode (fallback to default if empty)
-            ? chat_add_and_format("system", params.prompt.empty() ? DEFAULT_SYSTEM_MESSAGE : params.prompt)
+        auto prompt = (params.enable_chat_template && !params.prompt.empty())
+            // format the user prompt or system prompt if in conversation mode
+            ? chat_add_and_format(params.conversation_mode ? "system" : "user", params.prompt)
             // otherwise use the prompt as is
             : params.prompt;
         if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
@@ -292,7 +291,7 @@ int main(int argc, char ** argv) {
     }
 
     // Should not run without any tokens
-    if (embd_inp.empty()) {
+    if (!params.conversation_mode && embd_inp.empty()) {
         if (add_bos) {
             embd_inp.push_back(llama_vocab_bos(vocab));
             LOG_WRN("embd_inp was considered empty and bos was added: %s\n", string_from(ctx, embd_inp).c_str());
@@ -773,7 +772,7 @@ int main(int argc, char ** argv) {
             }
 
             // deal with end of generation tokens in interactive mode
-            if (llama_vocab_is_eog(vocab, common_sampler_last(smpl))) {
+            if (!waiting_for_first_input && llama_vocab_is_eog(vocab, common_sampler_last(smpl))) {
                 LOG_DBG("found an EOG token\n");
 
                 if (params.interactive) {
@@ -793,12 +792,12 @@ int main(int argc, char ** argv) {
             }
 
             // if current token is not EOG, we add it to current assistant message
-            if (params.conversation_mode) {
+            if (params.conversation_mode && !waiting_for_first_input) {
                 const auto id = common_sampler_last(smpl);
                 assistant_ss << common_token_to_piece(ctx, id, false);
             }
 
-            if (n_past > 0 && is_interacting) {
+            if ((waiting_for_first_input || n_past > 0) && is_interacting) {
                 LOG_DBG("waiting for user input\n");
 
                 if (params.conversation_mode) {
@@ -888,11 +887,12 @@ int main(int argc, char ** argv) {
                 input_echo = false; // do not echo this again
             }
 
-            if (n_past > 0) {
+            if (waiting_for_first_input || n_past > 0) {
                 if (is_interacting) {
                     common_sampler_reset(smpl);
                 }
                 is_interacting = false;
+                waiting_for_first_input = false;
             }
         }
 
