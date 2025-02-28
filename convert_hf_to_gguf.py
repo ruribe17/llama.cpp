@@ -2535,7 +2535,6 @@ class Phi3MiniModel(Model):
             sliding_window = 0
         self.gguf_writer.add_sliding_window(sliding_window)
 
-
     def generate_extra_tensors(self) -> Iterable[tuple[str, Tensor]]:
         n_embd = self.find_hparam(["hidden_size", "n_embd"])
         n_head = self.find_hparam(["num_attention_heads", "n_head"])
