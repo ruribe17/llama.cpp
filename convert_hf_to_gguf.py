@@ -1762,15 +1762,14 @@ class LlamaModel(Model):
         is_vision_tensor = "vision_tower" in name or "vision_model" in name
 
         if is_vision_tensor:
-            if name.startswith("model.text_model"):
-                name = name.replace("text_model.", "") # for SmolVLM
-            else:
-                name = name.replace("model.vision_tower.", "")
+            name = name.replace("model.vision_tower.", "")
             if "post_layernorm" in name and self.vision_arch != gguf.MODEL_ARCH.VISION_IDEFICS3:
                 return [] # skip post_layernorm
 
         if not is_vision_tensor:
-            if name.startswith("language_model"):
+            if name.startswith("model.text_model"):
+                name = name.replace("text_model.", "") # for SmolVLM
+            elif name.startswith("language_model"):
                 # language model tensors, remove the prefix
                 name = name.replace("language_model.", "")
             if name.endswith(("q_proj.weight", "q_proj.bias")):
