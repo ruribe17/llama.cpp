@@ -1670,6 +1670,7 @@ class LlamaModel(Model):
             self.preprocessor_config = AutoImageProcessor.from_pretrained(vision_model_id).to_dict()
             self.vision_arch = gguf.MODEL_ARCH.VISION_MOBILEVLM
 
+        # only tested with https://huggingface.co/HuggingFaceTB/SmolVLM-500M-Instruct
         if "vision_config" in self.hparams and model_type == "idefics3":
             self.vparams = self.hparams["vision_config"]
             self.preprocessor_config = self.load_preprocessor_config(self.dir_model)
