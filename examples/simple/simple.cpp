@@ -12,7 +12,7 @@ static void print_usage(int, char ** argv) {
 
 int main(int argc, char ** argv) {
     // path to the model gguf file
-    std::string model_path;
+    std::string model_path = "/home/yhj/cuda_code/chkpoint/Qwen-gguf/Qwen-0.5B.gguf";
     // prompt to generate text from
     std::string prompt = "Hello my name is";
     // number of layers to offload to the GPU
