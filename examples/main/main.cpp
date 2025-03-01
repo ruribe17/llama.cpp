@@ -797,7 +797,7 @@ int main(int argc, char ** argv) {
                 assistant_ss << common_token_to_piece(ctx, id, false);
             }
 
-            if ((waiting_for_first_input || n_past > 0) && is_interacting) {
+            if ((n_past > 0 || waiting_for_first_input) && is_interacting) {
                 LOG_DBG("waiting for user input\n");
 
                 if (params.conversation_mode) {
@@ -887,7 +887,7 @@ int main(int argc, char ** argv) {
                 input_echo = false; // do not echo this again
             }
 
-            if (waiting_for_first_input || n_past > 0) {
+            if (n_past > 0 || waiting_for_first_input) {
                 if (is_interacting) {
                     common_sampler_reset(smpl);
                 }
