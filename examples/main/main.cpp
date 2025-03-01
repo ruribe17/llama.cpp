@@ -276,7 +276,7 @@ int main(int argc, char ** argv) {
     {
         auto prompt = (params.conversation_mode && params.enable_chat_template)
             // format the system prompt in conversation mode (fallback to default if empty)
-            ? chat_add_and_format("system", params.prompt.empty() ? DEFAULT_SYSTEM_MESSAGE : params.prompt)
+            ? chat_add_and_format("system", params.system_prompt.empty() ? DEFAULT_SYSTEM_MESSAGE : params.system_prompt)
             // otherwise use the prompt as is
             : params.prompt;
         if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
