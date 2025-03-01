@@ -2140,7 +2140,7 @@ extern "C" {
 #        define GGML_RESTRICT
 #    endif
 #else
-#    if defined(_MSC_VER)
+#    if defined (_MSC_VER) && (__STDC_VERSION__ < 201112L)
 #        define GGML_RESTRICT __restrict
 #    else
 #        define GGML_RESTRICT restrict
