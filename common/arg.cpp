@@ -820,7 +820,7 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
     ).set_excludes({LLAMA_EXAMPLE_SERVER}));
     add_opt(common_arg(
         {"-sys", "--system-prompt"}, "PROMPT",
-        "system prompt to use with model (if applicable)",
+        "system prompt to use with model (if applicable, depending on chat template)",
         [](common_params & params, const std::string & value) {
             params.system_prompt = value;
         }
