@@ -277,11 +277,20 @@ int main(int argc, char ** argv) {
     };
 
     {
-        auto prompt = (params.conversation_mode && params.enable_chat_template)
+        std::string prompt;
+
+        if (params.conversation_mode && params.enable_chat_template) {
             // format the system prompt in conversation mode (will use template default if empty)
-            ? (params.system_prompt.empty() ? params.system_prompt : chat_add_and_format("system", params.system_prompt))
+            prompt = params.system_prompt;
+
+            if (!prompt.empty()) {
+                prompt = chat_add_and_format("system", prompt);
+            }
+        } else {
             // otherwise use the prompt as is
-            : params.prompt;
+            prompt = params.prompt;
+        }
+
         if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
             LOG_DBG("tokenize the prompt\n");
             embd_inp = common_tokenize(ctx, prompt, true, true);
