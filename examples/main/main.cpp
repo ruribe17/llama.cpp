@@ -217,6 +217,10 @@ int main(int argc, char ** argv) {
     // print chat template example in conversation mode
     if (params.conversation_mode) {
         if (params.enable_chat_template) {
+            if (!params.prompt.empty()) {
+                LOG_WRN("*** User-specified prompt in conversation mode will be ignored, did you mean to set --system-prompt (-sys) instead?\n");
+            }
+
             LOG_INF("%s: chat template example:\n%s\n", __func__, common_chat_format_example(chat_templates.get(), params.use_jinja).c_str());
         } else {
             LOG_INF("%s: in-suffix/prefix is specified, chat template will be disabled\n", __func__);
@@ -261,7 +265,7 @@ int main(int argc, char ** argv) {
 
     std::vector<llama_token> embd_inp;
 
-    bool waiting_for_first_input = params.conversation_mode && params.enable_chat_template && params.prompt.empty();
+    bool waiting_for_first_input = params.conversation_mode && params.enable_chat_template && params.system_prompt.empty();
     auto chat_add_and_format = [&chat_msgs, &chat_templates](const std::string & role, const std::string & content) {
         common_chat_msg new_msg;
         new_msg.role = role;
@@ -273,9 +277,9 @@ int main(int argc, char ** argv) {
     };
 
     {
-        auto prompt = (params.enable_chat_template && !params.prompt.empty())
-            // format the user prompt or system prompt if in conversation mode
-            ? chat_add_and_format(params.conversation_mode ? "system" : "user", params.prompt)
+        auto prompt = (params.conversation_mode && params.enable_chat_template)
+            // format the system prompt in conversation mode (will use template default if empty)
+            ? (params.system_prompt.empty() ? params.system_prompt : chat_add_and_format("system", params.system_prompt))
             // otherwise use the prompt as is
             : params.prompt;
         if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
