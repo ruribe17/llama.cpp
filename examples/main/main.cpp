@@ -481,7 +481,7 @@ int main(int argc, char ** argv) {
 #endif
         LOG_INF(       "%s", control_message);
         if (params.conversation_mode && params.enable_chat_template && params.system_prompt.empty()) {
-            LOG_INF(   " - Using default system message. To change it, set a different value via -sys PROMPT\n");
+            LOG_INF(   " - Not using system message. To change it, set a different value via -sys PROMPT\n");
         }
         LOG_INF("\n");
 
