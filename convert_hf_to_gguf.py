@@ -508,12 +508,7 @@ class Model:
         with open(dir_model / "config.json", "r", encoding="utf-8") as f:
             hparams = json.load(f)
             if "text_config" in hparams:
-                text_config = hparams["text_config"]
-                model_id = text_config.get("_name_or_path", None)
-                # for example, llava-1.5-7b-hf misses the language model config, need to retrieve it via model ID
-                if model_id is not None and model_id != "None" and model_id != "":
-                    text_config = AutoConfig.from_pretrained(text_config["_name_or_path"]).to_dict()
-                hparams = {**text_config, **hparams}
+                hparams = {**hparams["text_config"], **hparams}
             return hparams
 
     @staticmethod
@@ -1646,14 +1641,14 @@ class StableLMModel(Model):
                 raise ValueError(f"Unprocessed norms: {norms}")
 
 
-@Model.register("LLaMAForCausalLM", "LlamaForCausalLM", "MistralForCausalLM", "MixtralForCausalLM", "LlavaForConditionalGeneration", "MobileLlamaForCausalLM", "Idefics3ForConditionalGeneration")
+@Model.register("LLaMAForCausalLM", "LlamaForCausalLM", "MistralForCausalLM", "MixtralForCausalLM", "MobileLlamaForCausalLM", "Idefics3ForConditionalGeneration")
 class LlamaModel(Model):
     model_arch = gguf.MODEL_ARCH.LLAMA
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-        model_type = self.hparams.get("model_type", None)
+        model_type = self.hparams.get("model_type")
         self.vision_arch = None
 
         # only tested with https://huggingface.co/llava-hf/llava-1.5-7b-hf
@@ -1762,15 +1757,14 @@ class LlamaModel(Model):
         is_vision_tensor = "vision_tower" in name or "vision_model" in name
 
         if is_vision_tensor:
-            if name.startswith("model.text_model"):
-                name = name.replace("text_model.", "") # for SmolVLM
-            else:
-                name = name.replace("model.vision_tower.", "")
+            name = name.replace("model.vision_tower.", "")
             if "post_layernorm" in name and self.vision_arch != gguf.MODEL_ARCH.VISION_IDEFICS3:
                 return [] # skip post_layernorm
 
         if not is_vision_tensor:
-            if name.startswith("language_model"):
+            if name.startswith("model.text_model"):
+                name = name.replace("text_model.", "") # for SmolVLM
+            elif name.startswith("language_model"):
                 # language model tensors, remove the prefix
                 name = name.replace("language_model.", "")
             if name.endswith(("q_proj.weight", "q_proj.bias")):
@@ -1851,6 +1845,22 @@ class LlamaModel(Model):
             experts = [k for d in self._experts for k in d.keys()]
             if len(experts) > 0:
                 raise ValueError(f"Unprocessed experts: {experts}")
+
+
+@Model.register("LlavaForConditionalGeneration")
+class LlavaModel(LlamaModel):
+    model_arch = gguf.MODEL_ARCH.LLAMA
+
+    def __init__(self, *args, **kwargs):
+        # quick fix for llava model
+        # see: https://huggingface.co/llava-hf/llava-1.5-7b-hf/discussions/34
+        hparams = Model.load_hparams(kwargs["dir_model"])
+        if "vision_config" in hparams and hparams.get("model_type") == "llava":
+            text_config = hparams["text_config"]
+            text_config = AutoConfig.from_pretrained(text_config["_name_or_path"]).to_dict()
+            kwargs["hparams"] = {**text_config, **hparams}
+
+        super().__init__(*args, **kwargs)
 
 
 @Model.register("DeciLMForCausalLM")
