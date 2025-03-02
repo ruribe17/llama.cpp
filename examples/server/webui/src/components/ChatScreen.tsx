@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { CallbackGeneratedChunk, useAppContext } from '../utils/app.context';
 import ChatMessage from './ChatMessage';
 import { CanvasType, Message, PendingMessage } from '../utils/types';
-import { classNames, throttle } from '../utils/misc';
+import { classNames, cleanCurrentUrl, throttle } from '../utils/misc';
 import CanvasPyInterpreter from './CanvasPyInterpreter';
 import StorageUtils from '../utils/storage';
 import { useVSCodeContext } from '../utils/llama-vscode';
@@ -16,6 +16,20 @@ export interface MessageDisplay {
   siblingLeafNodeIds: Message['id'][];
   siblingCurrIdx: number;
   isPending?: boolean;
+}
+
+/**
+ * If the current URL contains "?m=...", prefill the message input with the value.
+ * If the current URL contains "?p=...", prefill and SEND the message.
+ */
+let prefilledMessage = '';
+let sendPrefilledMessage = false;
+{
+  const url = new URL(window.location.href);
+  prefilledMessage =
+    url.searchParams.get('m') ?? url.searchParams.get('p') ?? '';
+  sendPrefilledMessage = url.searchParams.has('p');
+  cleanCurrentUrl(['m', 'p']);
 }
 
 function getListMessageDisplay(
@@ -81,7 +95,7 @@ export default function ChatScreen() {
     canvasData,
     replaceMessageAndGenerate,
   } = useAppContext();
-  const [inputMsg, setInputMsg] = useState('');
+  const [inputMsg, setInputMsg] = useState(prefilledMessage);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { extraContext, clearExtraContext } = useVSCodeContext(
@@ -171,6 +185,22 @@ export default function ChatScreen() {
   };
 
   const hasCanvas = !!canvasData;
+
+  useEffect(() => {
+    if (sendPrefilledMessage) {
+      // send the prefilled message if needed
+      sendPrefilledMessage = false;
+      sendNewMessage();
+    } else {
+      // otherwise, focus on the input and move the cursor to the end
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.selectionStart = inputRef.current.value.length;
+      }
+    }
+    // no need to keep track of sendNewMessage
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputRef]);
 
   // due to some timing issues of StorageUtils.appendMsg(), we need to make sure the pendingMsg is not duplicated upon rendering (i.e. appears once in the saved conversation and once in the pendingMsg)
   const pendingMsgDisplay: MessageDisplay[] =
