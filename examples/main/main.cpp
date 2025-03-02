@@ -36,8 +36,6 @@
 #pragma warning(disable: 4244 4267) // possible loss of data
 #endif
 
-static const char * DEFAULT_SYSTEM_MESSAGE = "You are a helpful assistant";
-
 static llama_context           ** g_ctx;
 static llama_model             ** g_model;
 static common_sampler          ** g_smpl;
@@ -283,6 +281,10 @@ int main(int argc, char ** argv) {
     // print chat template example in conversation mode
     if (params.conversation_mode) {
         if (params.enable_chat_template) {
+            if (!params.prompt.empty()) {
+                LOG_WRN("*** User-specified prompt in conversation mode will be ignored, did you mean to set --system-prompt (-sys) instead?\n");
+            }
+
             LOG_INF("%s: chat template example:\n%s\n", __func__, common_chat_format_example(chat_templates.get(), params.use_jinja).c_str());
         } else {
             LOG_INF("%s: in-suffix/prefix is specified, chat template will be disabled\n", __func__);
@@ -327,6 +329,8 @@ int main(int argc, char ** argv) {
 
     std::vector<llama_token> embd_inp;
 
+    bool waiting_for_first_input = params.conversation_mode && params.enable_chat_template && params.system_prompt.empty();
+
 #ifdef LLAMA_USE_TOOLCALL
     auto tc_client = toolcall::create_client(tc_params);
     if (tc_client) {
@@ -338,10 +342,19 @@ int main(int argc, char ** argv) {
 #endif
 
     {
-        std::string system_prompt = params.prompt.empty() ? DEFAULT_SYSTEM_MESSAGE : params.prompt;
-        bool use_conversation_prompt = params.conversation_mode && params.enable_chat_template;
-        auto prompt = use_conversation_prompt ?
-            chat_add_and_format("system", system_prompt, true) : params.prompt;
+        std::string prompt;
+
+        if (params.conversation_mode && params.enable_chat_template) {
+            // format the system prompt in conversation mode (will use template default if empty)
+            prompt = params.system_prompt;
+
+            if (!prompt.empty()) {
+                prompt = chat_add_and_format("system", prompt, true);
+            }
+        } else {
+            // otherwise use the prompt as is
+            prompt = params.prompt;
+        }
 
         if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
             LOG_DBG("tokenize the prompt\n");
@@ -356,7 +369,7 @@ int main(int argc, char ** argv) {
     }
 
     // Should not run without any tokens
-    if (embd_inp.empty()) {
+    if (!params.conversation_mode && embd_inp.empty()) {
         if (add_bos) {
             embd_inp.push_back(llama_vocab_bos(vocab));
             LOG_WRN("embd_inp was considered empty and bos was added: %s\n", string_from(ctx, embd_inp).c_str());
@@ -540,8 +553,8 @@ int main(int argc, char ** argv) {
         LOG_INF(       " - Press Ctrl+C to interject at any time.\n");
 #endif
         LOG_INF(       "%s", control_message);
-        if (params.conversation_mode && params.enable_chat_template && params.prompt.empty()) {
-            LOG_INF(   " - Using default system message. To change it, set a different value via -p PROMPT or -f FILE argument.\n");
+        if (params.conversation_mode && params.enable_chat_template && params.system_prompt.empty()) {
+            LOG_INF(   " - Not using system message. To change it, set a different value via -sys PROMPT\n");
         }
         LOG_INF("\n");
 
@@ -837,7 +850,7 @@ int main(int argc, char ** argv) {
             }
 
             // deal with end of generation tokens in interactive mode
-            if (llama_vocab_is_eog(vocab, common_sampler_last(smpl))) {
+            if (!waiting_for_first_input && llama_vocab_is_eog(vocab, common_sampler_last(smpl))) {
                 LOG_DBG("found an EOG token\n");
 
                 if (params.interactive) {
@@ -889,12 +902,12 @@ int main(int argc, char ** argv) {
             }
 
             // if current token is not EOG, we add it to current assistant message
-            if (params.conversation_mode) {
+            if (params.conversation_mode && !waiting_for_first_input) {
                 const auto id = common_sampler_last(smpl);
                 assistant_ss << common_token_to_piece(ctx, id, false);
             }
 
-            if (n_past > 0 && is_interacting) {
+            if ((n_past > 0 || waiting_for_first_input) && is_interacting) {
                 LOG_DBG("waiting for user input\n");
 
                 if (params.conversation_mode) {
@@ -984,11 +997,12 @@ int main(int argc, char ** argv) {
                 input_echo = false; // do not echo this again
             }
 
-            if (n_past > 0) {
+            if (n_past > 0 || waiting_for_first_input) {
                 if (is_interacting) {
                     common_sampler_reset(smpl);
                 }
                 is_interacting = false;
+                waiting_for_first_input = false;
             }
         }
 
