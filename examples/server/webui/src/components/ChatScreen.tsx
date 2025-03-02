@@ -187,6 +187,7 @@ export default function ChatScreen() {
   const hasCanvas = !!canvasData;
 
   useEffect(() => {
+    prefilledMessage = ''; // clear the prefilled message as it has been set to inputMsg
     if (sendPrefilledMessage) {
       // send the prefilled message if needed
       sendPrefilledMessage = false;
