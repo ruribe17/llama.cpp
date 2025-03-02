@@ -629,6 +629,8 @@ void ggml_sycl_cpy(ggml_backend_sycl_context & ctx, const ggml_tensor * src0, co
 
     char * src0_ddc = (char *) src0->data;
     char * src1_ddc = (char *) src1->data;
+    GGML_SYCL_DEBUG("[SYCL] %s: Tensor supplied: %s to %s\n", __func__, ggml_type_name(src0->type),
+                    ggml_type_name(src1->type));
 
     if (src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_F32) {
         ggml_cpy_f32_f32_sycl(src0_ddc, src1_ddc, ne, ne00, ne01, ne02, nb00, nb01, nb02, nb03, ne10, ne11, ne12, nb10,
@@ -672,13 +674,13 @@ void ggml_sycl_cpy(ggml_backend_sycl_context & ctx, const ggml_tensor * src0, co
     } else if (src0->type == GGML_TYPE_Q5_0 && src1->type == GGML_TYPE_F32) {
         ggml_cpy_q5_0_f32_sycl(src0_ddc, src1_ddc, ne, ne00, ne01, ne02, nb00, nb01, nb02, nb03, ne10, ne11, ne12, nb10,
                                nb11, nb12, nb13, main_stream);
-    } else if(src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_Q5_1) {
+    } else if (src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_Q5_1) {
         ggml_cpy_f32_q5_1_sycl(src0_ddc, src1_ddc, ne, ne00, ne01, ne02, nb00, nb01, nb02, nb03, ne10, ne11, ne12, nb10,
                                nb11, nb12, nb13, main_stream);
     } else if (src0->type == GGML_TYPE_Q5_1 && src1->type == GGML_TYPE_F32) {
         ggml_cpy_q5_1_f32_sycl(src0_ddc, src1_ddc, ne, ne00, ne01, ne02, nb00, nb01, nb02, nb03, ne10, ne11, ne12, nb10,
                                nb11, nb12, nb13, main_stream);
-    } else if(src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_IQ4_NL) {
+    } else if (src0->type == GGML_TYPE_F32 && src1->type == GGML_TYPE_IQ4_NL) {
         ggml_cpy_f32_iq4_nl_sycl(src0_ddc, src1_ddc, ne, ne00, ne01, ne02, nb00, nb01, nb02, nb03, ne10, ne11, ne12,
                                  nb10, nb11, nb12, nb13, main_stream);
     } else {
@@ -693,5 +695,7 @@ void ggml_sycl_cpy(ggml_backend_sycl_context & ctx, const ggml_tensor * src0, co
 
 void ggml_sycl_dup(ggml_backend_sycl_context & ctx, ggml_tensor * dst) {
     // TODO: why do we pass dst as src1 here?
+    GGML_SYCL_DEBUG("[SYCL] call %s\n", __func__);
     ggml_sycl_cpy(ctx, dst->src[0], dst);
+    GGML_SYCL_DEBUG("[SYCL] call %s done\n", __func__);
 }
