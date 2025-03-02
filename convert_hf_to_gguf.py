@@ -2718,7 +2718,7 @@ class Phi2Model(Model):
         self.gguf_writer.add_add_bos_token(False)
 
 
-@Model.register("Phi3ForCausalLM", "Phi4MMForCausalLM")
+@Model.register("Phi3ForCausalLM")
 class Phi3MiniModel(Model):
     model_arch = gguf.MODEL_ARCH.PHI3
 
@@ -2729,7 +2729,7 @@ class Phi3MiniModel(Model):
             with open(tokenizer_config_file, "r", encoding="utf-8") as f:
                 tokenizer_config_json = json.load(f)
                 tokenizer_class = tokenizer_config_json['tokenizer_class']
-                if tokenizer_class == 'GPT2Tokenizer' or tokenizer_class == 'GPT2TokenizerFast':
+                if tokenizer_class == 'GPT2Tokenizer':
                     return self._set_vocab_gpt2()
 
         from sentencepiece import SentencePieceProcessor
@@ -2894,16 +2894,6 @@ class Phi3MiniModel(Model):
 
         yield (self.format_tensor_name(gguf.MODEL_TENSOR.ROPE_FACTORS_LONG), torch.tensor(long_factors, dtype=torch.float32))
         yield (self.format_tensor_name(gguf.MODEL_TENSOR.ROPE_FACTORS_SHORT), torch.tensor(short_factors, dtype=torch.float32))
-
-    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
-        if "base_layer" in name:
-            name = name.replace("base_layer.", "")
-        # TODO: a big TODO, for simplification, we are skipping multimodal tensors for now
-        if name.startswith("model.embed_tokens_extend") or "lora_" in name:
-            logger.error(f"Skipping multimodal tensor: {name!r}")
-            return []
-        else:
-            return super().modify_tensors(data_torch, name, bid)
 
 
 @Model.register("PhiMoEForCausalLM")
