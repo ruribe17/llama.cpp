@@ -265,7 +265,7 @@ int main(int argc, char ** argv) {
 
     std::vector<llama_token> embd_inp;
 
-    bool waiting_for_first_input = params.conversation_mode && params.enable_chat_template && params.system_prompt.empty();
+    bool waiting_for_first_input = false;
     auto chat_add_and_format = [&chat_msgs, &chat_templates](const std::string & role, const std::string & content) {
         common_chat_msg new_msg;
         new_msg.role = role;
@@ -277,18 +277,23 @@ int main(int argc, char ** argv) {
     };
 
     {
-        std::string prompt;
+        std::string prompt = params.enable_chat_template ? params.system_prompt : "";
 
-        if (params.conversation_mode && params.enable_chat_template) {
-            // format the system prompt in conversation mode (will use template default if empty)
-            prompt = params.system_prompt;
+        if (params.enable_chat_template && !prompt.empty()) {
+            // format the system prompt (will use template default if not set)
+            prompt = chat_add_and_format("system", prompt);
+        }
 
-            if (!prompt.empty()) {
-                prompt = chat_add_and_format("system", prompt);
+        if (!params.conversation_mode) {
+            if (params.enable_chat_template && !params.prompt.empty()) {
+                // format and append the user prompt
+                prompt += chat_add_and_format("user", params.prompt);
+            } else {
+                // otherwise use the prompt as is
+                prompt = params.prompt;
             }
-        } else {
-            // otherwise use the prompt as is
-            prompt = params.prompt;
+        } else if (prompt.empty()) {
+            waiting_for_first_input = true;
         }
 
         if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
@@ -304,7 +309,7 @@ int main(int argc, char ** argv) {
     }
 
     // Should not run without any tokens
-    if (!params.conversation_mode && embd_inp.empty()) {
+    if (!waiting_for_first_input && embd_inp.empty()) {
         if (add_bos) {
             embd_inp.push_back(llama_vocab_bos(vocab));
             LOG_WRN("embd_inp was considered empty and bos was added: %s\n", string_from(ctx, embd_inp).c_str());
