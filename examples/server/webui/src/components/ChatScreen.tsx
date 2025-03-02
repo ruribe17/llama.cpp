@@ -22,15 +22,19 @@ export interface MessageDisplay {
  * If the current URL contains "?m=...", prefill the message input with the value.
  * If the current URL contains "?p=...", prefill and SEND the message.
  */
-let prefilledMessage = '';
-let sendPrefilledMessage = false;
-{
-  const url = new URL(window.location.href);
-  prefilledMessage =
-    url.searchParams.get('m') ?? url.searchParams.get('p') ?? '';
-  sendPrefilledMessage = url.searchParams.has('p');
-  cleanCurrentUrl(['m', 'p']);
-}
+const prefilledMsg = {
+  content() {
+    const url = new URL(window.location.href);
+    return url.searchParams.get('m') ?? url.searchParams.get('q') ?? '';
+  },
+  shouldSend() {
+    const url = new URL(window.location.href);
+    return url.searchParams.has('q');
+  },
+  clear() {
+    cleanCurrentUrl(['m', 'q']);
+  },
+};
 
 function getListMessageDisplay(
   msgs: Readonly<Message[]>,
@@ -95,7 +99,7 @@ export default function ChatScreen() {
     canvasData,
     replaceMessageAndGenerate,
   } = useAppContext();
-  const [inputMsg, setInputMsg] = useState(prefilledMessage);
+  const [inputMsg, setInputMsg] = useState(prefilledMsg.content());
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const { extraContext, clearExtraContext } = useVSCodeContext(
@@ -187,10 +191,8 @@ export default function ChatScreen() {
   const hasCanvas = !!canvasData;
 
   useEffect(() => {
-    prefilledMessage = ''; // clear the prefilled message as it has been set to inputMsg
-    if (sendPrefilledMessage) {
+    if (prefilledMsg.shouldSend()) {
       // send the prefilled message if needed
-      sendPrefilledMessage = false;
       sendNewMessage();
     } else {
       // otherwise, focus on the input and move the cursor to the end
@@ -199,6 +201,7 @@ export default function ChatScreen() {
         inputRef.current.selectionStart = inputRef.current.value.length;
       }
     }
+    prefilledMsg.clear();
     // no need to keep track of sendNewMessage
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inputRef]);
