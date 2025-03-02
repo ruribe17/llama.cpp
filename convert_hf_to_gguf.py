@@ -2236,7 +2236,7 @@ class Qwen2VLModel(Model):
                 continue
             yield name, data
 
-
+# Additional handling for 2.5 seems not to be needed.
 @Model.register("Qwen2_5_VLForConditionalGeneration")
 class Qwen2_5_VLModel(Model):
     model_arch = gguf.MODEL_ARCH.QWEN2VL
