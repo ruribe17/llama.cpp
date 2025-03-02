@@ -39,11 +39,26 @@ def to_gguf_name(name: str) -> str:
     if "weight_g" in name:
         name = name.replace("weight_g", "weight")
 
+    # Special handling for merger tensors to match clip.cpp expectations
+    if "merger.mlp" in name:
+        # Extract the layer number
+        parts = name.split(".")
+        for i, part in enumerate(parts):
+            if part == "mlp" and i + 1 < len(parts):
+                layer_num = parts[i + 1]
+                # Map the merger layers to the expected GGUF tensor names
+                # Note: clip.cpp looks for mm.0.* and mm.2.* (not mm.1.*)
+                if layer_num == "0":
+                    name = name.replace(f"merger.mlp.{layer_num}", "mm.0")
+                elif layer_num == "1":
+                    name = name.replace(f"merger.mlp.{layer_num}", "mm.2")
+                break
+
     print(f"[to_gguf_name] {og} --> {name}")
     return name
 
 
-def find_vision_tensors(model, dtype) -> Dict[str, np.ndarray]:
+def find_vision_tensors(model, dtype, hidden_size) -> Dict[str, np.ndarray]:
     visual = model.visual
     tensor_map = {}
 
@@ -68,8 +83,23 @@ def find_vision_tensors(model, dtype) -> Dict[str, np.ndarray]:
             elif name.endswith("ln_q.bias") and 'weight_g' not in name:
                 tensor_map['v.post_ln.bias'] = ten
             else:
-                # "merger.mlp.%d.weight/bias" --> "mm.%d.weight/bias"
-                tensor_map[to_gguf_name(name)] = ten
+                # Handle merger tensors with special attention to naming
+                # First, determine if this is a layer 0 or layer 1 tensor
+                if "merger.mlp.0" in name:
+                    # First layer gets mapped to mm.0.*
+                    if "weight" in name:
+                        tensor_map["mm.0.weight"] = ten
+                    elif "bias" in name:
+                        tensor_map["mm.0.bias"] = ten
+                elif "merger.mlp.1" in name:
+                    # Second layer gets mapped to mm.2.* (not mm.1.*)
+                    if "weight" in name:
+                        tensor_map["mm.2.weight"] = ten
+                    elif "bias" in name:
+                        tensor_map["mm.2.bias"] = ten
+                else:
+                    # For any other tensors, use the standard naming conversion
+                    tensor_map[to_gguf_name(name)] = ten
         elif 'patch_embed.proj.weight' in name:
             # NOTE: split Conv3D into Conv2Ds
             c1, c2, kt, kh, kw = ten.shape
@@ -84,7 +114,10 @@ def find_vision_tensors(model, dtype) -> Dict[str, np.ndarray]:
             tensor_map[new_name] = ten.astype(np.float32)
         else:
             tensor_map[new_name] = ten.astype(dtype)
-    tensor_map["v.position_embd.weight"] = np.zeros([10, 10], dtype=np.float32)  # dummy tensor, just here as a placeholder
+    # For Qwen2.5, create a properly sized position embedding tensor
+    # Size it based on the model's hidden dimension and expected sequence length
+    seq_length = 40 * 40  # Approximate max sequence length
+    tensor_map["v.position_embd.weight"] = np.zeros([seq_length, hidden_size], dtype=np.float32)  # Properly sized placeholder
     return tensor_map
 
 
@@ -153,7 +186,7 @@ def main(args):
     image_size = 14 * 40  # same as used below
     fout.add_uint32("clip.vision.image_crop_resolution", image_size)
 
-    tensor_map = find_vision_tensors(model, np_dtype)
+    tensor_map = find_vision_tensors(model, np_dtype, vcfg.hidden_size)
     for name, data in tensor_map.items():
         fout.add_tensor(name, data)
 
