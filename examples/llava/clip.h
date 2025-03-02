@@ -98,6 +98,7 @@ CLIP_API bool clip_model_quantize(const char * fname_inp, const char * fname_out
 CLIP_API int clip_is_minicpmv(const struct clip_ctx * ctx);
 CLIP_API bool clip_is_glm(const struct clip_ctx * ctx);
 CLIP_API bool clip_is_qwen2vl(const struct clip_ctx * ctx);
+CLIP_API bool clip_is_qwen2_5vl(const struct clip_ctx * ctx);
 
 CLIP_API int get_deepest_feature_layer(const struct clip_ctx * ctx);
 

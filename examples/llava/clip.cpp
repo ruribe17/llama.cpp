@@ -9,25 +9,25 @@
 #include "ggml-backend.h"
 #include "gguf.h"
 
-//#ifdef GGML_USE_CUDA
-//#include "ggml-cuda.h"
-//#endif
-//
-//#ifdef GGML_USE_SYCL
-//#include "ggml-sycl.h"
-//#endif
-//
-//#ifdef GGML_USE_METAL
-//#include "ggml-metal.h"
-//#endif
-//
-//#ifdef GGML_USE_CANN
-//#include "ggml-cann.h"
-//#endif
-//
-//#ifdef GGML_USE_VULKAN
-//#include "ggml-vulkan.h"
-//#endif
+#ifdef GGML_USE_CUDA
+#include "ggml-cuda.h"
+#endif
+
+#ifdef GGML_USE_SYCL
+#include "ggml-sycl.h"
+#endif
+
+#ifdef GGML_USE_METAL
+#include "ggml-metal.h"
+#endif
+
+#ifdef GGML_USE_CANN
+#include "ggml-cann.h"
+#endif
+
+#ifdef GGML_USE_VULKAN
+#include "ggml-vulkan.h"
+#endif
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -106,6 +106,8 @@ static std::string format(const char * fmt, ...) {
 #define KEY_HAS_GLM_PROJ        "clip.has_glm_projector"
 #define KEY_MINICPMV_VERSION    "clip.minicpmv_version"
 #define KEY_HAS_QWEN2VL_MERGER  "clip.has_qwen2vl_merger"
+#define KEY_IS_QWEN2_5          "clip.is_qwen2_5"
+#define KEY_RMS_NORM_EPS        "clip.%s.attention.rms_norm_epsilon"
 #define KEY_USE_GELU            "clip.use_gelu"
 #define KEY_USE_SILU            "clip.use_silu"
 #define KEY_N_EMBD              "clip.%s.embedding_length"
@@ -583,6 +585,7 @@ struct clip_ctx {
     bool has_minicpmv_projector = false;
     bool has_glm_projector = false;
     bool has_qwen2vl_merger = false;
+    bool is_qwen2_5 = false;
     int minicpmv_version = 2;
 
     struct clip_vision_model vision_model;
@@ -734,7 +737,10 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     if (ctx->has_minicpmv_projector) {
         int pos_w = image_size_width/patch_size;
         int pos_h = image_size_height/patch_size;
-        if (ctx->minicpmv_version == 2) {
+        if (ctx->is_qwen2_5) {
+            pos_embed = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, 2048, pos_w * pos_h, 1);
+        }
+        else if (ctx->minicpmv_version == 2) {
             pos_embed = ggml_new_tensor_3d(ctx0, GGML_TYPE_F32, 4096, pos_w * pos_h, 1);
         }
         else if (ctx->minicpmv_version == 3) {
@@ -774,8 +780,14 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
         {
             cur = ggml_norm(ctx0, cur, eps);
 
-            cur = ggml_add(ctx0, ggml_mul(ctx0, cur, model.layers[il].ln_1_w),
-                           model.layers[il].ln_1_b);
+            if (ctx->is_qwen2_5) {
+                // RMSNorm for Qwen2.5 (no bias)
+                cur = ggml_mul(ctx0, cur, model.layers[il].ln_1_w);
+            } else {
+                // Standard LayerNorm with bias
+                cur = ggml_add(ctx0, ggml_mul(ctx0, cur, model.layers[il].ln_1_w),
+                               model.layers[il].ln_1_b);
+            }
         }
 
         // self-attention
@@ -834,22 +846,47 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
         {
             cur = ggml_norm(ctx0, cur, eps);
 
-            cur = ggml_add(ctx0, ggml_mul(ctx0, cur, model.layers[il].ln_2_w), model.layers[il].ln_2_b);
+            if (ctx->is_qwen2_5) {
+                // RMSNorm for Qwen2.5 (no bias)
+                cur = ggml_mul(ctx0, cur, model.layers[il].ln_2_w);
+            } else {
+                // Standard LayerNorm with bias
+                cur = ggml_add(ctx0, ggml_mul(ctx0, cur, model.layers[il].ln_2_w),
+                               model.layers[il].ln_2_b);
+            }
         }
 
-        cur = ggml_mul_mat(ctx0, model.layers[il].ff_i_w, cur);
-        cur = ggml_add(ctx0, cur, model.layers[il].ff_i_b);
+        // For Qwen2.5, the MLP uses SiLU gated activation
+        if (ctx->is_qwen2_5) {
+            // Qwen2.5 uses SiLU gated activation
+            // ffn_down is the gate_proj, ffn_up is the up_proj
+            struct ggml_tensor * gate = ggml_mul_mat(ctx0, model.layers[il].ff_i_w, cur);
+            struct ggml_tensor * up = ggml_mul_mat(ctx0, model.layers[il].ff_i_b, cur); // using ff_i_b as up_proj weight
 
-        if (ctx->use_gelu) {
-            cur = ggml_gelu_inplace(ctx0, cur);
-        } else if (ctx->use_silu) {
-            cur = ggml_silu_inplace(ctx0, cur);
+            // Apply SiLU to the gate
+            gate = ggml_silu_inplace(ctx0, gate);
+
+            // Multiply gate and up
+            cur = ggml_mul(ctx0, gate, up);
+
+            // Apply down projection
+            cur = ggml_mul_mat(ctx0, model.layers[il].ff_o_w, cur);
         } else {
-            cur = ggml_gelu_quick_inplace(ctx0, cur);
-        }
+            // Original MLP
+            cur = ggml_mul_mat(ctx0, model.layers[il].ff_i_w, cur);
+            cur = ggml_add(ctx0, cur, model.layers[il].ff_i_b);
 
-        cur = ggml_mul_mat(ctx0, model.layers[il].ff_o_w, cur);
-        cur = ggml_add(ctx0, cur, model.layers[il].ff_o_b);
+            if (ctx->use_gelu) {
+                cur = ggml_gelu_inplace(ctx0, cur);
+            } else if (ctx->use_silu) {
+                cur = ggml_silu_inplace(ctx0, cur);
+            } else {
+                cur = ggml_gelu_quick_inplace(ctx0, cur);
+            }
+
+            cur = ggml_mul_mat(ctx0, model.layers[il].ff_o_w, cur);
+            cur = ggml_add(ctx0, cur, model.layers[il].ff_o_b);
+        }
 
         // residual 2
         cur = ggml_add(ctx0, embeddings, cur);
@@ -1085,7 +1122,12 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
                 const int d_head = 128;
                 int n_head = hidden_size/d_head;
                 int num_query = 96;
-                if (ctx->minicpmv_version == 2) {
+                if (ctx->is_qwen2_5) {
+                    hidden_size = 2048;
+                    n_head = hidden_size/d_head;
+                    num_query = 64;
+                }
+                else if (ctx->minicpmv_version == 2) {
                     hidden_size = 4096;
                     n_head = hidden_size/d_head;
                     num_query = 96;
@@ -1296,30 +1338,30 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
         }
     }
 
-//#ifdef GGML_USE_CUDA
-//    new_clip->backend = ggml_backend_cuda_init(0);
-//    LOG_INF("%s: CLIP using CUDA backend\n", __func__);
-//#endif
-//
-//#ifdef GGML_USE_METAL
-//    new_clip->backend = ggml_backend_metal_init();
-//    LOG_INF("%s: CLIP using Metal backend\n", __func__);
-//#endif
-//
-//#ifdef GGML_USE_CANN
-//    new_clip->backend = ggml_backend_cann_init(0);
-//    LOG_INF("%s: CLIP using CANN backend\n", __func__);
-//#endif
-//
-//#ifdef GGML_USE_VULKAN
-//    new_clip->backend = ggml_backend_vk_init(0);
-//    LOG_INF("%s: CLIP using Vulkan backend\n", __func__);
-//#endif
-//
-//#ifdef GGML_USE_SYCL
-//    new_clip->backend = ggml_backend_sycl_init(0);
-//    LOG_INF("%s: CLIP using SYCL backend\n", __func__);
-//#endif
+#ifdef GGML_USE_CUDA
+    new_clip->backend = ggml_backend_cuda_init(0);
+    LOG_INF("%s: CLIP using CUDA backend\n", __func__);
+#endif
+
+#ifdef GGML_USE_METAL
+    new_clip->backend = ggml_backend_metal_init();
+    LOG_INF("%s: CLIP using Metal backend\n", __func__);
+#endif
+
+#ifdef GGML_USE_CANN
+    new_clip->backend = ggml_backend_cann_init(0);
+    LOG_INF("%s: CLIP using CANN backend\n", __func__);
+#endif
+
+#ifdef GGML_USE_VULKAN
+    new_clip->backend = ggml_backend_vk_init(0);
+    LOG_INF("%s: CLIP using Vulkan backend\n", __func__);
+#endif
+
+#ifdef GGML_USE_SYCL
+    new_clip->backend = ggml_backend_sycl_init(0);
+    LOG_INF("%s: CLIP using SYCL backend\n", __func__);
+#endif
 
     if (!new_clip->backend) {
         new_clip->backend = ggml_backend_cpu_init();
@@ -1359,6 +1401,11 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
             new_clip->has_qwen2vl_merger = gguf_get_val_bool(ctx, idx);
         }
         // GGML_ASSERT(new_clip->has_llava_projector); // see monatis/clip.cpp for image and/or text encoding for semantic search
+
+        idx = gguf_find_key(ctx, KEY_IS_QWEN2_5);
+        if (idx != -1) {
+            new_clip->is_qwen2_5 = gguf_get_val_bool(ctx, idx);
+        }
 
         GGML_ASSERT(new_clip->has_vision_encoder);
         GGML_ASSERT(!new_clip->has_text_encoder);
@@ -2942,7 +2989,10 @@ int clip_n_mmproj_embd(const struct clip_ctx * ctx) {
         return ctx->vision_model.mm_3_b->ne[0];
     }
     if (ctx->proj_type == PROJECTOR_TYPE_RESAMPLER) {
-        if (ctx->minicpmv_version == 2) {
+        if (ctx->is_qwen2_5) {
+            return 2048;
+        }
+        else if (ctx->minicpmv_version == 2) {
             return 4096;
         }
         else if (ctx->minicpmv_version == 3) {
@@ -2956,6 +3006,11 @@ int clip_n_mmproj_embd(const struct clip_ctx * ctx) {
         return ctx->vision_model.mm_model_mlp_3_w->ne[1];
     }
     if (ctx->proj_type == PROJECTOR_TYPE_MERGER) {
+        // For Qwen2.5, the output dimension is 2048 instead of 3584
+        if (ctx->is_qwen2_5) {
+            LOG_INF("%s: Qwen2.5 detected, using output dimension 2048\n", __func__);
+            return 2048;
+        }
         return ctx->vision_model.mm_1_b->ne[0];
     }
 
@@ -2975,6 +3030,9 @@ bool clip_is_glm(const struct clip_ctx * ctx) {
 }
 bool clip_is_qwen2vl(const struct clip_ctx * ctx) {
     return ctx->has_qwen2vl_merger;
+}
+bool clip_is_qwen2_5vl(const struct clip_ctx * ctx) {
+    return ctx->is_qwen2_5;
 }
 
 // Determine the number of encoder layers to iterate over

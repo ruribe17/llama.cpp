@@ -2,12 +2,10 @@ import argparse
 from typing import Dict
 
 import torch
-import numpy as np
 from gguf import *
 from transformers import (
     Qwen2_5_VLForConditionalGeneration,
     Qwen2_5_VLProcessor,
-    Qwen2_5_VLConfig,
 )
 
 VISION = "clip.vision"
@@ -137,15 +135,34 @@ def main(args):
     fout.add_bool("clip.use_silu", True)
     fout.add_bool("clip.use_gelu", False)
 
+    # Add missing keys
+    # 1. mm_patch_merge_type - Qwen2.5 uses a flat merge type
+    fout.add_string("clip.vision.mm_patch_merge_type", "flat")
+
+    # 2. image_grid_pinpoints - For Qwen2.5, we'll provide standard resolution options
+    # These are common grid pinpoints for image processing, defining possible resolutions
+    grid_pinpoints = [224, 224, 336, 336, 448, 448, 560, 560]
+    fout.add_array("clip.vision.image_grid_pinpoints", grid_pinpoints)
+
+    # 3. feature_layer - Typically set to the last layer(s) for feature extraction
+    # For Qwen2.5, we'll use the final layer
+    feature_layers = [vcfg.depth]  # Use the last layer
+    fout.add_array("clip.vision.feature_layer", feature_layers)
+
+    # 4. image_crop_resolution - Set to the same as image_size by default
+    image_size = 14 * 40  # same as used below
+    fout.add_uint32("clip.vision.image_crop_resolution", image_size)
+
     tensor_map = find_vision_tensors(model, np_dtype)
     for name, data in tensor_map.items():
         fout.add_tensor(name, data)
 
     fout.add_uint32("clip.vision.patch_size", vcfg.patch_size)
-    fout.add_uint32("clip.vision.image_size", 14 * 40)  # reasonable size divisible by (14*2)
+    fout.add_uint32("clip.vision.image_size", image_size)  # reasonable size divisible by (14*2)
     fout.add_uint32(k(KEY_EMBEDDING_LENGTH, VISION), vcfg.hidden_size)
     fout.add_uint32("clip.vision.projection_dim", vcfg.hidden_size)
     fout.add_uint32(k(KEY_ATTENTION_HEAD_COUNT, VISION), vcfg.num_heads)
+    fout.add_float32(k(KEY_ATTENTION_LAYERNORM_EPS, VISION), 1e-6)
     fout.add_uint32(k(KEY_BLOCK_COUNT, VISION), vcfg.depth)
     fout.add_uint32(k(KEY_FEED_FORWARD_LENGTH, VISION), vcfg.intermediate_size)
     fout.add_name(model_name)
