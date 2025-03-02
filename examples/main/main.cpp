@@ -346,11 +346,8 @@ int main(int argc, char ** argv) {
 
         if (params.conversation_mode && params.enable_chat_template) {
             // format the system prompt in conversation mode (will use template default if empty)
-            prompt = params.system_prompt;
+            prompt = chat_add_and_format("system", params.system_prompt, true);
 
-            if (!prompt.empty()) {
-                prompt = chat_add_and_format("system", prompt, true);
-            }
         } else {
             // otherwise use the prompt as is
             prompt = params.prompt;
