@@ -20,7 +20,7 @@ export interface MessageDisplay {
 
 /**
  * If the current URL contains "?m=...", prefill the message input with the value.
- * If the current URL contains "?p=...", prefill and SEND the message.
+ * If the current URL contains "?q=...", prefill and SEND the message.
  */
 const prefilledMsg = {
   content() {
