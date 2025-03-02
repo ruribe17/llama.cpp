@@ -277,6 +277,7 @@ int main(int argc, char ** argv) {
     };
 
     {
+        const bool explicit_chat_template = params.enable_chat_template && (params.use_jinja || !params.chat_template.empty());
         std::string prompt = params.enable_chat_template ? params.system_prompt : "";
 
         if (params.enable_chat_template && !prompt.empty()) {
@@ -285,7 +286,7 @@ int main(int argc, char ** argv) {
         }
 
         if (!params.conversation_mode) {
-            if (params.enable_chat_template && !params.prompt.empty()) {
+            if (explicit_chat_template && !params.prompt.empty()) {
                 // format and append the user prompt
                 prompt += chat_add_and_format("user", params.prompt);
             } else {
