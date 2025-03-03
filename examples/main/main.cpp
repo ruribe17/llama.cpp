@@ -276,28 +276,28 @@ int main(int argc, char ** argv) {
         return formatted;
     };
 
+    std::string prompt;
     {
-        const bool explicit_chat_template = params.enable_chat_template && (params.use_jinja || !params.chat_template.empty());
-        std::string prompt = params.enable_chat_template ? params.system_prompt : "";
+        if (params.conversation_mode && params.enable_chat_template) {
+            prompt = params.system_prompt;
 
-        if (params.enable_chat_template && !prompt.empty()) {
-            // format the system prompt (will use template default if not set)
-            prompt = chat_add_and_format("system", prompt);
-        }
+            if (!prompt.empty()) {
+                // format the system prompt (will use template default if empty)
+                prompt = chat_add_and_format("system", prompt);
+            }
 
-        if (!params.conversation_mode) {
-            if (explicit_chat_template && !params.prompt.empty()) {
+            if (!params.prompt.empty()) {
                 // format and append the user prompt
                 prompt += chat_add_and_format("user", params.prompt);
             } else {
-                // otherwise use the prompt as is
-                prompt = params.prompt;
+                waiting_for_first_input = true;
             }
-        } else if (prompt.empty()) {
-            waiting_for_first_input = true;
+        } else {
+            // otherwise use the prompt as is
+            prompt = params.prompt;
         }
 
-        if (params.interactive_first || !params.prompt.empty() || session_tokens.empty()) {
+        if (params.interactive_first || !prompt.empty() || session_tokens.empty()) {
             LOG_DBG("tokenize the prompt\n");
             embd_inp = common_tokenize(ctx, prompt, true, true);
         } else {
@@ -376,6 +376,11 @@ int main(int argc, char ** argv) {
     // enable interactive mode if interactive start is specified
     if (params.interactive_first) {
         params.interactive = true;
+    }
+
+    if (params.single_turn && !params.prompt.empty()) {
+        params.interactive = false;
+        params.interactive_first = false;
     }
 
     if (params.verbose_prompt) {
@@ -814,6 +819,11 @@ int main(int argc, char ** argv) {
             if (params.conversation_mode && !waiting_for_first_input) {
                 const auto id = common_sampler_last(smpl);
                 assistant_ss << common_token_to_piece(ctx, id, false);
+
+                if (!prompt.empty()) {
+                    prompt.clear();
+                    is_interacting = false;
+                }
             }
 
             if ((n_past > 0 || waiting_for_first_input) && is_interacting) {
@@ -911,6 +921,11 @@ int main(int argc, char ** argv) {
                     common_sampler_reset(smpl);
                 }
                 is_interacting = false;
+
+                if (waiting_for_first_input && params.single_turn) {
+                    params.interactive = false;
+                    params.interactive_first = false;
+                }
                 waiting_for_first_input = false;
             }
         }
