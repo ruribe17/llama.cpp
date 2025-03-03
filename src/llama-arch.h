@@ -53,7 +53,6 @@ enum llm_arch {
     LLM_ARCH_ARCTIC,
     LLM_ARCH_DEEPSEEK,
     LLM_ARCH_DEEPSEEK2,
-    LLM_ARCH_EDGELLM,
     LLM_ARCH_CHATGLM,
     LLM_ARCH_BITNET,
     LLM_ARCH_T5,
@@ -68,6 +67,7 @@ enum llm_arch {
     LLM_ARCH_CHAMELEON,
     LLM_ARCH_WAVTOKENIZER_DEC,
     LLM_ARCH_UNKNOWN,
+    LLM_ARCH_PLM,
 };
 
 enum llm_kv {
