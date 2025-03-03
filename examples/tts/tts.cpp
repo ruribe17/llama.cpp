@@ -464,7 +464,7 @@ static std::vector<llama_token> prepare_guide_tokens(const llama_vocab * vocab, 
 static json speaker_from_file(const std::string & speaker_file) {
     std::ifstream file(speaker_file);
     if (!file) {
-        LOG_ERR("%s: Failed to open file '%s' for reading", __func__, speaker_file.c_str());
+        LOG_ERR("%s: Failed to open file '%s' for reading\n", __func__, speaker_file.c_str());
         return json();
     }
 
