@@ -19,7 +19,7 @@ struct llama_adapter_cvec {
 
     struct ggml_tensor * apply_to(struct ggml_context * ctx, struct ggml_tensor * cur, int  il) const;
 
-    int32_t apply(
+    bool apply(
             const llama_model & model,
             const float * data,
             size_t len,
@@ -72,3 +72,5 @@ struct llama_adapter_lora {
 
     llama_adapter_lora_weight * get_weight(struct ggml_tensor * w);
 };
+
+using llama_loras = std::unordered_map<struct llama_adapter_lora *, float>;
