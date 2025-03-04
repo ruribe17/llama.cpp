@@ -200,6 +200,8 @@ struct common_params_vocoder {
     std::string model     = ""; // model path                                                // NOLINT
     std::string model_url = ""; // model url to download                                     // NOLINT
 
+    std::string speaker_file = ""; // speaker file path                                      // NOLINT
+
     bool use_guide_tokens = false; // enable guide tokens to improve TTS accuracy            // NOLINT
 };
 
@@ -330,6 +332,8 @@ struct common_params {
     bool no_kv_offload     = false; // disable KV offloading
     bool warmup            = true;  // warmup run
     bool check_tensors     = false; // validate tensor data
+
+    bool single_turn       = false; // single turn chat conversation
 
     ggml_type cache_type_k = GGML_TYPE_F16; // KV cache data type for the K
     ggml_type cache_type_v = GGML_TYPE_F16; // KV cache data type for the V
