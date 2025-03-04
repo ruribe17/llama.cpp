@@ -1769,32 +1769,34 @@ void llama_context_kv_self::kv_self_update() {
     if (kv->do_defrag) {
         LLAMA_LOG_DEBUG("%s: defragmenting KV cache\n", __func__);
 
-        ggml_backend_sched_reset(sched.get());
+        if (kv->defrag_prepare(graph_max_nodes())) {
+            ggml_backend_sched_reset(sched.get());
 
-        auto * gf = graph_init();
+            auto * gf = graph_init();
 
-        model.build_graph_kv_self_defrag(
-                {
-                    /*.ctx         =*/ ctx_compute.get(),
-                    /*.model       =*/ model,
-                    /*.cparams     =*/ cparams,
-                    /*.ubatch      =*/ {},
-                    /*.sched       =*/ sched.get(),
-                    /*.backend_cpu =*/ backend_cpu,
-                    /*.backends    =*/ backends,
-                    /*.cvec        =*/ nullptr,
-                    /*.loras       =*/ nullptr,
-                    /*.memory      =*/ nullptr,
-                    /*.cross       =*/ nullptr,
-                    /*.n_outputs   =*/ 0,
-                }, gf);
+            model.build_graph_kv_self_defrag(
+                    {
+                        /*.ctx         =*/ ctx_compute.get(),
+                            /*.model       =*/ model,
+                            /*.cparams     =*/ cparams,
+                            /*.ubatch      =*/ {},
+                            /*.sched       =*/ sched.get(),
+                            /*.backend_cpu =*/ backend_cpu,
+                            /*.backends    =*/ backends,
+                            /*.cvec        =*/ nullptr,
+                            /*.loras       =*/ nullptr,
+                            /*.memory      =*/ nullptr,
+                            /*.cross       =*/ nullptr,
+                            /*.n_outputs   =*/ 0,
+                    }, gf);
 
-        ggml_backend_sched_alloc_graph(sched.get(), gf);
+            ggml_backend_sched_alloc_graph(sched.get(), gf);
 
-        // no input
-        //input_set({});
+            // no input
+            //input_set({});
 
-        graph_compute(gf, false);
+            graph_compute(gf, false);
+        }
 
         kv->do_defrag = false;
 

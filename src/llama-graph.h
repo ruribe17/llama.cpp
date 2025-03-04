@@ -351,8 +351,12 @@ public:
     std::vector<llm_graph_input_ptr> inputs;
 };
 
+//
+// llm_graph_context
+//
+
 struct llm_graph_params {
-    ggml_context  * ctx;
+    ggml_context * ctx;
 
     const llama_model   & model;
     const llama_cparams & cparams;
@@ -371,7 +375,10 @@ struct llm_graph_params {
 };
 
 struct llm_graph_context {
-    const llama_model   & model;   // TODO: remove reference to model
+    const llama_model & model;   // TODO: remove reference to model
+
+    const llm_arch arch;
+
     const llama_hparams & hparams;
     const llama_cparams & cparams;
     const llama_ubatch  & ubatch;
@@ -407,8 +414,9 @@ struct llm_graph_context {
 
     ggml_context * ctx0 = nullptr;
 
-    // TODO: these are only used by the cb() call, so maybe we can avoid them in the future
     ggml_backend_sched * sched;
+
+    // TODO: these are only used by the cb() call, so maybe we can avoid them in the future
     ggml_backend * backend_cpu;
     const std::vector<ggml_backend_ptr> & backends;
 
@@ -420,9 +428,6 @@ struct llm_graph_context {
     std::unique_ptr<llm_graph_result> res;
 
     llm_graph_context(const llm_graph_params & params);
-
-    // TODO: deduplicate with llama_context::graph_max_nodes()
-    int32_t graph_max_nodes() const;
 
     int64_t n_pos_per_token() const;
 

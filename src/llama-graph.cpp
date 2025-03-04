@@ -594,6 +594,7 @@ void llm_graph_input_k_shift::set_input(const llama_ubatch * ubatch) {
 
 llm_graph_context::llm_graph_context(const llm_graph_params & params) :
     model            (params.model),
+    arch             (model.arch),
     hparams          (model.hparams),
     cparams          (params.cparams),
     ubatch           (params.ubatch),
@@ -633,13 +634,8 @@ llm_graph_context::llm_graph_context(const llm_graph_params & params) :
     res              (std::make_unique<llm_graph_result>()) {
     }
 
-// TODO: deduplicate with llama_context::graph_max_nodes()
-int32_t llm_graph_context::graph_max_nodes() const {
-    return std::max<int32_t>(8192, 5*model.n_tensors());
-}
-
 int64_t llm_graph_context::n_pos_per_token() const {
-    return model.arch == LLM_ARCH_QWEN2VL ? 4 : 1;
+    return arch == LLM_ARCH_QWEN2VL ? 4 : 1;
 }
 
 // callback that allows us to apply custom logic to each tensor (e.g. ggml-alloc, offloading, etc.)
@@ -1251,8 +1247,6 @@ ggml_tensor * llm_graph_context::build_attn_mha(
 
     // TODO: replace hardcoded padding with ggml-provided padding
     if (cparams.flash_attn && (n_kv % 256 == 0) && kq_b == nullptr) {
-        GGML_UNUSED(model);
-
         GGML_ASSERT(kq_b == nullptr && "Flash attention does not support KQ bias yet");
 
         if (v_trans) {
@@ -1272,7 +1266,7 @@ ggml_tensor * llm_graph_context::build_attn_mha(
         //       while for some models F16 is enough, for others it is not, so we default to F32 here
         ggml_mul_mat_set_prec(kq, GGML_PREC_F32);
 
-        if (model.arch == LLM_ARCH_GROK) {
+        if (arch == LLM_ARCH_GROK) {
             // need to do the following:
             // multiply by attn_output_multiplyer of 0.08838834764831845
             // and then :
@@ -1483,7 +1477,7 @@ ggml_tensor * llm_graph_context::build_attn(
     // TODO: improve
     bool is_sliding = false;
 
-    switch (model.arch) {
+    switch (arch) {
         case LLM_ARCH_COHERE2:
             {
                 const int32_t sliding_window_pattern = 4;
@@ -2115,140 +2109,9 @@ void llm_graph_context::build_kv_self_shift(ggml_cgraph * gf) const {
 }
 
 void llm_graph_context::build_kv_self_defrag(ggml_cgraph * gf) const {
-    const llama_kv_cache_unified * kv_self_const = static_cast<const llama_kv_cache_unified *>(memory);
+    const llama_kv_cache_unified * kv_self = static_cast<const llama_kv_cache_unified *>(memory);
 
-    // TODO: avoid this
-    llama_kv_cache_unified * kv_self = const_cast<llama_kv_cache_unified *>(kv_self_const);
-
-    const uint32_t n_layer = hparams.n_layer;
-
-    const uint32_t n_kv   = kv_self->cell_max();
-    const uint32_t n_used = kv_self->used;
-
-    assert(n_used <= n_kv);
-
-    //const int64_t t_start = ggml_time_us();
-
-    // number of cells moved
-    uint32_t n_moves = 0;
-
-    // each move requires 6*n_layer tensors (see graph_build_kv_self_defrag)
-    //   - source view, destination view, copy operation
-    //   - x2 for keys and values
-    //const uint32_t max_moves = max_nodes()/(6*n_layer);
-    // TODO: tmp fix https://github.com/ggerganov/llama.cpp/issues/6685#issuecomment-2057579516
-    const uint32_t max_moves = (graph_max_nodes() - 2*n_layer)/(6*n_layer);
-
-    // determine which KV cells to move where
-    //
-    //  cell i moves to ids[i]
-    //
-    //  if ids[i] == i || ids[i] == n_kv, then cell i is not moved
-    //
-    std::vector<uint32_t> ids(n_kv, n_kv);
-
-    for (uint32_t i0 = 0; i0 < n_used; ++i0) {
-        const auto & cell0 = kv_self->cells[i0];
-
-        if (!cell0.is_empty()) {
-            ids[i0] = i0;
-
-            continue;
-        }
-
-        // found a hole - fill it with data from the end of the cache
-
-        uint32_t nh = 1;
-
-        // determine the size of the hole
-        while (i0 + nh < n_used && kv_self->cells[i0 + nh].is_empty()) {
-            nh++;
-        }
-
-        uint32_t nf = 0;
-        uint32_t is = n_kv - 1;
-
-        // starting from the end, find nh non-empty cells
-        for (; is > i0; --is) {
-            const auto & cell1 = kv_self->cells[is];
-
-            if (cell1.is_empty() || ids[is] != n_kv) {
-                continue;
-            }
-
-            // non-empty cell which is not yet moved
-            nf++;
-
-            if (nf == nh) {
-                break;
-            }
-        }
-
-        // this can only happen if `n_used` is not accurate, which would be a bug
-        GGML_ASSERT(nf == nh && "KV defrag bug: nf != nh");
-
-        nf = 0;
-
-        uint32_t i1 = is;
-
-        // are we moving a continuous block of memory?
-        bool cont = false;
-
-        // should we stop searching for the next move?
-        bool stop = false;
-
-        // go back and move the nf cells to the hole
-        for (; i1 < n_kv; ++i1) {
-            auto & cell1 = kv_self->cells[i1];
-
-            if (cell1.is_empty() || ids[i1] != n_kv) {
-                if (n_moves == max_moves) {
-                    stop = true;
-                    break;
-                }
-
-                cont = false;
-                continue;
-            }
-
-            // this cell goes to (i0 + nf)
-            ids[i1] = i0 + nf;
-
-            // move the cell meta data
-            kv_self->cells[i0 + nf] = cell1;
-
-            // clear the old cell and move the head there
-            cell1 = llama_kv_cell();
-            kv_self->head = n_used;
-
-            if (!cont) {
-                n_moves++;
-                cont = true;
-            }
-
-            nf++;
-
-            if (nf == nh) {
-                break;
-            }
-        }
-
-        if (stop || n_moves == max_moves) {
-            break;
-        }
-
-        //LLAMA_LOG_INFO("(tmp log) KV defrag: move [%u, %u) to [%u, %u)\n", is, i1 + 1, i0, i0 + nh);
-
-        i0 += nh - 1;
-    }
-
-    if (n_moves == 0) {
-        return;
-    }
-
-    //LLAMA_LOG_INFO("(tmp log) KV defrag cell moves: %u\n", n_moves);
-
-    //LLAMA_LOG_INFO("expected gf nodes: %u\n", 6*n_moves*n_layer);
+    const auto & ids = kv_self->defrag_info.ids;
 
 #if 0
     // CPU defrag
@@ -2429,8 +2292,8 @@ void llm_graph_context::build_pooling(ggml_cgraph * gf) const {
 
                 // classification head
                 // https://github.com/huggingface/transformers/blob/5af7d41e49bbfc8319f462eb45253dcb3863dfb7/src/transformers/models/roberta/modeling_roberta.py#L1566
-                GGML_ASSERT(model.cls       != nullptr);
-                GGML_ASSERT(model.cls_b     != nullptr);
+                GGML_ASSERT(model.cls   != nullptr);
+                GGML_ASSERT(model.cls_b != nullptr);
 
                 cur = ggml_add (ctx0, ggml_mul_mat(ctx0, model.cls, inp), model.cls_b);
                 cur = ggml_tanh(ctx0, cur);

@@ -111,6 +111,15 @@ public:
     size_t size_k_bytes() const;
     size_t size_v_bytes() const;
 
+    // defrag
+
+    struct {
+        std::vector<uint32_t> ids;
+    } defrag_info;
+
+    // return true if cells have been moved
+    bool defrag_prepare(int32_t n_max_nodes);
+
     // state save/load
 
     void state_write(llama_io_write_i & io, llama_seq_id seq_id = -1) const;
