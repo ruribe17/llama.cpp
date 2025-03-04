@@ -142,6 +142,43 @@ private:
 #endif
 };
 
+#ifdef LLAMA_USE_TOOLCALL
+static bool call_tool(common_params & params, const std::string & assistant_msg,
+                      llama_context * ctx, toolcall::client::ptr tc_client, std::vector<llama_token> & embd_inp)
+{
+    auto should_use_toolcall = [&params, tc_client] (const std::string & asst_msg) {
+        if (! params.use_jinja || tc_client == nullptr) {
+            return false;
+        }
+        try {
+            nlohmann::json j = nlohmann::json::parse(asst_msg);
+            return (j.contains("name") && j.contains("parameters"));
+
+        } catch (const nlohmann::json::exception & err) {
+            return false;
+        }
+    };
+
+    if (should_use_toolcall(assistant_msg)) {
+        toolcall::result_set res = tc_client->call(assistant_msg);
+        if (! res.empty()) {
+            std::string toolcall_result_str;
+            for (const auto & r : res) {
+                toolcall_result_str += ("\n" + r.data); // Although more complex results can be
+                                                        // returned (resources, images, etc.),
+                                                        // for now simply append the data. Later
+                                                        // on support for specific models may
+                                                        // allow for unpacking Base64 data.
+            }
+            auto toolcall_result_tok = common_tokenize(ctx, toolcall_result_str, false, true);
+            embd_inp.insert(embd_inp.end(), toolcall_result_tok.begin(), toolcall_result_tok.end());
+        }
+        return true;
+    }
+    return false;
+}
+#endif
+
 int main(int argc, char ** argv) {
     common_params params;
     g_params = &params;
@@ -361,6 +398,12 @@ int main(int argc, char ** argv) {
                 inputs.messages = chat_msgs;
                 inputs.add_generation_prompt = !params.prompt.empty();
 
+#ifdef LLAMA_USE_TOOLCALL
+                if (tc_client != nullptr) {
+                    inputs.tool_choice = common_chat_tool_choice_parse_oaicompat(tc_client->tool_choice());
+                    inputs.tools = common_chat_tools_parse_oaicompat(tc_client->tool_list());
+                }
+#endif
                 prompt = common_chat_templates_apply(chat_templates.get(), inputs).prompt;
             }
         } else {
@@ -881,36 +924,9 @@ int main(int argc, char ** argv) {
                     if (params.enable_chat_template) {
                         chat_add_and_format("assistant", assistant_ss.str(), true);
 #ifdef LLAMA_USE_TOOLCALL
-                        auto should_use_toolcall = [&params, tc_client] (const std::string & asst_msg) {
-                            if (! params.use_jinja || tc_client == nullptr) {
-                                return false;
-                            }
-                            try {
-                                nlohmann::json j = nlohmann::json::parse(asst_msg);
-                                return (j.contains("name") && j.contains("parameters"));
-
-                            } catch (const nlohmann::json::exception & err) {
-                                return false;
-                            }
-                        };
-
-                        if (should_use_toolcall(assistant_ss.str())) {
-                            toolcall::result_set res = tc_client->call(assistant_ss.str());
-                            if (! res.empty()) {
-                                std::string toolcall_result_str;
-                                for (const auto & r : res) {
-                                    toolcall_result_str += ("\n" + r.data);
-                                }
-                                auto toolcall_result_tok = common_tokenize(ctx, toolcall_result_str, false, true);
-                                embd_inp.insert(embd_inp.end(), toolcall_result_tok.begin(), toolcall_result_tok.end());
-                            }
-
-                        } else {
-                            is_interacting = true;
-                            LOG("\n");
-                        }
+                        is_interacting = ! call_tool(params, assistant_ss.str(), ctx, tc_client, embd_inp);
+                        LOG("\n");
 #else
-
                         is_interacting = true;
                         LOG("\n");
 #endif
@@ -1032,6 +1048,16 @@ int main(int argc, char ** argv) {
                 waiting_for_first_input = false;
             }
         }
+
+#ifdef LLAMA_USE_TOOLCALL
+        if (params.single_turn) {
+            size_t last_len = embd_inp.size();
+            bool was_toolcall = call_tool(params, assistant_ss.str(), ctx, tc_client, embd_inp);
+            if (was_toolcall && last_len < embd_inp.size()) {
+                LOG("%s", common_token_to_piece(ctx, embd_inp[last_len]).c_str());
+            }
+        }
+#endif
 
         // end of generation
         if (!embd.empty() && llama_vocab_is_eog(vocab, embd.back()) && !(params.interactive)) {
