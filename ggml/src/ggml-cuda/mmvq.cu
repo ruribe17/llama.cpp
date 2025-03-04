@@ -69,7 +69,7 @@ static __host__ int get_device_table_id(int cc)
     return 0;
 }
 
-static constexpr int calc_nwarps(int ncols_y,  int table_id)
+static constexpr __host__ __device__ int calc_nwarps(int ncols_y,  int table_id)
 {
     if (table_id == 0) {
         switch (ncols_y) {
@@ -104,7 +104,7 @@ static constexpr int calc_nwarps(int ncols_y,  int table_id)
     return 1;
 }
 
-static constexpr int calc_rows_per_block(int ncols_y, int table_id)
+static constexpr __host__ __device__ int calc_rows_per_block(int ncols_y, int table_id)
 {
     if (table_id == 0 || table_id == 1) {
         switch (ncols_y) {
