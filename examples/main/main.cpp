@@ -283,14 +283,22 @@ int main(int argc, char ** argv) {
 
             if (!prompt.empty()) {
                 // format the system prompt (will use template default if empty)
-                prompt = chat_add_and_format("system", prompt);
+                chat_add_and_format("system", prompt);
             }
 
             if (!params.prompt.empty()) {
                 // format and append the user prompt
-                prompt += chat_add_and_format("user", params.prompt);
+                chat_add_and_format("user", params.prompt);
             } else {
                 waiting_for_first_input = true;
+            }
+
+            if (!prompt.empty() || !params.prompt.empty()) {
+                common_chat_templates_inputs inputs;
+                inputs.messages = chat_msgs;
+                inputs.add_generation_prompt = !params.prompt.empty();
+
+                prompt = common_chat_templates_apply(chat_templates.get(), inputs).prompt;
             }
         } else {
             // otherwise use the prompt as is
