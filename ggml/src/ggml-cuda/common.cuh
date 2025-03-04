@@ -244,7 +244,8 @@ static bool fp16_mma_hardware_available(const int cc) {
 
 // Volta technically had FP16 tensor cores but they work very differently compared to Turing and later.
 static bool new_mma_available(const int cc) {
-    return cc < GGML_CUDA_CC_OFFSET_AMD && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_TURING;
+    return cc < GGML_CUDA_CC_OFFSET_AMD && ggml_cuda_highest_compiled_arch(cc) >= GGML_CUDA_CC_VOLTA &&
+        cc >= GGML_CUDA_CC_TURING;
 }
 
 static bool cp_async_available(const int cc) {
