@@ -432,8 +432,8 @@ cmake -B build-visionos -G Xcode \
     -DCMAKE_SYSTEM_NAME=visionOS \
     -DCMAKE_OSX_SYSROOT=xros \
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS=xros \
-    -DCMAKE_C_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short -DGGML_VISIONOS=1 ${COMMON_C_FLAGS}" \
-    -DCMAKE_CXX_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short -DGGML_VISIONOS=1 ${COMMON_CXX_FLAGS}" \
+    -DCMAKE_C_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short ${COMMON_C_FLAGS}" \
+    -DCMAKE_CXX_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short ${COMMON_CXX_FLAGS}" \
     -S .
 cmake --build build-visionos --config Release -- -quiet
 
@@ -445,8 +445,8 @@ cmake -B build-visionos-sim -G Xcode \
     -DCMAKE_SYSTEM_NAME=visionOS \
     -DCMAKE_OSX_SYSROOT=xrsimulator \
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS=xrsimulator \
-    -DCMAKE_C_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short -DGGML_VISIONOS=1 ${COMMON_C_FLAGS}" \
-    -DCMAKE_CXX_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short -DGGML_VISIONOS=1 ${COMMON_CXX_FLAGS}" \
+    -DCMAKE_C_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short ${COMMON_C_FLAGS}" \
+    -DCMAKE_CXX_FLAGS="-D_XOPEN_SOURCE=700 -Du_int=unsigned\ int -Du_char=unsigned\ char -Du_short=unsigned\ short ${COMMON_CXX_FLAGS}" \
     -S .
 cmake --build build-visionos-sim --config Release -- -quiet
 
@@ -460,8 +460,8 @@ cmake -B build-tvos-sim -G Xcode \
     -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
     -DGGML_METAL=ON \
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS=appletvsimulator \
-    -DCMAKE_C_FLAGS="-DGGML_TVOS=1 ${COMMON_C_FLAGS}" \
-    -DCMAKE_CXX_FLAGS="-DGGML_TVOS=1 ${COMMON_CXX_FLAGS}" \
+    -DCMAKE_C_FLAGS="${COMMON_C_FLAGS}" \
+    -DCMAKE_CXX_FLAGS="${COMMON_CXX_FLAGS}" \
     -S .
 cmake --build build-tvos-sim --config Release -- -quiet
 
@@ -474,8 +474,8 @@ cmake -B build-tvos-device -G Xcode \
     -DCMAKE_OSX_ARCHITECTURES="arm64" \
     -DGGML_METAL=ON \
     -DCMAKE_XCODE_ATTRIBUTE_SUPPORTED_PLATFORMS=appletvos \
-    -DCMAKE_C_FLAGS="-DGGML_TVOS=1 ${COMMON_C_FLAGS}" \
-    -DCMAKE_CXX_FLAGS="-DGGML_TVOS=1 ${COMMON_CXX_FLAGS}" \
+    -DCMAKE_C_FLAGS="${COMMON_C_FLAGS}" \
+    -DCMAKE_CXX_FLAGS="${COMMON_CXX_FLAGS}" \
     -S .
 cmake --build build-tvos-device --config Release -- -quiet
 

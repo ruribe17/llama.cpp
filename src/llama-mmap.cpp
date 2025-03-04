@@ -34,6 +34,10 @@
     #include <io.h>
 #endif
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 // TODO: consider moving to llama-impl.h if needed in more places
 #if defined(_WIN32)
 static std::string llama_format_win_err(DWORD err) {
@@ -471,9 +475,9 @@ struct llama_mlock::impl {
 
         char* errmsg = std::strerror(errno);
         bool suggest = (errno == ENOMEM);
-#if defined(GGML_VISIONOS) || defined(GGML_TVOS)
-        // visionOS/watchOS/tvOS dont't support RLIMIT_MEMLOCK
-        // Skip resource limit checks on visionOS/watchOS/tvOS
+#if defined(TARGET_OS_VISION) || defined(TARGET_OS_TV)
+        // visionOS/tvOS dont't support RLIMIT_MEMLOCK
+        // Skip resource limit checks on visionOS/tvOS
         suggest = false;
 #else
         struct rlimit lock_limit;
