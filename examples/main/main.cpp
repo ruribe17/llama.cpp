@@ -45,8 +45,8 @@ static void print_usage(int argc, char ** argv) {
     (void) argc;
 
     LOG("\nexample usage:\n");
-    LOG("\n  text generation:     %s -m your_model.gguf -p \"I believe the meaning of life is\" -n 128\n", argv[0]);
-    LOG("\n  chat (conversation): %s -m your_model.gguf -p \"You are a helpful assistant\" -cnv\n", argv[0]);
+    LOG("\n  text generation:     %s -m your_model.gguf -p \"I believe the meaning of life is\" -n 128 -no-cnv\n", argv[0]);
+    LOG("\n  chat (conversation): %s -m your_model.gguf -sys \"You are a helpful assistant\"\n", argv[0]);
     LOG("\n");
 }
 
@@ -279,11 +279,9 @@ int main(int argc, char ** argv) {
     std::string prompt;
     {
         if (params.conversation_mode && params.enable_chat_template) {
-            prompt = params.system_prompt;
-
-            if (!prompt.empty()) {
+            if (!params.system_prompt.empty()) {
                 // format the system prompt (will use template default if empty)
-                chat_add_and_format("system", prompt);
+                chat_add_and_format("system", params.system_prompt);
             }
 
             if (!params.prompt.empty()) {
@@ -293,7 +291,7 @@ int main(int argc, char ** argv) {
                 waiting_for_first_input = true;
             }
 
-            if (!prompt.empty() || !params.prompt.empty()) {
+            if (!params.system_prompt.empty() || !params.prompt.empty()) {
                 common_chat_templates_inputs inputs;
                 inputs.messages = chat_msgs;
                 inputs.add_generation_prompt = !params.prompt.empty();
