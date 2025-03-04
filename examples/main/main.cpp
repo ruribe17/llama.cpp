@@ -376,17 +376,17 @@ int main(int argc, char ** argv) {
     }
 
     if (params.conversation_mode) {
-        params.interactive_first = true;
+        if (params.single_turn && !params.prompt.empty()) {
+            params.interactive = false;
+            params.interactive_first = false;
+        } else {
+            params.interactive_first = true;
+        }
     }
 
     // enable interactive mode if interactive start is specified
     if (params.interactive_first) {
         params.interactive = true;
-    }
-
-    if (params.single_turn && !params.prompt.empty()) {
-        params.interactive = false;
-        params.interactive_first = false;
     }
 
     if (params.verbose_prompt) {
