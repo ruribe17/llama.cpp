@@ -3872,7 +3872,7 @@ struct llm_build_llama : public llm_graph_context {
             // self-attention
             {
                 // rope freq factors for llama3; may return nullptr for llama2 and other models
-                struct ggml_tensor * rope_factors = build_rope_factors(il);
+                struct ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq, il);
 
                 // compute Q and K and RoPE them
                 struct ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur);
@@ -4046,7 +4046,7 @@ struct llm_build_deci : public llm_graph_context {
             } else if (n_head > 0) {
                 // self-attention
                 // rope freq factors for llama3; may return nullptr for llama2 and other models
-                struct ggml_tensor * rope_factors = build_rope_factors(il);
+                struct ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq, il);
 
                 // compute Q and K and RoPE them
                 struct ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur);
@@ -6204,7 +6204,7 @@ struct llm_build_phi3 : public llm_graph_context {
             // self-attention
             {
                 // rope freq factors for 128k context
-                struct ggml_tensor * rope_factors = build_rope_factors(il);
+                struct ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq, il);
 
                 struct ggml_tensor* attn_norm_output = build_norm(inpL,
                         model.layers[il].attn_norm,
@@ -6927,7 +6927,8 @@ struct llm_build_minicpm3 : public llm_graph_context {
         for (int il = 0; il < n_layer; ++il) {
             struct ggml_tensor * inpSA = inpL;
 
-            struct ggml_tensor * rope_factors = build_rope_factors(il);
+            struct ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq, il);
+
             // norm
             cur = build_norm(inpL,
                     model.layers[il].attn_norm, NULL,
@@ -7850,7 +7851,7 @@ struct llm_build_cohere2 : public llm_graph_context {
             // self-attention
             {
                 // rope freq factors for 128k context
-                struct ggml_tensor * rope_factors = build_rope_factors(il);
+                struct ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq, il);
 
                 // compute Q and K and RoPE them
                 struct ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur);
@@ -8764,7 +8765,7 @@ struct llm_build_deepseek : public llm_graph_context {
             // self-attention
             {
                 // rope freq factors for llama3; may return nullptr for llama2 and other models
-                struct ggml_tensor * rope_factors = build_rope_factors(il);
+                struct ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq, il);
 
                 // compute Q and K and RoPE them
                 struct ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur);
@@ -9921,7 +9922,7 @@ struct llm_build_exaone : public llm_graph_context {
             // self-attention
             {
                 // rope freq factors for llama3; may return nullptr for llama2 and other models
-                struct ggml_tensor * rope_factors = build_rope_factors(il);
+                struct ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq, il);
 
                 // compute Q and K and RoPE them
                 struct ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur);
@@ -10526,6 +10527,19 @@ struct llm_build_wavtokenizer_dec : public llm_graph_context {
     }
 };
 
+ggml_tensor * llama_model::build_rope_factors(uint32_t n_ctx_per_seq, int il) const {
+    // choose long/short freq factors based on the context size
+    if (layers[il].rope_freqs != nullptr) {
+        return layers[il].rope_freqs;
+    }
+
+    if (n_ctx_per_seq > hparams.n_ctx_orig_yarn) {
+        return layers[il].rope_long;
+    }
+
+    return layers[il].rope_short;
+}
+
 llm_graph_result_ptr llama_model::build_graph(
         const llm_graph_params & params,
                    ggml_cgraph * gf,
@@ -10760,26 +10774,6 @@ llm_graph_result_ptr llama_model::build_graph(
     llm->build_pooling(gf);
 
     return std::move(llm->res);
-}
-
-llm_graph_result_ptr llama_model::build_graph_k_shift(
-        const llm_graph_params & params,
-                   ggml_cgraph * gf) const {
-    struct llm_graph_context llm(params);
-
-    llm.build_kv_self_shift(gf);
-
-    return std::move(llm.res);
-}
-
-llm_graph_result_ptr llama_model::build_graph_kv_self_defrag(
-        const llm_graph_params & params,
-                   ggml_cgraph * gf) const {
-    struct llm_graph_context llm(params);
-
-    llm.build_kv_self_defrag(gf);
-
-    return std::move(llm.res);
 }
 
 //

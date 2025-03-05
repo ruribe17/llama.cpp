@@ -442,6 +442,24 @@ protected:
              ggml_cgraph * gf,
       const llama_ubatch & ubatch) override;
 
+    // used by kv_self_update()
+private:
+    ggml_tensor * build_rope_shift(
+        ggml_context * ctx0,
+        ggml_tensor * cur,
+        ggml_tensor * shift,
+        ggml_tensor * factors,
+        ggml_backend_buffer * bbuf) const;
+
+    llm_graph_result_ptr build_kv_self_shift(
+            ggml_context * ctx0,
+            ggml_cgraph * gf) const;
+
+    llm_graph_result_ptr build_kv_self_defrag(
+            ggml_context * ctx0,
+            ggml_cgraph * gf) const;
+
+protected:
     //
     // state save/load
     //

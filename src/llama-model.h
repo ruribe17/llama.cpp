@@ -365,19 +365,14 @@ struct llama_model {
 
     const struct ggml_tensor * get_tensor(const char * name) const;
 
-    // TODO: move these to new llm_arch_model_i interface
+    // TODO: move this to new llm_arch_model_i interface
+    ggml_tensor * build_rope_factors(uint32_t n_ctx_per_seq, int il) const;
+
+    // TODO: move this to new llm_arch_model_i interface
     llm_graph_result_ptr build_graph(
             const llm_graph_params & params,
                        ggml_cgraph * gf,
                     llm_graph_type   type) const;
-
-    llm_graph_result_ptr build_graph_k_shift(
-            const llm_graph_params & params,
-                       ggml_cgraph * gf) const;
-
-    llm_graph_result_ptr build_graph_kv_self_defrag(
-            const llm_graph_params & params,
-                       ggml_cgraph * gf) const;
 
 private:
     struct impl;

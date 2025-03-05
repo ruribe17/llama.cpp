@@ -289,18 +289,6 @@ public:
 
 using llm_graph_input_attn_dec_ptr = std::shared_ptr<llm_graph_input_attn_dec>;
 
-class llm_graph_input_k_shift : public llm_graph_input_i {
-public:
-    llm_graph_input_k_shift(const llama_kv_cache_unified * kv_self) : kv_self(kv_self) {}
-    virtual ~llm_graph_input_k_shift() = default;
-
-    void set_input(const llama_ubatch * ubatch) override;
-
-    ggml_tensor * k_shift; // I32 [kv_size]
-
-    const llama_kv_cache_unified * kv_self;
-};
-
 //
 // llm_graph_result
 //
@@ -387,6 +375,7 @@ struct llm_graph_context {
     const int64_t n_layer;
     const int64_t n_rot;
     const int64_t n_ctx;       // user-specified context size (can be different from n_ctx_train)
+    const int64_t n_ctx_per_seq;
     const int64_t n_head;
     const int64_t n_head_kv;
     const int64_t n_embd_head_k;
@@ -407,7 +396,7 @@ struct llm_graph_context {
 
     const int32_t n_tokens;
     const int32_t n_outputs;
-    const int32_t n_ctx_orig;
+    const int32_t n_ctx_orig; // yarn
 
     const enum llama_pooling_type pooling_type;
     const enum llama_rope_type    rope_type;
@@ -437,8 +426,6 @@ struct llm_graph_context {
     //
     // common
     //
-
-    ggml_tensor * build_rope_factors(int il) const;
 
     ggml_tensor * build_cvec(
              ggml_tensor * cur,
@@ -625,19 +612,6 @@ struct llm_graph_context {
               ggml_tensor * cur,
               ggml_tensor * x_prev,
                  llm_arch   arch) const;
-
-    //
-    // kv cache updates
-    //
-
-    ggml_tensor * build_rope_shift(
-            ggml_tensor * cur,
-            ggml_tensor * shift,
-            ggml_tensor * factors,
-            ggml_backend_buffer * bbuf) const;
-
-    void build_kv_self_shift (ggml_cgraph * gf) const;
-    void build_kv_self_defrag(ggml_cgraph * gf) const;
 
     //
     // pooling
