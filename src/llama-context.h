@@ -157,6 +157,8 @@ public:
 // C alias
 struct llama_context : public llama_context_i {
     using llama_context_i::llama_context_i;
+
+    static llama_context * create(const llama_model & model, llama_context_params params);
 };
 
 // basic transformer without KV cache

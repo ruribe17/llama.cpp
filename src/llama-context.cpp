@@ -10,6 +10,39 @@
 #include <stdexcept>
 #include <cinttypes>
 
+llama_context * llama_context::create(const llama_model & model, llama_context_params params) {
+    llama_context * ctx = nullptr;
+
+    try {
+        switch (model.arch) {
+            case LLM_ARCH_BERT:
+            case LLM_ARCH_JINA_BERT_V2:
+            case LLM_ARCH_NOMIC_BERT:
+                ctx = new llama_context_enc(model, params, LLM_GRAPH_TYPE_DEFAULT);
+                break;
+            case LLM_ARCH_T5:
+                ctx = new llama_context_enc_dec(model, params);
+                break;
+            case LLM_ARCH_RWKV6:
+            case LLM_ARCH_RWKV6QWEN2:
+            case LLM_ARCH_MAMBA:
+                GGML_ASSERT(llama_model_is_recurrent(&model));
+                ctx = new llama_context_recurrent(model, params, LLM_GRAPH_TYPE_DEFAULT);
+                break;
+            default:
+                GGML_ASSERT(!llama_model_is_recurrent(&model));
+                ctx = new llama_context_kv_self(model, params, LLM_GRAPH_TYPE_DEFAULT);
+        }
+    } catch (const std::exception & e) {
+        LLAMA_LOG_ERROR("%s: failed to initialize context: %s\n", __func__, e.what());
+        return nullptr;
+    }
+
+    ctx->init();
+
+    return ctx;
+}
+
 //
 // llama_context_base
 //
@@ -3212,6 +3245,84 @@ size_t llama_context_enc_dec::state_seq_save_file(
 // interface implementation
 //
 
+llama_context_params llama_context_default_params() {
+    llama_context_params result = {
+        /*.n_ctx                       =*/ 512,
+        /*.n_batch                     =*/ 2048,
+        /*.n_ubatch                    =*/ 512,
+        /*.n_seq_max                   =*/ 1,
+        /*.n_threads                   =*/ GGML_DEFAULT_N_THREADS, // TODO: better default
+        /*.n_threads_batch             =*/ GGML_DEFAULT_N_THREADS,
+        /*.rope_scaling_type           =*/ LLAMA_ROPE_SCALING_TYPE_UNSPECIFIED,
+        /*.pooling_type                =*/ LLAMA_POOLING_TYPE_UNSPECIFIED,
+        /*.attention_type              =*/ LLAMA_ATTENTION_TYPE_UNSPECIFIED,
+        /*.rope_freq_base              =*/ 0.0f,
+        /*.rope_freq_scale             =*/ 0.0f,
+        /*.yarn_ext_factor             =*/ -1.0f,
+        /*.yarn_attn_factor            =*/ 1.0f,
+        /*.yarn_beta_fast              =*/ 32.0f,
+        /*.yarn_beta_slow              =*/ 1.0f,
+        /*.yarn_orig_ctx               =*/ 0,
+        /*.defrag_thold                =*/ -1.0f,
+        /*.cb_eval                     =*/ nullptr,
+        /*.cb_eval_user_data           =*/ nullptr,
+        /*.type_k                      =*/ GGML_TYPE_F16,
+        /*.type_v                      =*/ GGML_TYPE_F16,
+        /*.logits_all                  =*/ false,
+        /*.embeddings                  =*/ false,
+        /*.offload_kqv                 =*/ true,
+        /*.flash_attn                  =*/ false,
+        /*.no_perf                     =*/ true,
+        /*.abort_callback              =*/ nullptr,
+        /*.abort_callback_data         =*/ nullptr,
+    };
+
+    return result;
+}
+
+llama_context * llama_init_from_model(
+                 llama_model * model,
+        llama_context_params   params) {
+    if (!model) {
+        LLAMA_LOG_ERROR("%s: model cannot be NULL\n", __func__);
+        return nullptr;
+    }
+
+    if (params.n_batch == 0 && params.n_ubatch == 0) {
+        LLAMA_LOG_ERROR("%s: n_batch and n_ubatch cannot both be zero\n", __func__);
+        return nullptr;
+    }
+
+    if (params.n_ctx == 0 && model->hparams.n_ctx_train == 0) {
+        LLAMA_LOG_ERROR("%s: n_ctx and model->hparams.n_ctx_train cannot both be zero\n", __func__);
+        return nullptr;
+    }
+
+    if (params.flash_attn && model->arch == LLM_ARCH_GROK) {
+        LLAMA_LOG_WARN("%s: flash_attn is not compatible with Grok - forcing off\n", __func__);
+        params.flash_attn = false;
+    }
+
+    if (params.flash_attn && model->hparams.n_embd_head_k != model->hparams.n_embd_head_v) {
+        LLAMA_LOG_WARN("%s: flash_attn requires n_embd_head_k == n_embd_head_v - forcing off\n", __func__);
+        params.flash_attn = false;
+    }
+
+    if (ggml_is_quantized(params.type_v) && !params.flash_attn) {
+        LLAMA_LOG_ERROR("%s: V cache quantization requires flash_attn\n", __func__);
+        return nullptr;
+    }
+
+    return llama_context::create(*model, params);
+}
+
+// deprecated
+struct llama_context * llama_new_context_with_model(
+                 struct llama_model * model,
+        struct llama_context_params   params) {
+    return llama_init_from_model(model, params);
+}
+
 void llama_free(struct llama_context * ctx) {
     delete ctx;
 }
@@ -3652,4 +3763,37 @@ int32_t llama_decode(
     }
 
     return ret;
+}
+
+//
+// perf
+//
+
+llama_perf_context_data llama_perf_context(const llama_context * ctx) {
+    llama_perf_context_data data = {};
+
+    if (ctx == nullptr) {
+        return data;
+    }
+
+    data = ctx->perf_get_data();
+
+    return data;
+}
+
+void llama_perf_context_print(const llama_context * ctx) {
+    const auto data = llama_perf_context(ctx);
+
+    const double t_end_ms = 1e-3 * ggml_time_us();
+
+    LLAMA_LOG_INFO("%s:        load time = %10.2f ms\n", __func__, data.t_load_ms);
+    LLAMA_LOG_INFO("%s: prompt eval time = %10.2f ms / %5d tokens (%8.2f ms per token, %8.2f tokens per second)\n",
+            __func__, data.t_p_eval_ms, data.n_p_eval, data.t_p_eval_ms / data.n_p_eval, 1e3 / data.t_p_eval_ms * data.n_p_eval);
+    LLAMA_LOG_INFO("%s:        eval time = %10.2f ms / %5d runs   (%8.2f ms per token, %8.2f tokens per second)\n",
+            __func__, data.t_eval_ms, data.n_eval, data.t_eval_ms / data.n_eval, 1e3 / data.t_eval_ms * data.n_eval);
+    LLAMA_LOG_INFO("%s:       total time = %10.2f ms / %5d tokens\n", __func__, (t_end_ms - data.t_start_ms), (data.n_p_eval + data.n_eval));
+}
+
+void llama_perf_context_reset(llama_context * ctx) {
+    ctx->perf_reset();
 }
