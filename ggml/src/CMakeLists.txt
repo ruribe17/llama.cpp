@@ -76,7 +76,7 @@ if (GGML_ALL_WARNINGS)
                             "$<$<COMPILE_LANGUAGE:CXX>:${CXX_FLAGS};${GF_CXX_FLAGS}>")
     elseif(MSVC)
         # MSVC
-        list(APPEND MSVC_WARNING_FLAGS 
+        list(APPEND MSVC_WARNING_FLAGS
             /W4       # Comprehensive warnings (similar to -Wall and some of -Wextra)
             /we4456   # declaration hides previous local declaration
             /we4457   # declaration hides function parameter
