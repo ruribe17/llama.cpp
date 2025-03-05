@@ -8,6 +8,7 @@
 #include <vector>
 #include <memory>
 #include <set>
+#include <functional>
 
 struct ggml_cgraph;
 struct ggml_context;
@@ -343,16 +344,20 @@ public:
 // llm_graph_context
 //
 
+// callback that allows us to apply custom logic to each tensor (e.g. ggml-alloc, offloading, etc.)
+using llm_graph_cb = std::function<void(const llama_ubatch & ubatch, ggml_tensor * cur, const char * name, int il)>;
+
 struct llm_graph_params {
     ggml_context * ctx;
 
-    const llama_model   & model;
+    const llm_arch arch;
+
+    const llama_hparams & hparams;
     const llama_cparams & cparams;
     const llama_ubatch  & ubatch;
 
     ggml_backend_sched * sched;
     ggml_backend * backend_cpu;
-    const std::vector<ggml_backend_ptr> & backends;
 
     const llama_adapter_cvec  * cvec;
     const llama_adapter_loras * loras;
@@ -360,11 +365,11 @@ struct llm_graph_params {
     const llama_cross         * cross;
 
     int32_t n_outputs;
+
+    const llm_graph_cb & cb;
 };
 
 struct llm_graph_context {
-    const llama_model & model;   // TODO: remove reference to model
-
     const llm_arch arch;
 
     const llama_hparams & hparams;
@@ -405,14 +410,14 @@ struct llm_graph_context {
 
     ggml_backend_sched * sched;
 
-    // TODO: these are only used by the cb() call, so maybe we can avoid them in the future
-    ggml_backend * backend_cpu;
-    const std::vector<ggml_backend_ptr> & backends;
+    ggml_backend * backend_cpu; // TODO: needed by build_attn_mha, figure out a way to remove?
 
     const llama_adapter_cvec  * cvec;
     const llama_adapter_loras * loras;
     const llama_memory_i      * memory;
     const llama_cross         * cross;
+
+    const llm_graph_cb & cb_func;
 
     std::unique_ptr<llm_graph_result> res;
 
@@ -420,7 +425,6 @@ struct llm_graph_context {
 
     int64_t n_pos_per_token() const;
 
-    // callback that allows us to apply custom logic to each tensor (e.g. ggml-alloc, offloading, etc.)
     void cb(ggml_tensor * cur, const char * name, int il) const;
 
     //
@@ -575,16 +579,6 @@ struct llm_graph_context {
                  int32_t   n_state,
                  int32_t   n_seqs) const;
 
-    // TODO: split
-    ggml_tensor * build_mamba_layer(
-             ggml_cgraph * gf,
-             ggml_tensor * cur,
-             ggml_tensor * state_copy,
-             ggml_tensor * state_mask,
-      const llama_ubatch & ubatch,
-                     int   il) const;
-
-
     ggml_tensor * build_rwkv_token_shift_load(
              ggml_cgraph * gf,
              ggml_tensor * state_copy,
@@ -596,22 +590,6 @@ struct llm_graph_context {
              ggml_tensor * token_shift,
       const llama_ubatch & ubatch,
                      int   il) const;
-
-    ggml_tensor * build_rwkv6_time_mix(
-             ggml_cgraph * gf,
-             ggml_tensor * cur,
-             ggml_tensor * x_prev,
-             ggml_tensor * state_copy,
-             ggml_tensor * state_mask,
-      const llama_ubatch & ubatch,
-                     int   il) const;
-
-    // TODO: probably does not belong to llm_graph_context
-    ggml_tensor * build_rwkv_channel_mix(
-        const llama_layer * layer,
-              ggml_tensor * cur,
-              ggml_tensor * x_prev,
-                 llm_arch   arch) const;
 
     //
     // pooling

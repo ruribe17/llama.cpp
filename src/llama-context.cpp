@@ -1131,17 +1131,18 @@ llm_graph_result_ptr llama_context_base::graph_build(
     return model.build_graph(
             {
                 /*.ctx         =*/ ctx,
-                /*.model       =*/ model,
+                /*.arch        =*/ model.arch,
+                /*.hparams     =*/ model.hparams,
                 /*.cparams     =*/ cparams,
                 /*.ubatch      =*/ ubatch,
                 /*.sched       =*/ sched.get(),
                 /*.backend_cpu =*/ backend_cpu,
-                /*.backends    =*/ backends,
                 /*.cvec        =*/ &cvec,
                 /*.loras       =*/ &loras,
                 /*.memory      =*/ nullptr,
                 /*.cross       =*/ nullptr,
                 /*.n_outputs   =*/ n_outputs,
+                /*.cb          =*/ graph_get_cb(),
             }, gf, gtype);
 }
 
@@ -1170,6 +1171,39 @@ enum ggml_status llama_context_base::graph_compute(
     // fprintf(stderr, "splits: %d\n", ggml_backend_sched_get_n_splits(sched));
 
     return status;
+}
+
+llm_graph_cb llama_context_base::graph_get_cb() const {
+    return [&](const llama_ubatch & ubatch, ggml_tensor * cur, const char * name, int il) {
+        if (il >= 0) {
+            ggml_format_name(cur, "%s-%d", name, il);
+        } else {
+            ggml_set_name(cur, name);
+        }
+
+        if (!cparams.offload_kqv) {
+            if (strcmp(name, "kqv_merged_cont") == 0) {
+                // all nodes between the KV store and the attention output are run on the CPU
+                ggml_backend_sched_set_tensor_backend(sched.get(), cur, backend_cpu);
+            }
+        }
+
+        // norm may be automatically assigned to the backend of the previous layer, increasing data transfer between backends
+        // FIXME: fix in ggml_backend_sched
+        const bool full_offload = model.params.n_gpu_layers > (int) model.hparams.n_layer;
+        if (ubatch.n_tokens < 32 || full_offload) {
+            if (il != -1 && strcmp(name, "norm") == 0) {
+                const auto & dev_layer = model.dev_layer(il);
+                for (const auto & backend : backends) {
+                    if (ggml_backend_get_device(backend.get()) == dev_layer) {
+                        if (ggml_backend_supports_op(backend.get(), cur)) {
+                            ggml_backend_sched_set_tensor_backend(sched.get(), cur, backend.get());
+                        }
+                    }
+                }
+            }
+        }
+    };
 }
 
 //
@@ -2567,17 +2601,18 @@ llm_graph_result_ptr llama_context_kv_self::graph_build(
     return model.build_graph(
             {
                 /*.ctx         =*/ ctx,
-                /*.model       =*/ model,
+                /*.arch        =*/ model.arch,
+                /*.hparams     =*/ model.hparams,
                 /*.cparams     =*/ cparams,
                 /*.ubatch      =*/ ubatch,
                 /*.sched       =*/ sched.get(),
                 /*.backend_cpu =*/ backend_cpu,
-                /*.backends    =*/ backends,
                 /*.cvec        =*/ &cvec,
                 /*.loras       =*/ &loras,
                 /*.memory      =*/ kv_self.get(),
                 /*.cross       =*/ nullptr,
                 /*.n_outputs   =*/ n_outputs,
+                /*.cb          =*/ graph_get_cb(),
             }, gf, gtype);
 }
 
@@ -3010,17 +3045,18 @@ llm_graph_result_ptr llama_context_recurrent::graph_build(
     return model.build_graph(
             {
                 /*.ctx         =*/ ctx,
-                /*.model       =*/ model,
+                /*.arch        =*/ model.arch,
+                /*.hparams     =*/ model.hparams,
                 /*.cparams     =*/ cparams,
                 /*.ubatch      =*/ ubatch,
                 /*.sched       =*/ sched.get(),
                 /*.backend_cpu =*/ backend_cpu,
-                /*.backends    =*/ backends,
                 /*.cvec        =*/ &cvec,
                 /*.loras       =*/ &loras,
                 /*.memory      =*/ kv_self.get(),
                 /*.cross       =*/ nullptr,
                 /*.n_outputs   =*/ n_outputs,
+                /*.cb          =*/ graph_get_cb(),
             }, gf, gtype);
 }
 
@@ -3227,17 +3263,18 @@ llm_graph_result_ptr llama_context_dec::graph_build(
     return model.build_graph(
             {
                 /*.ctx         =*/ ctx,
-                /*.model       =*/ model,
+                /*.arch        =*/ model.arch,
+                /*.hparams     =*/ model.hparams,
                 /*.cparams     =*/ cparams,
                 /*.ubatch      =*/ ubatch,
                 /*.sched       =*/ sched.get(),
                 /*.backend_cpu =*/ backend_cpu,
-                /*.backends    =*/ backends,
                 /*.cvec        =*/ &cvec,
                 /*.loras       =*/ &loras,
                 /*.memory      =*/ kv_self.get(),
                 /*.cross       =*/ cross,
                 /*.n_outputs   =*/ n_outputs,
+                /*.cb          =*/ graph_get_cb(),
             }, gf, gtype);
 }
 

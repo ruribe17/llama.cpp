@@ -3843,7 +3843,7 @@ const struct ggml_tensor * llama_model::get_tensor(const char * name) const {
 }
 
 struct llm_build_llama : public llm_graph_context {
-    llm_build_llama(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_llama(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -4006,7 +4006,7 @@ struct llm_build_llama : public llm_graph_context {
 };
 
 struct llm_build_deci : public llm_graph_context {
-    llm_build_deci(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_deci(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -4164,7 +4164,7 @@ struct llm_build_deci : public llm_graph_context {
 };
 
 struct llm_build_baichuan : public llm_graph_context {
-    llm_build_baichuan(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_baichuan(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -4282,7 +4282,7 @@ struct llm_build_baichuan : public llm_graph_context {
 };
 
 struct llm_build_xverse : public llm_graph_context {
-    llm_build_xverse(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_xverse(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -4388,7 +4388,7 @@ struct llm_build_xverse : public llm_graph_context {
 };
 
 struct llm_build_falcon : public llm_graph_context {
-    llm_build_falcon(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_falcon(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -4511,7 +4511,7 @@ struct llm_build_falcon : public llm_graph_context {
 };
 
 struct llm_build_grok : public llm_graph_context {
-    llm_build_grok(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_grok(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -4667,7 +4667,7 @@ struct llm_build_grok : public llm_graph_context {
 };
 
 struct llm_build_dbrx : public llm_graph_context {
-    llm_build_dbrx(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_dbrx(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -4792,7 +4792,7 @@ struct llm_build_dbrx : public llm_graph_context {
 };
 
 struct llm_build_starcoder : public llm_graph_context {
-    llm_build_starcoder(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_starcoder(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -4899,7 +4899,7 @@ struct llm_build_starcoder : public llm_graph_context {
 };
 
 struct llm_build_refact : public llm_graph_context {
-    llm_build_refact(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_refact(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -4996,7 +4996,7 @@ struct llm_build_refact : public llm_graph_context {
 };
 
 struct llm_build_bert : public llm_graph_context {
-    llm_build_bert(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_bert(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -5161,7 +5161,7 @@ struct llm_build_bert : public llm_graph_context {
 };
 
 struct llm_build_bloom : public llm_graph_context {
-    llm_build_bloom(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_bloom(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -5265,7 +5265,7 @@ struct llm_build_bloom : public llm_graph_context {
 };
 
 struct llm_build_mpt : public llm_graph_context {
-    llm_build_mpt(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_mpt(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -5408,7 +5408,7 @@ struct llm_build_mpt : public llm_graph_context {
 };
 
 struct llm_build_stablelm : public llm_graph_context {
-    llm_build_stablelm(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_stablelm(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -5559,7 +5559,7 @@ struct llm_build_stablelm : public llm_graph_context {
 };
 
 struct llm_build_qwen : public llm_graph_context {
-    llm_build_qwen(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_qwen(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -5674,7 +5674,7 @@ struct llm_build_qwen : public llm_graph_context {
 };
 
 struct llm_build_qwen2 : public llm_graph_context {
-    llm_build_qwen2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_qwen2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -5789,7 +5789,7 @@ struct llm_build_qwen2 : public llm_graph_context {
 };
 
 struct llm_build_qwen2vl : public llm_graph_context {
-    llm_build_qwen2vl(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_qwen2vl(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -5909,7 +5909,7 @@ struct llm_build_qwen2vl : public llm_graph_context {
 };
 
 struct llm_build_qwen2moe : public llm_graph_context {
-    llm_build_qwen2moe(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_qwen2moe(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -6056,7 +6056,7 @@ struct llm_build_qwen2moe : public llm_graph_context {
 };
 
 struct llm_build_phi2 : public llm_graph_context {
-    llm_build_phi2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_phi2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -6182,7 +6182,7 @@ struct llm_build_phi2 : public llm_graph_context {
 };
 
 struct llm_build_phi3 : public llm_graph_context {
-    llm_build_phi3(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_phi3(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa = hparams.n_embd_v_gqa();
 
@@ -6328,7 +6328,7 @@ struct llm_build_phi3 : public llm_graph_context {
 };
 
 struct llm_build_plamo : public llm_graph_context {
-    llm_build_plamo(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_plamo(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -6435,7 +6435,7 @@ struct llm_build_plamo : public llm_graph_context {
 };
 
 struct llm_build_gpt2 : public llm_graph_context {
-    llm_build_gpt2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_gpt2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -6543,7 +6543,7 @@ struct llm_build_gpt2 : public llm_graph_context {
 };
 
 struct llm_build_codeshell : public llm_graph_context {
-    llm_build_codeshell(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_codeshell(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -6657,7 +6657,7 @@ struct llm_build_codeshell : public llm_graph_context {
 };
 
 struct llm_build_orion : public llm_graph_context {
-    llm_build_orion(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_orion(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
     const int64_t n_embd_head = hparams.n_embd_head_v;
 
     GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -6778,7 +6778,7 @@ struct llm_build_orion : public llm_graph_context {
 };
 
 struct llm_build_internlm2 : public llm_graph_context {
-    llm_build_internlm2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_internlm2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -6899,7 +6899,7 @@ struct llm_build_internlm2 : public llm_graph_context {
 };
 
 struct llm_build_minicpm3 : public llm_graph_context {
-    llm_build_minicpm3(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_minicpm3(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         //TODO: if the model varies, these parameters need to be read from the model
         const int64_t n_embd_base = 256;
         const float scale_embd  = 12.0f;
@@ -7112,7 +7112,7 @@ struct llm_build_minicpm3 : public llm_graph_context {
 };
 
 struct llm_build_gemma : public llm_graph_context {
-    llm_build_gemma(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_gemma(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head_k = hparams.n_embd_head_k;
 
         struct ggml_tensor * cur;
@@ -7222,7 +7222,7 @@ struct llm_build_gemma : public llm_graph_context {
 };
 
 struct llm_build_gemma2 : public llm_graph_context {
-    llm_build_gemma2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_gemma2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head_k = hparams.n_embd_head_k;
 
         struct ggml_tensor * cur;
@@ -7490,7 +7490,7 @@ struct llm_build_gemma3 : public llm_graph_context {
 
 // TODO: move up next to build_starcoder
 struct llm_build_starcoder2 : public llm_graph_context {
-    llm_build_starcoder2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_starcoder2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -7612,7 +7612,9 @@ struct llm_build_starcoder2 : public llm_graph_context {
 };
 
 struct llm_build_mamba : public llm_graph_context {
-    llm_build_mamba(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    const llama_model & model;
+
+    llm_build_mamba(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params), model(model) {
         struct ggml_tensor * cur;
         struct ggml_tensor * inpL;
 
@@ -7665,10 +7667,142 @@ struct llm_build_mamba : public llm_graph_context {
 
         ggml_build_forward_expand(gf, cur);
     }
+
+    // TODO: split
+    ggml_tensor * build_mamba_layer(
+             ggml_cgraph * gf,
+             ggml_tensor * cur,
+             ggml_tensor * state_copy,
+             ggml_tensor * state_mask,
+      const llama_ubatch & ubatch,
+                     int   il) const {
+        const llama_kv_cache_recurrent * kv_self = static_cast<const llama_kv_cache_recurrent *>(memory);
+
+        const auto kv_head = kv_self->head;
+
+        const int64_t d_conv  = hparams.ssm_d_conv;
+        const int64_t d_inner = hparams.ssm_d_inner;
+        const int64_t d_state = hparams.ssm_d_state;
+        const int64_t dt_rank = hparams.ssm_dt_rank;
+        const int64_t n_seqs  = ubatch.n_seqs;
+        // Some variants of Mamba arch (e.g. FalconMamba do apply layer norm on B and Dt layers)
+        const bool ssm_dt_b_c_rms = hparams.ssm_dt_b_c_rms;
+        // Use the same RMS norm as the final layer norm
+        const float norm_rms_eps = hparams.f_norm_rms_eps;
+
+        const int64_t n_seq_tokens = ubatch.n_seq_tokens;
+
+        GGML_ASSERT(n_seqs != 0);
+        GGML_ASSERT(ubatch.equal_seqs);
+        GGML_ASSERT(ubatch.n_tokens == n_seq_tokens * n_seqs);
+
+        ggml_tensor * conv_states_all = kv_self->k_l[il];
+        ggml_tensor * ssm_states_all  = kv_self->v_l[il];
+
+        // (ab)using the KV cache to store the states
+        ggml_tensor * conv = build_copy_mask_state(
+                gf, conv_states_all, state_copy, state_mask,
+                hparams.n_embd_k_s(), n_seqs);
+        conv = ggml_reshape_3d(ctx0, conv, d_conv - 1, d_inner, n_seqs);
+        ggml_tensor * ssm = build_copy_mask_state(
+                gf, ssm_states_all, state_copy, state_mask,
+                hparams.n_embd_v_s(), n_seqs);
+        ssm = ggml_reshape_3d(ctx0, ssm, d_state, d_inner, n_seqs);
+
+        // {n_embd, n_tokens} => {n_embd, n_seq_tokens, n_seqs}
+        cur = ggml_reshape_3d(ctx0, cur, cur->ne[0], n_seq_tokens, n_seqs);
+
+        // {n_embd, 2*d_inner} @ {n_embd, n_seq_tokens, n_seqs} => {2*d_inner, n_seq_tokens, n_seqs}
+        ggml_tensor * xz = build_lora_mm(model.layers[il].ssm_in, cur);
+        // split the above in two
+        // => {d_inner, n_seq_tokens, n_seqs}
+        ggml_tensor * x = ggml_view_3d(ctx0, xz, d_inner, xz->ne[1], xz->ne[2], xz->nb[1], xz->nb[2], 0);
+        ggml_tensor * z = ggml_view_3d(ctx0, xz, d_inner, xz->ne[1], xz->ne[2], xz->nb[1], xz->nb[2], d_inner*ggml_element_size(xz));
+
+        // conv
+        {
+            // => {d_conv - 1 + n_seq_tokens, d_inner, n_seqs}
+            ggml_tensor * conv_x = ggml_concat(ctx0, conv, ggml_transpose(ctx0, x), 0);
+
+            // copy last (d_conv - 1) columns back into the state cache
+            ggml_tensor * last_conv = ggml_view_3d(ctx0, conv_x, d_conv - 1, d_inner, n_seqs, conv_x->nb[1], conv_x->nb[2], n_seq_tokens*(conv_x->nb[0]));
+
+            ggml_build_forward_expand(gf,
+                ggml_cpy(ctx0, last_conv,
+                    ggml_view_1d(ctx0, conv_states_all,
+                        (d_conv - 1)*(d_inner)*(n_seqs),
+                        kv_head*(d_conv - 1)*(d_inner)*ggml_element_size(conv_states_all))));
+
+            // 1D convolution
+            // The equivalent is to make a self-overlapping view of conv_x
+            // over d_conv columns at each stride in the 3rd dimension,
+            // then element-wise multiply that with the conv1d weight,
+            // then sum the elements of each row,
+            // (the last two steps are a dot product over rows (also doable with mul_mat))
+            // then permute away the ne[0] dimension,
+            // and then you're left with the resulting x tensor.
+            // For simultaneous sequences, all sequences need to have the same length.
+            x = ggml_ssm_conv(ctx0, conv_x, model.layers[il].ssm_conv1d);
+
+            // bias
+            x = ggml_add(ctx0, x, model.layers[il].ssm_conv1d_b);
+
+            x = ggml_silu(ctx0, x);
+        }
+
+        // ssm
+        {
+            // {d_inner, dt_rank + 2*d_state} @ {d_inner, n_seq_tokens, n_seqs} => {dt_rank + 2*d_state, n_seq_tokens, n_seqs}
+            ggml_tensor * x_db = build_lora_mm(model.layers[il].ssm_x, x);
+            // split
+            ggml_tensor * dt = ggml_view_3d(ctx0, x_db, dt_rank, n_seq_tokens, n_seqs, x_db->nb[1], x_db->nb[2], 0);
+            ggml_tensor * B  = ggml_view_3d(ctx0, x_db, d_state, n_seq_tokens, n_seqs, x_db->nb[1], x_db->nb[2], ggml_element_size(x_db)*dt_rank);
+            ggml_tensor * C  = ggml_view_3d(ctx0, x_db, d_state, n_seq_tokens, n_seqs, x_db->nb[1], x_db->nb[2], ggml_element_size(x_db)*(dt_rank+d_state));
+
+            // Some Mamba variants (e.g. FalconMamba) apply RMS norm in B, C & Dt layers
+            if (ssm_dt_b_c_rms) {
+                dt = ggml_rms_norm(ctx0, dt, norm_rms_eps);
+                B = ggml_rms_norm(ctx0, B, norm_rms_eps);
+                C = ggml_rms_norm(ctx0, C, norm_rms_eps);
+            }
+
+            // {dt_rank, d_inner} @ {dt_rank, n_seq_tokens, n_seqs} => {d_inner, n_seq_tokens, n_seqs}
+            dt = build_lora_mm(model.layers[il].ssm_dt, dt);
+            dt = ggml_add(ctx0, dt, model.layers[il].ssm_dt_b);
+
+            // Custom operator to optimize the parallel associative scan
+            // as described in the Annex D of the Mamba paper.
+            // => {d_inner, n_seq_tokens, n_seqs} and {d_state, d_inner, n_seqs}
+            ggml_tensor * y_ssm = ggml_ssm_scan(ctx0, ssm, x, dt, model.layers[il].ssm_a, B, C);
+
+            // store last states
+            ggml_build_forward_expand(gf,
+                ggml_cpy(ctx0,
+                    ggml_view_1d(ctx0, y_ssm, d_state*d_inner*n_seqs, x->nb[3]),
+                    ggml_view_1d(ctx0, ssm_states_all, d_state*d_inner*n_seqs, kv_head*d_state*d_inner*ggml_element_size(ssm_states_all))));
+
+            ggml_tensor * y = ggml_view_3d(ctx0, y_ssm, d_inner, n_seq_tokens, n_seqs, x->nb[1], x->nb[2], 0);
+
+            // TODO: skip computing output earlier for unused tokens
+
+            // {d_inner, n_seq_tokens, n_seqs} * {d_inner} => {d_inner, n_seq_tokens, n_seqs}
+            y = ggml_add(ctx0, y, ggml_mul(ctx0, x, model.layers[il].ssm_d));
+            y = ggml_mul(ctx0, y, ggml_silu(ctx0, ggml_cont(ctx0, z)));
+
+            // {d_inner, n_embd} @ {d_inner, n_seq_tokens, n_seqs} => {n_embd, n_seq_tokens, n_seqs}
+            cur = build_lora_mm(model.layers[il].ssm_out, y);
+        }
+
+        // {n_embd, n_seq_tokens, n_seqs} => {n_embd, n_tokens}
+        cur = ggml_reshape_2d(ctx0, cur, cur->ne[0], n_seq_tokens * n_seqs);
+        //cb(cur, "mamba_out", il);
+
+        return cur;
+    }
 };
 
 struct llm_build_command_r : public llm_graph_context {
-    llm_build_command_r(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_command_r(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -7818,7 +7952,7 @@ struct llm_build_command_r : public llm_graph_context {
 };
 
 struct llm_build_cohere2 : public llm_graph_context {
-    llm_build_cohere2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_cohere2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -7956,7 +8090,7 @@ struct llm_build_cohere2 : public llm_graph_context {
 //   * removed bias
 //   * removed MoE
 struct llm_build_olmo : public llm_graph_context {
-    llm_build_olmo(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_olmo(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -8078,7 +8212,7 @@ struct llm_build_olmo : public llm_graph_context {
 };
 
 struct llm_build_olmo2 : public llm_graph_context {
-    llm_build_olmo2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_olmo2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -8204,7 +8338,7 @@ struct llm_build_olmo2 : public llm_graph_context {
 //   * removed bias
 //   * added q, k norm
 struct llm_build_olmoe : public llm_graph_context {
-    llm_build_olmoe(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_olmoe(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -8329,7 +8463,7 @@ struct llm_build_olmoe : public llm_graph_context {
 };
 
 struct llm_build_openelm : public llm_graph_context {
-    llm_build_openelm(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_openelm(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -8457,7 +8591,7 @@ struct llm_build_openelm : public llm_graph_context {
 };
 
 struct llm_build_gptneox : public llm_graph_context {
-    llm_build_gptneox(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_gptneox(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -8603,7 +8737,7 @@ struct llm_build_gptneox : public llm_graph_context {
 };
 
 struct llm_build_arctic : public llm_graph_context {
-    llm_build_arctic(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_arctic(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -8735,7 +8869,7 @@ struct llm_build_arctic : public llm_graph_context {
 };
 
 struct llm_build_deepseek : public llm_graph_context {
-    llm_build_deepseek(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_deepseek(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -8892,7 +9026,7 @@ struct llm_build_deepseek : public llm_graph_context {
 };
 
 struct llm_build_deepseek2 : public llm_graph_context {
-    llm_build_deepseek2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_deepseek2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         bool is_lite = (hparams.n_layer == 27);
 
         // We have to pre-scale kq_scale and attn_factor to make the YaRN RoPE work correctly.
@@ -9121,7 +9255,7 @@ struct llm_build_deepseek2 : public llm_graph_context {
 };
 
 struct llm_build_bitnet : public llm_graph_context {
-    llm_build_bitnet(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_bitnet(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -9275,7 +9409,7 @@ struct llm_build_bitnet : public llm_graph_context {
 };
 
 struct llm_build_t5_enc : public llm_graph_context {
-    llm_build_t5_enc(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_t5_enc(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -9376,7 +9510,7 @@ struct llm_build_t5_enc : public llm_graph_context {
 };
 
 struct llm_build_t5_dec : public llm_graph_context {
-    llm_build_t5_dec(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_t5_dec(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         //const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -9546,7 +9680,7 @@ struct llm_build_t5_dec : public llm_graph_context {
 };
 
 struct llm_build_jais : public llm_graph_context {
-    llm_build_jais(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_jais(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -9639,7 +9773,7 @@ struct llm_build_jais : public llm_graph_context {
 };
 
 struct llm_build_chatglm : public llm_graph_context {
-    llm_build_chatglm(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_chatglm(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
         const int64_t n_embd_gqa  = hparams.n_embd_v_gqa();
 
@@ -9771,7 +9905,7 @@ struct llm_build_chatglm : public llm_graph_context {
 };
 
 struct llm_build_nemotron : public llm_graph_context {
-    llm_build_nemotron(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_nemotron(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -9894,7 +10028,7 @@ struct llm_build_nemotron : public llm_graph_context {
 };
 
 struct llm_build_exaone : public llm_graph_context {
-    llm_build_exaone(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_exaone(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -10018,8 +10152,213 @@ struct llm_build_exaone : public llm_graph_context {
     }
 };
 
-struct llm_build_rwkv6 : public llm_graph_context {
-    llm_build_rwkv6(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+struct llm_build_rwkv6_base : public llm_graph_context {
+    const llama_model & model;
+
+    llm_build_rwkv6_base(const llama_model & model, const llm_graph_params & params) : llm_graph_context(params), model(model) {
+    }
+
+    ggml_tensor * build_rwkv6_channel_mix(
+            const llama_layer * layer,
+            ggml_tensor * cur,
+            ggml_tensor * x_prev,
+            llm_arch arch) const {
+        ggml_tensor * sx = ggml_sub(ctx0, x_prev, cur);
+        switch (arch) {
+            case LLM_ARCH_RWKV6:
+                {
+                    ggml_tensor * xk = ggml_add(ctx0, ggml_mul(ctx0, sx, layer->channel_mix_lerp_k), cur);
+                    ggml_tensor * xr = ggml_add(ctx0, ggml_mul(ctx0, sx, layer->channel_mix_lerp_r), cur);
+
+                    ggml_tensor * r = ggml_sigmoid(ctx0, build_lora_mm(layer->channel_mix_receptance, xr));
+                    ggml_tensor * k = ggml_sqr(
+                            ctx0,
+                            ggml_relu(
+                                ctx0,
+                                build_lora_mm(layer->channel_mix_key, xk)
+                                )
+                            );
+                    cur = ggml_mul(ctx0, r, build_lora_mm(layer->channel_mix_value, k));
+                } break;
+            default:
+                GGML_ABORT("fatal error");
+        }
+
+        return cur;
+    }
+
+    ggml_tensor * build_rwkv6_time_mix(
+            ggml_cgraph * gf,
+            ggml_tensor * cur,
+            ggml_tensor * x_prev,
+            ggml_tensor * state_copy,
+            ggml_tensor * state_mask,
+            const llama_ubatch & ubatch,
+            int   il) const {
+        const llama_kv_cache_recurrent * kv_self = static_cast<const llama_kv_cache_recurrent *>(memory);
+
+        const auto n_tokens = ubatch.n_tokens;
+        const auto n_seqs = ubatch.n_seqs;
+        const auto n_embd = hparams.n_embd;
+        const auto head_size = hparams.wkv_head_size;
+        const auto n_head = n_embd / head_size;
+        const auto n_head_kv = hparams.n_head_kv(il);
+
+        const auto kv_head = kv_self->head;
+
+        const auto & layer = model.layers[il];
+
+        bool is_qrwkv = layer.time_mix_first == nullptr;
+
+        ggml_tensor * sx = ggml_sub(ctx0, x_prev, cur);
+        ggml_tensor * xxx = ggml_add(ctx0, ggml_mul(ctx0, sx, layer.time_mix_lerp_x), cur);
+
+        xxx = ggml_reshape_4d(
+                ctx0,
+                ggml_tanh(
+                    ctx0,
+                    ggml_mul_mat(ctx0, layer.time_mix_w1, xxx)
+                    ),
+                layer.time_mix_w1->ne[1] / 5, 1, 5, n_tokens
+                );
+
+        xxx = ggml_cont(ctx0, ggml_permute(ctx0, xxx, 0, 1, 3, 2));
+
+        xxx = ggml_mul_mat(
+                ctx0,
+                ggml_reshape_4d(
+                    ctx0,
+                    layer.time_mix_w2,
+                    layer.time_mix_w2->ne[0], layer.time_mix_w2->ne[1], 1, 5
+                    ),
+                xxx
+                );
+
+        ggml_tensor *xw, *xk, *xv, *xr, *xg;
+        if (layer.time_mix_lerp_fused) {
+            // fusing these weights makes some performance improvement
+            sx  = ggml_reshape_3d(ctx0, sx,  n_embd, 1, n_tokens);
+            cur = ggml_reshape_3d(ctx0, cur, n_embd, 1, n_tokens);
+            xxx = ggml_add(ctx0, ggml_mul(ctx0, ggml_add(ctx0, xxx, layer.time_mix_lerp_fused), sx), cur);
+            xw = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], 0);
+            xk = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * sizeof(float));
+            xv = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * 2 * sizeof(float));
+            xr = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * 3 * sizeof(float));
+            xg = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * 4 * sizeof(float));
+        } else {
+            // for backward compatibility
+            xw = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], 0);
+            xk = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * sizeof(float));
+            xv = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * 2 * sizeof(float));
+            xr = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * 3 * sizeof(float));
+            xg = ggml_view_2d(ctx0, xxx, n_embd, n_tokens, xxx->nb[1], n_embd * n_tokens * 4 * sizeof(float));
+
+            xw = ggml_add(ctx0, ggml_mul(ctx0, ggml_add(ctx0, xw, layer.time_mix_lerp_w), sx), cur);
+            xk = ggml_add(ctx0, ggml_mul(ctx0, ggml_add(ctx0, xk, layer.time_mix_lerp_k), sx), cur);
+            xv = ggml_add(ctx0, ggml_mul(ctx0, ggml_add(ctx0, xv, layer.time_mix_lerp_v), sx), cur);
+            xr = ggml_add(ctx0, ggml_mul(ctx0, ggml_add(ctx0, xr, layer.time_mix_lerp_r), sx), cur);
+            xg = ggml_add(ctx0, ggml_mul(ctx0, ggml_add(ctx0, xg, layer.time_mix_lerp_g), sx), cur);
+        }
+
+        ggml_tensor * r = build_lora_mm(layer.time_mix_receptance, xr);
+        ggml_tensor * k = build_lora_mm(layer.time_mix_key,        xk);
+        ggml_tensor * v = build_lora_mm(layer.time_mix_value,      xv);
+        if (layer.time_mix_receptance_b) {
+            r = ggml_add(ctx0, r, layer.time_mix_receptance_b);
+        }
+        if (layer.time_mix_key_b) {
+            k = ggml_add(ctx0, k, layer.time_mix_key_b);
+        }
+        if (layer.time_mix_value_b) {
+            v = ggml_add(ctx0, v, layer.time_mix_value_b);
+        }
+
+        ggml_tensor * g = build_lora_mm(layer.time_mix_gate, xg);
+        if (is_qrwkv) {
+            g = ggml_sigmoid(ctx0, g);
+        } else {
+            g = ggml_silu(ctx0, g);
+        }
+
+        if (n_head_kv != 0 && n_head_kv != n_head) {
+            GGML_ASSERT(n_head % n_head_kv == 0);
+            k = ggml_reshape_4d(ctx0, k, head_size, 1, n_head_kv, n_tokens);
+            v = ggml_reshape_4d(ctx0, v, head_size, 1, n_head_kv, n_tokens);
+            ggml_tensor * tmp = ggml_new_tensor_4d(ctx0, GGML_TYPE_F32, head_size, n_head / n_head_kv, n_head_kv, n_tokens);
+            k = ggml_repeat(ctx0, k, tmp);
+            v = ggml_repeat(ctx0, v, tmp);
+        }
+
+        k = ggml_reshape_3d(ctx0, k, head_size, n_head, n_tokens);
+        v = ggml_reshape_3d(ctx0, v, head_size, n_head, n_tokens);
+        r = ggml_reshape_3d(ctx0, r, head_size, n_head, n_tokens);
+
+        ggml_tensor * w = ggml_mul_mat(
+                ctx0,
+                layer.time_mix_decay_w2,
+                ggml_tanh(
+                    ctx0,
+                    ggml_mul_mat(ctx0, layer.time_mix_decay_w1, xw)
+                    )
+                );
+
+        w = ggml_add(ctx0, w, layer.time_mix_decay);
+        w = ggml_exp(ctx0, ggml_neg(ctx0, ggml_exp(ctx0, w)));
+        w = ggml_reshape_3d(ctx0, w, head_size, n_head, n_tokens);
+
+        if (is_qrwkv) {
+            // k = k * (1 - w)
+            k = ggml_sub(ctx0, k, ggml_mul(ctx0, k, w));
+        }
+
+        ggml_tensor * wkv_state = build_copy_mask_state(
+                gf, kv_self->v_l[il], state_copy, state_mask,
+                hparams.n_embd_v_s(), n_seqs);
+
+        ggml_tensor * wkv_output;
+        if (is_qrwkv) {
+            wkv_output = ggml_gated_linear_attn(ctx0, k, v, r, w, wkv_state, pow(head_size, -0.5f));
+        } else {
+            wkv_output = ggml_rwkv_wkv6(ctx0, k, v, r, layer.time_mix_first, w, wkv_state);
+        }
+        cur = ggml_view_1d(ctx0, wkv_output, n_embd * n_tokens, 0);
+        wkv_state = ggml_view_1d(ctx0, wkv_output, n_embd * head_size * n_seqs, n_embd * n_tokens * sizeof(float));
+
+        ggml_build_forward_expand(
+                gf,
+                ggml_cpy(
+                    ctx0,
+                    wkv_state,
+                    ggml_view_1d(
+                        ctx0,
+                        kv_self->v_l[il],
+                        hparams.n_embd_v_s() * n_seqs,
+                        hparams.n_embd_v_s() * kv_head * ggml_element_size(kv_self->v_l[il])
+                        )
+                    )
+                );
+
+        if (!is_qrwkv) {
+            // group norm with head_count groups
+            cur = ggml_reshape_3d(ctx0, cur, n_embd / n_head, n_head, n_tokens);
+            cur = ggml_norm(ctx0, cur, 64e-5f);
+
+            // Convert back to regular vectors.
+            cur = ggml_reshape_2d(ctx0, cur, n_embd, n_tokens);
+            cur = ggml_add(ctx0, ggml_mul(ctx0, cur, layer.time_mix_ln), layer.time_mix_ln_b);
+        } else {
+            cur = ggml_reshape_2d(ctx0, cur, n_embd, n_tokens);
+        }
+
+        cur = ggml_mul(ctx0, cur, g);
+        cur = build_lora_mm(layer.time_mix_output, cur);
+
+        return cur;
+    }
+};
+
+struct llm_build_rwkv6 : public llm_build_rwkv6_base {
+    llm_build_rwkv6(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_build_rwkv6_base(model, params) {
         GGML_ASSERT(hparams.token_shift_count == 2);
 
         struct ggml_tensor * cur;
@@ -10070,7 +10409,7 @@ struct llm_build_rwkv6 : public llm_graph_context {
                     1
                     );
 
-            cur = build_rwkv_channel_mix(layer, ffn_norm, x_prev, LLM_ARCH_RWKV6);
+            cur = build_rwkv6_channel_mix(layer, ffn_norm, x_prev, LLM_ARCH_RWKV6);
             cur = ggml_add(ctx0, cur, ffn_inp);
 
             token_shift = ggml_concat(ctx0,
@@ -10113,8 +10452,8 @@ struct llm_build_rwkv6 : public llm_graph_context {
 };
 
 // ref: https://huggingface.co/recursal/QRWKV6-32B-Instruct-Preview-v0.1/blob/main/modeling_rwkv6qwen2.py
-struct llm_build_rwkv6qwen2 : public llm_graph_context {
-    llm_build_rwkv6qwen2(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+struct llm_build_rwkv6qwen2 : public llm_build_rwkv6_base {
+    llm_build_rwkv6qwen2(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_build_rwkv6_base(model, params) {
         GGML_ASSERT(n_embd == hparams.n_embd_k_s());
 
         struct ggml_tensor * cur;
@@ -10205,7 +10544,7 @@ struct llm_build_rwkv6qwen2 : public llm_graph_context {
 //   * removed bias
 //   * removed MoE
 struct llm_build_chameleon : public llm_graph_context {
-    llm_build_chameleon(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_chameleon(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head = hparams.n_embd_head_v;
 
         GGML_ASSERT(n_embd_head == hparams.n_embd_head_k);
@@ -10376,7 +10715,7 @@ struct llm_build_chameleon : public llm_graph_context {
 };
 
 struct llm_build_wavtokenizer_dec : public llm_graph_context {
-    llm_build_wavtokenizer_dec(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_wavtokenizer_dec(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         struct ggml_tensor * cur;
         struct ggml_tensor * inpL;
 
@@ -10552,106 +10891,106 @@ llm_graph_result_ptr llama_model::build_graph(
         case LLM_ARCH_GRANITE:
         case LLM_ARCH_GRANITE_MOE:
             {
-                llm = std::make_unique<llm_build_llama>(params, gf);
+                llm = std::make_unique<llm_build_llama>(*this, params, gf);
             } break;
         case LLM_ARCH_DECI:
             {
-                llm = std::make_unique<llm_build_deci>(params, gf);
+                llm = std::make_unique<llm_build_deci>(*this, params, gf);
             } break;
         case LLM_ARCH_BAICHUAN:
             {
-                llm = std::make_unique<llm_build_baichuan>(params, gf);
+                llm = std::make_unique<llm_build_baichuan>(*this, params, gf);
             } break;
         case LLM_ARCH_FALCON:
             {
-                llm = std::make_unique<llm_build_falcon>(params, gf);
+                llm = std::make_unique<llm_build_falcon>(*this, params, gf);
             } break;
         case LLM_ARCH_GROK:
             {
-                llm = std::make_unique<llm_build_grok>(params, gf);
+                llm = std::make_unique<llm_build_grok>(*this, params, gf);
             } break;
         case LLM_ARCH_STARCODER:
             {
-                llm = std::make_unique<llm_build_starcoder>(params, gf);
+                llm = std::make_unique<llm_build_starcoder>(*this, params, gf);
             } break;
         case LLM_ARCH_REFACT:
             {
-                llm = std::make_unique<llm_build_refact>(params, gf);
+                llm = std::make_unique<llm_build_refact>(*this, params, gf);
             } break;
         case LLM_ARCH_BERT:
         case LLM_ARCH_JINA_BERT_V2:
         case LLM_ARCH_NOMIC_BERT:
             {
-                llm = std::make_unique<llm_build_bert>(params, gf);
+                llm = std::make_unique<llm_build_bert>(*this, params, gf);
             } break;
         case LLM_ARCH_BLOOM:
             {
-                llm = std::make_unique<llm_build_bloom>(params, gf);
+                llm = std::make_unique<llm_build_bloom>(*this, params, gf);
             } break;
         case LLM_ARCH_MPT:
             {
-                llm = std::make_unique<llm_build_mpt>(params, gf);
+                llm = std::make_unique<llm_build_mpt>(*this, params, gf);
             } break;
         case LLM_ARCH_STABLELM:
             {
-                llm = std::make_unique<llm_build_stablelm>(params, gf);
+                llm = std::make_unique<llm_build_stablelm>(*this, params, gf);
             } break;
         case LLM_ARCH_QWEN:
             {
-                llm = std::make_unique<llm_build_qwen>(params, gf);
+                llm = std::make_unique<llm_build_qwen>(*this, params, gf);
             } break;
         case LLM_ARCH_QWEN2:
             {
-                llm = std::make_unique<llm_build_qwen2>(params, gf);
+                llm = std::make_unique<llm_build_qwen2>(*this, params, gf);
             } break;
         case LLM_ARCH_QWEN2VL:
             {
-                llm = std::make_unique<llm_build_qwen2vl>(params, gf);
+                llm = std::make_unique<llm_build_qwen2vl>(*this, params, gf);
             } break;
         case LLM_ARCH_QWEN2MOE:
             {
-                llm = std::make_unique<llm_build_qwen2moe>(params, gf);
+                llm = std::make_unique<llm_build_qwen2moe>(*this, params, gf);
             } break;
         case LLM_ARCH_PHI2:
             {
-                llm = std::make_unique<llm_build_phi2>(params, gf);
+                llm = std::make_unique<llm_build_phi2>(*this, params, gf);
             } break;
         case LLM_ARCH_PHI3:
         case LLM_ARCH_PHIMOE:
             {
-                llm = std::make_unique<llm_build_phi3>(params, gf);
+                llm = std::make_unique<llm_build_phi3>(*this, params, gf);
             } break;
         case LLM_ARCH_PLAMO:
             {
-                llm = std::make_unique<llm_build_plamo>(params, gf);
+                llm = std::make_unique<llm_build_plamo>(*this, params, gf);
             } break;
         case LLM_ARCH_GPT2:
             {
-                llm = std::make_unique<llm_build_gpt2>(params, gf);
+                llm = std::make_unique<llm_build_gpt2>(*this, params, gf);
             } break;
         case LLM_ARCH_CODESHELL:
             {
-                llm = std::make_unique<llm_build_codeshell>(params, gf);
+                llm = std::make_unique<llm_build_codeshell>(*this, params, gf);
             } break;
         case LLM_ARCH_ORION:
             {
-                llm = std::make_unique<llm_build_orion>(params, gf);
+                llm = std::make_unique<llm_build_orion>(*this, params, gf);
             } break;
         case LLM_ARCH_INTERNLM2:
             {
-                llm = std::make_unique<llm_build_internlm2>(params, gf);
+                llm = std::make_unique<llm_build_internlm2>(*this, params, gf);
             } break;
         case LLM_ARCH_MINICPM3:
             {
-                llm = std::make_unique<llm_build_minicpm3>(params, gf);
+                llm = std::make_unique<llm_build_minicpm3>(*this, params, gf);
             } break;
         case LLM_ARCH_GEMMA:
             {
-                llm = std::make_unique<llm_build_gemma>(params, gf);
+                llm = std::make_unique<llm_build_gemma>(*this, params, gf);
             } break;
         case LLM_ARCH_GEMMA2:
             {
-                llm = std::make_unique<llm_build_gemma2>(params, gf);
+                llm = std::make_unique<llm_build_gemma2>(*this, params, gf);
             } break;
         case LLM_ARCH_GEMMA3:
             {
@@ -10659,76 +10998,76 @@ llm_graph_result_ptr llama_model::build_graph(
             } break;
         case LLM_ARCH_STARCODER2:
             {
-                llm = std::make_unique<llm_build_starcoder2>(params, gf);
+                llm = std::make_unique<llm_build_starcoder2>(*this, params, gf);
             } break;
         case LLM_ARCH_MAMBA:
             {
-                llm = std::make_unique<llm_build_mamba>(params, gf);
+                llm = std::make_unique<llm_build_mamba>(*this, params, gf);
             } break;
         case LLM_ARCH_XVERSE:
             {
-                llm = std::make_unique<llm_build_xverse>(params, gf);
+                llm = std::make_unique<llm_build_xverse>(*this, params, gf);
             } break;
         case LLM_ARCH_COMMAND_R:
             {
-                llm = std::make_unique<llm_build_command_r>(params, gf);
+                llm = std::make_unique<llm_build_command_r>(*this, params, gf);
             } break;
         case LLM_ARCH_COHERE2:
             {
-                llm = std::make_unique<llm_build_cohere2>(params, gf);
+                llm = std::make_unique<llm_build_cohere2>(*this, params, gf);
             } break;
         case LLM_ARCH_DBRX:
             {
-                llm = std::make_unique<llm_build_dbrx>(params, gf);
+                llm = std::make_unique<llm_build_dbrx>(*this, params, gf);
             } break;
         case LLM_ARCH_OLMO:
             {
-                llm = std::make_unique<llm_build_olmo>(params, gf);
+                llm = std::make_unique<llm_build_olmo>(*this, params, gf);
             } break;
         case LLM_ARCH_OLMO2:
             {
-                llm = std::make_unique<llm_build_olmo2>(params, gf);
+                llm = std::make_unique<llm_build_olmo2>(*this, params, gf);
             } break;
         case LLM_ARCH_OLMOE:
             {
-                llm = std::make_unique<llm_build_olmoe>(params, gf);
+                llm = std::make_unique<llm_build_olmoe>(*this, params, gf);
             } break;
         case LLM_ARCH_OPENELM:
             {
-                llm = std::make_unique<llm_build_openelm>(params, gf);
+                llm = std::make_unique<llm_build_openelm>(*this, params, gf);
             } break;
         case LLM_ARCH_GPTNEOX:
             {
-                llm = std::make_unique<llm_build_gptneox>(params, gf);
+                llm = std::make_unique<llm_build_gptneox>(*this, params, gf);
             } break;
         case LLM_ARCH_ARCTIC:
             {
-                llm = std::make_unique<llm_build_arctic>(params, gf);
+                llm = std::make_unique<llm_build_arctic>(*this, params, gf);
             } break;
         case LLM_ARCH_DEEPSEEK:
             {
-                llm = std::make_unique<llm_build_deepseek>(params, gf);
+                llm = std::make_unique<llm_build_deepseek>(*this, params, gf);
             } break;
         case LLM_ARCH_DEEPSEEK2:
             {
-                llm = std::make_unique<llm_build_deepseek2>(params, gf);
+                llm = std::make_unique<llm_build_deepseek2>(*this, params, gf);
             } break;
         case LLM_ARCH_CHATGLM:
             {
-                llm = std::make_unique<llm_build_chatglm>(params, gf);
+                llm = std::make_unique<llm_build_chatglm>(*this, params, gf);
             } break;
         case LLM_ARCH_BITNET:
             {
-                llm = std::make_unique<llm_build_bitnet>(params, gf);
+                llm = std::make_unique<llm_build_bitnet>(*this, params, gf);
             } break;
         case LLM_ARCH_T5:
             {
                 switch (type) {
                     case LLM_GRAPH_TYPE_ENCODER:
-                        llm = std::make_unique<llm_build_t5_enc>(params, gf);
+                        llm = std::make_unique<llm_build_t5_enc>(*this, params, gf);
                         break;
                     case LLM_GRAPH_TYPE_DECODER:
-                        llm = std::make_unique<llm_build_t5_dec>(params, gf);
+                        llm = std::make_unique<llm_build_t5_dec>(*this, params, gf);
                         break;
                     default:
                         GGML_ABORT("invalid graph type");
@@ -10740,31 +11079,31 @@ llm_graph_result_ptr llama_model::build_graph(
             //    } break;
         case LLM_ARCH_JAIS:
             {
-                llm = std::make_unique<llm_build_jais>(params, gf);
+                llm = std::make_unique<llm_build_jais>(*this, params, gf);
             } break;
         case LLM_ARCH_NEMOTRON:
             {
-                llm = std::make_unique<llm_build_nemotron>(params, gf);
+                llm = std::make_unique<llm_build_nemotron>(*this, params, gf);
             } break;
         case LLM_ARCH_EXAONE:
             {
-                llm = std::make_unique<llm_build_exaone>(params, gf);
+                llm = std::make_unique<llm_build_exaone>(*this, params, gf);
             } break;
         case LLM_ARCH_RWKV6:
             {
-                llm = std::make_unique<llm_build_rwkv6>(params, gf);
+                llm = std::make_unique<llm_build_rwkv6>(*this, params, gf);
             } break;
         case LLM_ARCH_RWKV6QWEN2:
             {
-                llm = std::make_unique<llm_build_rwkv6qwen2>(params, gf);
+                llm = std::make_unique<llm_build_rwkv6qwen2>(*this, params, gf);
             } break;
         case LLM_ARCH_CHAMELEON:
             {
-                llm = std::make_unique<llm_build_chameleon>(params, gf);
+                llm = std::make_unique<llm_build_chameleon>(*this, params, gf);
             } break;
         case LLM_ARCH_WAVTOKENIZER_DEC:
             {
-                llm = std::make_unique<llm_build_wavtokenizer_dec>(params, gf);
+                llm = std::make_unique<llm_build_wavtokenizer_dec>(*this, params, gf);
             } break;
         default:
             GGML_ABORT("fatal error");

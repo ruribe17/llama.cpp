@@ -273,6 +273,8 @@ protected:
             ggml_cgraph * gf,
                    bool   batched);
 
+    llm_graph_cb graph_get_cb() const;
+
     ggml_context_ptr ctx_compute;
 
 public:
