@@ -617,5 +617,10 @@ struct llm_graph_context {
     // pooling
     //
 
-    void build_pooling(ggml_cgraph * gf) const;
+    void build_pooling(
+            ggml_cgraph * gf,
+            ggml_tensor * cls,
+            ggml_tensor * cls_b,
+            ggml_tensor * cls_out,
+            ggml_tensor * cls_out_b) const;
 };

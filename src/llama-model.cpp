@@ -10771,7 +10771,7 @@ llm_graph_result_ptr llama_model::build_graph(
     }
 
     // add on pooling layer
-    llm->build_pooling(gf);
+    llm->build_pooling(gf, cls, cls_b, cls_out, cls_out_b);
 
     return std::move(llm->res);
 }

@@ -1997,7 +1997,12 @@ ggml_tensor * llm_graph_context::build_rwkv_channel_mix(
     return cur;
 }
 
-void llm_graph_context::build_pooling(ggml_cgraph * gf) const {
+void llm_graph_context::build_pooling(
+        ggml_cgraph * gf,
+        ggml_tensor * cls,
+        ggml_tensor * cls_b,
+        ggml_tensor * cls_out,
+        ggml_tensor * cls_out_b) const {
     if (!cparams.embeddings) {
         return;
     }
@@ -2041,18 +2046,18 @@ void llm_graph_context::build_pooling(ggml_cgraph * gf) const {
 
                 // classification head
                 // https://github.com/huggingface/transformers/blob/5af7d41e49bbfc8319f462eb45253dcb3863dfb7/src/transformers/models/roberta/modeling_roberta.py#L1566
-                GGML_ASSERT(model.cls   != nullptr);
-                GGML_ASSERT(model.cls_b != nullptr);
+                GGML_ASSERT(cls   != nullptr);
+                GGML_ASSERT(cls_b != nullptr);
 
-                cur = ggml_add (ctx0, ggml_mul_mat(ctx0, model.cls, inp), model.cls_b);
+                cur = ggml_add (ctx0, ggml_mul_mat(ctx0, cls, inp), cls_b);
                 cur = ggml_tanh(ctx0, cur);
 
                 // some models don't have `cls_out`, for example: https://huggingface.co/jinaai/jina-reranker-v1-tiny-en
                 // https://huggingface.co/jinaai/jina-reranker-v1-tiny-en/blob/cb5347e43979c3084a890e3f99491952603ae1b7/modeling_bert.py#L884-L896
-                if (model.cls_out) {
-                    GGML_ASSERT(model.cls_out_b != nullptr);
+                if (cls_out) {
+                    GGML_ASSERT(cls_out_b != nullptr);
 
-                    cur = ggml_add (ctx0, ggml_mul_mat(ctx0, model.cls_out, cur), model.cls_out_b);
+                    cur = ggml_add (ctx0, ggml_mul_mat(ctx0, cls_out, cur), cls_out_b);
                 }
             } break;
         default:
