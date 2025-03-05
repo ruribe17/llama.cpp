@@ -133,20 +133,7 @@ struct slot_params {
 
         auto grammar_triggers = json::array();
         for (const auto & trigger : sampling.grammar_triggers) {
-            switch (trigger.type) {
-                case COMMON_GRAMMAR_TRIGGER_TYPE_WORD:
-                    grammar_triggers.push_back({{"word", trigger.value}});
-                    break;
-                case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN:
-                    grammar_triggers.push_back({{"pattern", trigger.value}});
-                    break;
-                case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START:
-                    grammar_triggers.push_back({{"pattern_start", trigger.value}});
-                    break;
-                case COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN:
-                    grammar_triggers.push_back({{"token", trigger.token}});
-                    break;
-            }
+            grammar_triggers.push_back(trigger.to_json<json>());
         }
 
         return json {
@@ -385,44 +372,31 @@ struct server_task {
             const auto grammar_triggers = data.find("grammar_triggers");
             if (grammar_triggers != data.end()) {
                 for (const auto & t : *grammar_triggers) {
-                    auto type = static_cast<common_grammar_trigger_type>(t.at("type"));
-                    switch (type) {
-                        case COMMON_GRAMMAR_TRIGGER_TYPE_WORD:
-                        {
-                            const std::string & word = t.at("value");
-                            auto ids = common_tokenize(vocab, word, /* add_special= */ false, /* parse_special= */ true);
-                            if (ids.size() == 1) {
-                                auto token = ids[0];
-                                if (std::find(params.sampling.preserved_tokens.begin(), params.sampling.preserved_tokens.end(), (llama_token) token) == params.sampling.preserved_tokens.end()) {
-                                    throw std::runtime_error("Grammar trigger word should be marked as preserved token: " + word);
-                                }
-                                SRV_DBG("Grammar trigger token: %d (`%s`)\n", token, word.c_str());
-                                common_grammar_trigger trigger;
-                                trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN;
-                                trigger.value = token;
-                                params.sampling.grammar_triggers.push_back(trigger);
-                            } else {
-                                SRV_DBG("Grammar trigger word: `%s`\n", word.c_str());
-                                params.sampling.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, word});
+                    auto ct = common_grammar_trigger::from_json(t);
+                    if (ct.type == COMMON_GRAMMAR_TRIGGER_TYPE_WORD) {
+                        const auto & word = ct.value;
+                        auto ids = common_tokenize(vocab, word, /* add_special= */ false, /* parse_special= */ true);
+                        if (ids.size() == 1) {
+                            auto token = ids[0];
+                            if (std::find(params.sampling.preserved_tokens.begin(), params.sampling.preserved_tokens.end(), (llama_token) token) == params.sampling.preserved_tokens.end()) {
+                                throw std::runtime_error("Grammar trigger word should be marked as preserved token: " + word);
                             }
-                            break;
+                            SRV_DBG("Grammar trigger token: %d (`%s`)\n", token, word.c_str());
+                            common_grammar_trigger trigger;
+                            trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN;
+                            trigger.value = (llama_token) token;
+                            params.sampling.grammar_triggers.push_back(trigger);
+                        } else {
+                            SRV_DBG("Grammar trigger word: `%s`\n", word.c_str());
+                            params.sampling.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, word});
                         }
-                        case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN:
-                        case COMMON_GRAMMAR_TRIGGER_TYPE_PATTERN_START:
-                        {
-                            const std::string & pattern = t.at("value");
-                            params.sampling.grammar_triggers.push_back({type, pattern});
-                            break;
-                        }
-                        case COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN:
-                            throw std::runtime_error("Unespected token trigger");
-                        default:
-                            throw std::runtime_error("Unknown trigger type");
+                    } else {
+                        params.sampling.grammar_triggers.push_back(ct);
                     }
                 }
             }
             if (params.sampling.grammar_lazy) {
-                GGML_ASSERT(params.sampling.grammar_triggers.size() > 0);
+                GGML_ASSERT(!params.sampling.grammar_triggers.empty());
             }
         }
 
