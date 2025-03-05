@@ -98,9 +98,10 @@ public:
                    std::vector<common_chat_msg> & chat_msgs,
                    struct common_chat_templates * chat_templates,
                    const llama_vocab * vocab,
-                   toolcall::client::ptr tc_client)
+                   toolcall::client::ptr tc_client,
+                   common_chat_format chat_format)
 
-        : params_(params), chat_msgs_(chat_msgs), chat_templates_(chat_templates), vocab_(vocab), tc_client_(tc_client) {}
+        : params_(params), chat_msgs_(chat_msgs), chat_templates_(chat_templates), vocab_(vocab), tc_client_(tc_client), chat_format_(chat_format) {}
 #endif
 
     std::string operator () (const std::string & role, const std::string & content, [[maybe_unused]] bool use_toolcalls = false) {
@@ -126,6 +127,7 @@ public:
         LOG_DBG("formatted: '%s'\n", formatted.c_str());
 
 #ifdef LLAMA_USE_TOOLCALL
+        if (chat_format_) *chat_format_ = cparams.format;
         common_chat_grammar_to_sampler(&cparams, vocab_, &params_.sampling);
 #endif
         return formatted;
@@ -139,14 +141,16 @@ private:
 #ifdef LLAMA_USE_TOOLCALL
     const llama_vocab * vocab_;
     toolcall::client::ptr tc_client_;
+    common_chat_format * chat_format_;
 #endif
 };
 
 #ifdef LLAMA_USE_TOOLCALL
-static bool call_tool(const std::string & assistant_msg, llama_context * ctx, toolcall::client::ptr tc_client, std::vector<llama_token> & embd_inp)
+static bool call_tool(common_chat_format chat_format, const std::string & assistant_msg, llama_context * ctx,
+                      toolcall::client::ptr tc_client, std::vector<llama_token> & embd_inp)
 {
     bool tool_was_called = false;
-    common_chat_msg msg = common_chat_parse(assistant_msg, COMMON_CHAT_FORMAT_GENERIC);
+    common_chat_msg msg = common_chat_parse(assistant_msg, chat_format);
     if (! msg.tool_calls.empty()) {
         for (const auto & tc : msg.tool_calls) {
             nlohmann::json tc_oai_json {
@@ -371,7 +375,8 @@ int main(int argc, char ** argv) {
     if (tc_client) {
         tc_client->initialize();
     }
-    chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get(), vocab, tc_client);
+    common_chat_format chat_format = COMMON_CHAT_FORMAT_CONTENT_ONLY;
+    chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get(), vocab, tc_client, &chat_format);
 #else
     chat_formatter chat_add_and_format(params, chat_msgs, chat_templates.get());
 #endif
@@ -941,7 +946,7 @@ int main(int argc, char ** argv) {
 #ifdef LLAMA_USE_TOOLCALL
             if ((tc_client && n_past > 0) && (waiting_for_first_input || is_interacting)) {
                 size_t last_len = embd_inp.size();
-                bool was_toolcall = call_tool(assistant_ss.str(), ctx, tc_client, embd_inp);
+                bool was_toolcall = call_tool(chat_format, assistant_ss.str(), ctx, tc_client, embd_inp);
                 if (was_toolcall && last_len < embd_inp.size()) {
                     LOG("%s", common_token_to_piece(ctx, embd_inp[last_len]).c_str());
                 }
