@@ -11034,3 +11034,7 @@ bool llama_model_is_recurrent(const struct llama_model * model) {
         default:              return false;
     }
 }
+
+const std::vector<std::pair<std::string, ggml_tensor *>> & llama_internal_get_tensor_map(const llama_model * model) {
+    return model->tensors_by_name;
+}

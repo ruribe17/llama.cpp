@@ -4,14 +4,15 @@
 #include "llama-batch.h"
 #include "llama-cparams.h"
 #include "llama-graph.h"
-#include "llama-model.h"
-#include "llama-kv-cache.h"
 #include "llama-adapter.h"
 
 #include "ggml-cpp.h"
 
 #include <map>
 #include <vector>
+
+struct llama_model;
+struct llama_kv_cache;
 
 class llama_io_read_i;
 class llama_io_write_i;
@@ -244,28 +245,29 @@ protected:
 
     // Make sure enough space is available for outputs.
     // Returns max number of outputs for which space was reserved.
-    virtual int32_t output_reserve(int32_t n_outputs);
+    int32_t output_reserve(int32_t n_outputs);
 
     // make the outputs have the same order they had in the user-provided batch
     // TODO: maybe remove this
-    virtual void output_reorder();
+    void output_reorder();
 
     //
     // graph
     //
 
-    virtual int32_t graph_max_nodes() const;
+    int32_t graph_max_nodes() const;
 
     // zero-out inputs and create the ctx_compute for the compute graph
-    virtual ggml_cgraph * graph_init();
+    ggml_cgraph * graph_init();
 
+    // override this method in order to pass custom set of parameters to the llm_graph_context
     virtual llm_graph_result_ptr graph_build(
             ggml_context * ctx,
              ggml_cgraph * gf,
       const llama_ubatch & ubatch);
 
     // returns the result of ggml_backend_sched_graph_compute_async execution
-    virtual enum ggml_status graph_compute(
+    enum ggml_status graph_compute(
             ggml_cgraph * gf,
                    bool   batched);
 
@@ -330,6 +332,8 @@ public:
                 size_t   n_token_count) override;
 
 protected:
+    // override these to store all relevant state for the specific context
+    // TODO: read/write adapters
     virtual size_t state_write_data(llama_io_write_i & io);
     virtual size_t state_read_data (llama_io_read_i  & io);
 
@@ -345,10 +349,10 @@ public:
 
     const llm_graph_type gtype;
 
-    llama_cparams      cparams;
-    llama_adapter_cvec cvec;
-    llama_loras        loras;
-    llama_sbatch       sbatch;
+    llama_cparams       cparams;
+    llama_adapter_cvec  cvec;
+    llama_adapter_loras loras;
+    llama_sbatch        sbatch;
 
     ggml_backend_sched_ptr sched;
 
@@ -431,8 +435,6 @@ protected:
     // graph
     //
 
-    ggml_cgraph * graph_init() override;
-
     llm_graph_result_ptr graph_build(
             ggml_context * ctx,
              ggml_cgraph * gf,
@@ -482,8 +484,6 @@ protected:
     // graph
     //
 
-    ggml_cgraph * graph_init() override;
-
     llm_graph_result_ptr graph_build(
             ggml_context * ctx,
              ggml_cgraph * gf,
@@ -531,8 +531,6 @@ protected:
     //
     // graph
     //
-
-    ggml_cgraph * graph_init() override;
 
     llm_graph_result_ptr graph_build(
             ggml_context * ctx,
@@ -677,7 +675,3 @@ private:
 
     llama_cross cross;
 };
-
-// For internal test use
-// TODO: remove
-const std::vector<std::pair<std::string, struct ggml_tensor *>> & llama_internal_get_tensor_map(struct llama_context * ctx);

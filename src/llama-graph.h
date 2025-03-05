@@ -366,10 +366,10 @@ struct llm_graph_params {
     ggml_backend * backend_cpu;
     const std::vector<ggml_backend_ptr> & backends;
 
-    const llama_adapter_cvec * cvec;
-    const llama_loras        * loras;
-    const llama_memory_i     * memory;
-    const llama_cross        * cross;
+    const llama_adapter_cvec  * cvec;
+    const llama_adapter_loras * loras;
+    const llama_memory_i      * memory;
+    const llama_cross         * cross;
 
     int32_t n_outputs;
 };
@@ -420,10 +420,10 @@ struct llm_graph_context {
     ggml_backend * backend_cpu;
     const std::vector<ggml_backend_ptr> & backends;
 
-    const llama_adapter_cvec * cvec;
-    const llama_loras        * loras;
-    const llama_memory_i     * memory;
-    const llama_cross        * cross;
+    const llama_adapter_cvec  * cvec;
+    const llama_adapter_loras * loras;
+    const llama_memory_i      * memory;
+    const llama_cross         * cross;
 
     std::unique_ptr<llm_graph_result> res;
 

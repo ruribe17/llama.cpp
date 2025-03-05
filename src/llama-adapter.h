@@ -73,4 +73,4 @@ struct llama_adapter_lora {
     llama_adapter_lora_weight * get_weight(struct ggml_tensor * w);
 };
 
-using llama_loras = std::unordered_map<struct llama_adapter_lora *, float>;
+using llama_adapter_loras = std::unordered_map<struct llama_adapter_lora *, float>;

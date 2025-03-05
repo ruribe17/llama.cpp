@@ -1,8 +1,10 @@
 #include "llama-context.h"
 
 #include "llama-impl.h"
-#include "llama-mmap.h"
 #include "llama-io.h"
+#include "llama-mmap.h"
+#include "llama-model.h"
+#include "llama-kv-cache.h"
 
 #include <cstring>
 #include <stdexcept>
@@ -2288,10 +2290,6 @@ int llama_context_kv_self::decode(llama_batch & inp_batch) {
     return 0;
 }
 
-ggml_cgraph * llama_context_kv_self::graph_init() {
-    return llama_context_base::graph_init();
-}
-
 llm_graph_result_ptr llama_context_kv_self::graph_build(
             ggml_context * ctx,
              ggml_cgraph * gf,
@@ -2735,10 +2733,6 @@ int llama_context_recurrent::decode(llama_batch & inp_batch) {
     return 0;
 }
 
-ggml_cgraph * llama_context_recurrent::graph_init() {
-    return llama_context_base::graph_init();
-}
-
 llm_graph_result_ptr llama_context_recurrent::graph_build(
             ggml_context * ctx,
              ggml_cgraph * gf,
@@ -2954,10 +2948,6 @@ void llama_context_dec::reserve() {
     cross->t_embd = nullptr;
 
     llama_context_kv_self::reserve();
-}
-
-ggml_cgraph * llama_context_dec::graph_init() {
-    return llama_context_kv_self::graph_init();
 }
 
 llm_graph_result_ptr llama_context_dec::graph_build(
@@ -3662,11 +3652,4 @@ int32_t llama_decode(
     }
 
     return ret;
-}
-
-
-const std::vector<std::pair<std::string, struct ggml_tensor *>> & llama_internal_get_tensor_map(
-    struct llama_context * ctx
-) {
-    return ctx->get_model().tensors_by_name;
 }
