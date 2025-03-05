@@ -99,7 +99,7 @@ public:
                    struct common_chat_templates * chat_templates,
                    const llama_vocab * vocab,
                    toolcall::client::ptr tc_client,
-                   common_chat_format chat_format)
+                   common_chat_format * chat_format)
 
         : params_(params), chat_msgs_(chat_msgs), chat_templates_(chat_templates), vocab_(vocab), tc_client_(tc_client), chat_format_(chat_format) {}
 #endif
