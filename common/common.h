@@ -122,11 +122,8 @@ struct common_grammar_trigger {
     std::string value;
     llama_token token = LLAMA_TOKEN_NULL;
 
-    template <class T>
-    T to_json() const;
-    
-    template <class T>
-    static common_grammar_trigger from_json(const T & in);
+    template <class T> T to_json() const;
+    template <class T> static common_grammar_trigger from_json(const T & in);
 };
 
 // sampling parameters

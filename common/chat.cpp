@@ -449,7 +449,7 @@ std::string common_chat_format_name(common_chat_format format) {
     }
 }
 
-static std::optional<json> parse_json(std::string::const_iterator & it, const std::string::const_iterator & end) {
+static bool parse_json(std::string::const_iterator & it, const std::string::const_iterator & end, json & out) {
     // // https://json.nlohmann.me/features/parsing/sax_interface/
     struct json_error_locator : public nlohmann::json_sax<json> {
         std::size_t position;
@@ -486,11 +486,11 @@ static std::optional<json> parse_json(std::string::const_iterator & it, const st
     }
     std::string json_sub {it, temptative_end};
     try {
-        auto out = json::parse(json_sub);
+        out = json::parse(json_sub);
         it = temptative_end;
-        return out;
+        return true;
     } catch (const std::exception &) {
-        return std::nullopt;
+        return false;
     }
 }
 
@@ -562,12 +562,13 @@ static common_chat_msg parse_json_tool_calls(
         result.content += std::string(it, rit->prefix().second);
         it = rit->suffix().first;
 
-        if (auto arguments = parse_json(it, end)) {
+        json arguments;
+        if (parse_json(it, end, arguments)) {
             if (!std::regex_search(it, end, match, close_regex)) {
                 throw std::runtime_error("Malformed input, missing closing pattern: " + input);
             }
             it = match.suffix().first;
-            result.tool_calls.push_back({name, arguments->is_string() ? arguments->get<std::string>() : arguments->dump(), /* id= */ ""});
+            result.tool_calls.push_back({name, arguments.is_string() ? arguments.get<std::string>() : arguments.dump(), /* id= */ ""});
         } else {
             if (allow_raw_python && name == "python") {
                 result.tool_calls.push_back({name, json({{"code", std::string(it, end)}}).dump(), /* id= */ ""});
@@ -1472,10 +1473,10 @@ static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input) 
                 if (match[3].matched) {
                     close_tag = open_tag.empty() ? "" : "</" + open_tag.substr(1);
                     auto json_it = match[3].first;
-                    auto tool_call = parse_json(json_it, end);
-                    if (tool_call && tool_call->contains("name") && tool_call->contains("arguments")) {
+                    json tool_call;
+                    if (parse_json(json_it, end, tool_call) && tool_call.contains("name") && tool_call.contains("arguments")) {
 
-                        msg.tool_calls.emplace_back(process_tool_call(*tool_call));
+                        msg.tool_calls.emplace_back(process_tool_call(tool_call));
                         it = json_it;  // Move iterator past parsed JSON
 
                         // Handle close tags
@@ -1503,10 +1504,11 @@ static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input) 
                     close_tag = "</function>";
                     // Start parsing from after the opening tags
                     auto json_it = match[6].first;
-                    if (auto arguments = parse_json(json_it, end)) {
+                    json arguments;
+                    if (parse_json(json_it, end, arguments)) {
                         msg.tool_calls.emplace_back(process_tool_call({
                             {"name", function_name},
-                            {"arguments", *arguments},
+                            {"arguments", arguments},
                         }));
                         it = json_it;  // Move iterator past parsed JSON
 
