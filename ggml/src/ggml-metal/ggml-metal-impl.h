@@ -285,4 +285,22 @@ typedef struct {
     float    eps;
 } ggml_metal_kargs_rms_norm;
 
+typedef struct {
+    int32_t  ofs0;
+    int32_t  ofs1;
+    int32_t  IW;
+    int32_t  IH;
+    int32_t  CHW;
+    int32_t  s0;
+    int32_t  s1;
+    int32_t  p0;
+    int32_t  p1;
+    int32_t  d0;
+    int32_t  d1;
+    int32_t  N;
+    int32_t  KH;
+    int32_t  KW;
+    int32_t  KHW; // KH * KW, pre-computed on CPU to save GPU resources
+} ggml_metal_kargs_im2col;
+
 #endif // GGML_METAL_IMPL

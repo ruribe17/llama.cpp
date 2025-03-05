@@ -2589,17 +2589,7 @@ template [[host_name("kernel_rope_neox_f16")]] kernel kernel_rope_neox_t kernel_
 typedef void (im2col_t)(
         device const float * x,
         device        char * dst,
-        constant   int32_t & ofs0,
-        constant   int32_t & ofs1,
-        constant   int32_t & IW,
-        constant   int32_t & IH,
-        constant   int32_t & CHW,
-        constant   int32_t & s0,
-        constant   int32_t & s1,
-        constant   int32_t & p0,
-        constant   int32_t & p1,
-        constant   int32_t & d0,
-        constant   int32_t & d1,
+        constant ggml_metal_kargs_im2col & args,
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3  tgpg[[threadgroups_per_grid]],
         uint3 tpitg[[thread_position_in_threadgroup]],
@@ -2609,17 +2599,7 @@ template <typename T>
 kernel void kernel_im2col(
         device const float * x,
         device        char * dst,
-        constant   int32_t & ofs0,
-        constant   int32_t & ofs1,
-        constant   int32_t & IW,
-        constant   int32_t & IH,
-        constant   int32_t & CHW,
-        constant   int32_t & s0,
-        constant   int32_t & s1,
-        constant   int32_t & p0,
-        constant   int32_t & p1,
-        constant   int32_t & d0,
-        constant   int32_t & d1,
+        constant ggml_metal_kargs_im2col & args,
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3  tgpg[[threadgroups_per_grid]],
         uint3 tpitg[[thread_position_in_threadgroup]],
@@ -2640,17 +2620,17 @@ kernel void kernel_im2col(
     const int64_t ioh = tgpig[1];
     const int64_t iow = tgpig[2];
 
-    const int64_t iiw = iow*s0 + ikw*d0 - p0;
-    const int64_t iih = ioh*s1 + ikh*d1 - p1;
+    const int64_t iiw = iow*args.s0 + ikw*args.d0 - args.p0;
+    const int64_t iih = ioh*args.s1 + ikh*args.d1 - args.p1;
 
-    const int64_t offset_dst = (in*OH*OW + ioh*OW + iow)*CHW + (iic*(KH*KW) + ikh*KW + ikw);
+    const int64_t offset_dst = (in*OH*OW + ioh*OW + iow)*args.CHW + (iic*(KH*KW) + ikh*KW + ikw);
 
     device T * pdst = (device T *) (dst);
 
-    if (iih < 0 || iih >= IH || iiw < 0 || iiw >= IW) {
+    if (iih < 0 || iih >= args.IH || iiw < 0 || iiw >= args.IW) {
         pdst[offset_dst] = 0.0f;
     } else {
-        const int64_t offset_src = in*ofs0 + iic*ofs1 + iih*IW + iiw;
+        const int64_t offset_src = in*args.ofs0 + iic*args.ofs1 + iih*args.IW + iiw;
         pdst[offset_dst] = x[offset_src];
     }
 }
@@ -2661,20 +2641,7 @@ template [[host_name("kernel_im2col_f16")]] kernel im2col_t kernel_im2col<half>;
 typedef void (im2col_ext_t)(
         device const float * x,
         device        char * dst,
-        constant   int32_t & ofs0,
-        constant   int32_t & ofs1,
-        constant   int32_t & IW,
-        constant   int32_t & IH,
-        constant   int32_t & CHW,
-        constant   int32_t & s0,
-        constant   int32_t & s1,
-        constant   int32_t & p0,
-        constant   int32_t & p1,
-        constant   int32_t & d0,
-        constant   int32_t & d1,
-        constant   int32_t & N,
-        constant   int32_t & KH,
-        constant   int32_t & KW,
+        constant ggml_metal_kargs_im2col & args,
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3  tgpg[[threadgroups_per_grid]],
         uint3 tpitg[[thread_position_in_threadgroup]],
@@ -2684,53 +2651,40 @@ template <typename T>
 kernel void kernel_im2col_ext(
         device const float * x,
         device        char * dst,
-        constant   int32_t & ofs0,
-        constant   int32_t & ofs1,
-        constant   int32_t & IW,
-        constant   int32_t & IH,
-        constant   int32_t & CHW,
-        constant   int32_t & s0,
-        constant   int32_t & s1,
-        constant   int32_t & p0,
-        constant   int32_t & p1,
-        constant   int32_t & d0,
-        constant   int32_t & d1,
-        constant   int32_t & N,
-        constant   int32_t & KH,
-        constant   int32_t & KW,
+        constant ggml_metal_kargs_im2col & args,
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3  tgpg[[threadgroups_per_grid]],      // tgpg[0] = D x IC x KH x KW, CHW = IC x KH x KW
         uint3 tpitg[[thread_position_in_threadgroup]],
         uint3   ntg[[threads_per_threadgroup]]) {  // [M, 1, 1]
-    const int64_t KHW = KH * KW;             // KHW == ntg[1] * ntg[2], KW == ntg[2]
+    const int64_t KHW = (int64_t)args.KHW;
 
-    const int64_t d = tgpig[0] / CHW;
-    const int64_t chw = tgpig[0] % CHW;
+    const int64_t d = tgpig[0] / args.CHW;
+    const int64_t chw = tgpig[0] % args.CHW;
     const int64_t tgpig_0 = chw / KHW;  // 0 ~ (IC - 1)
     const int64_t HW = tgpig[0] % KHW;
 
     const int64_t tpitg_0 = (d * ntg[0]) + tpitg[0];
-    if (tpitg_0 >= N) {
+    if (tpitg_0 >= args.N) {
         return;
     }
 
-    const int64_t tpitg_1 = HW / KW;
-    const int64_t tpitg_2 = HW % KW;
+    const int64_t tpitg_1 = HW / args.KW;
+    const int64_t tpitg_2 = HW % args.KW;
 
-    const int64_t iiw = tgpig[2] * s0 + tpitg_2 * d0 - p0;
-    const int64_t iih = tgpig[1] * s1 + tpitg_1 * d1 - p1;
+    const int64_t iiw = tgpig[2] * args.s0 + tpitg_2 * args.d0 - args.p0;
+    const int64_t iih = tgpig[1] * args.s1 + tpitg_1 * args.d1 - args.p1;
 
     const int64_t offset_dst =
-        (tpitg_0 * tgpg[1] * tgpg[2] + tgpig[1] * tgpg[2] + tgpig[2]) * CHW +
-        (tgpig_0 * KHW + tpitg_1 * KW + tpitg_2);
+        (tpitg_0 * tgpg[1] * tgpg[2] + tgpig[1] * tgpg[2] + tgpig[2]) * args.CHW +
+        (tgpig_0 * KHW + tpitg_1 * args.KW + tpitg_2);
 
     device T * pdst = (device T *) (dst);
 
-    if (iih < 0 || iih >= IH || iiw < 0 || iiw >= IW) {
+    if (iih < 0 || iih >= args.IH || iiw < 0 || iiw >= args.IW) {
         pdst[offset_dst] = 0.0f;
     } else {
-        const int64_t offset_src = tpitg_0 * ofs0 + tgpig_0 * ofs1;
-        pdst[offset_dst] = x[offset_src + iih * IW + iiw];
+        const int64_t offset_src = tpitg_0 * args.ofs0 + tgpig_0 * args.ofs1;
+        pdst[offset_dst] = x[offset_src + iih * args.IW + iiw];
     }
 }
 
