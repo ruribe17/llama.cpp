@@ -395,8 +395,8 @@ struct server_task {
                     }
                 }
             }
-            if (params.sampling.grammar_lazy) {
-                GGML_ASSERT(!params.sampling.grammar_triggers.empty());
+            if (params.sampling.grammar_lazy && params.sampling.grammar_triggers.empty()) {
+                throw std::runtime_error("Error: no triggers set for lazy grammar!");
             }
         }
 
