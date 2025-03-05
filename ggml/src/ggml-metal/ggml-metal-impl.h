@@ -286,8 +286,8 @@ typedef struct {
 } ggml_metal_kargs_rms_norm;
 
 typedef struct {
-    int32_t  ofs0;
-    int32_t  ofs1;
+    uint64_t  ofs0;
+    uint64_t  ofs1;
     int32_t  IW;
     int32_t  IH;
     int32_t  CHW;
