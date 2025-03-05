@@ -1057,7 +1057,7 @@ struct llama_grammar * llama_grammar_init_impl(
     }
     for (size_t i = 0; i < num_trigger_patterns; i++) {
         GGML_ASSERT(trigger_patterns != nullptr);
-        auto & trigger = vec_trigger_patterns.back();
+        auto & trigger = vec_trigger_patterns.emplace_back();
         trigger.pattern = trigger_patterns[i];
         trigger.regex = std::regex(trigger.pattern);
     }
