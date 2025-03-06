@@ -506,4 +506,18 @@ typedef struct {
     float    step;
 } ggml_metal_kargs_arange;
 
+typedef struct {
+    int32_t  k0;
+    int32_t  k1;
+    int32_t  s0;
+    int32_t  s1; 
+    int32_t  p0;
+    int32_t  p1;
+    int64_t  IH;
+    int64_t  IW;
+    int64_t  OH;
+    int64_t  OW;
+    int64_t  parallel_elements;
+} ggml_metal_kargs_pool_2d;
+
 #endif // GGML_METAL_IMPL
