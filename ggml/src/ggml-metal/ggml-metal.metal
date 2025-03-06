@@ -2755,17 +2755,15 @@ kernel void kernel_pad_reflect_1d_f32(
 
 kernel void kernel_arange_f32(
     device        char * dst,
-    constant   int64_t & ne0,
-    constant   float   & start,
-    constant   float   & step,
+    constant   ggml_metal_kargs_arange & args,
     uint3 tgpig[[threadgroup_position_in_grid]],
     uint3 tpitg[[thread_position_in_threadgroup]],
     uint3   ntg[[threads_per_threadgroup]]) {
 
     device float * dst_ptr = (device float *) dst;
 
-    for (int i0 = tpitg.x; i0 < ne0; i0 += ntg.x) {
-        dst_ptr[i0] = start + step * i0;
+    for (int i0 = tpitg.x; i0 < args.ne0; i0 += ntg.x) {
+        dst_ptr[i0] = args.start + args.step * i0;
     }
 }
 

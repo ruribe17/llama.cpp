@@ -485,4 +485,10 @@ typedef struct {
     int32_t  p1;
 } ggml_metal_kargs_pad_reflect_1d;
 
+typedef struct {
+    int64_t  ne0;
+    float    start;
+    float    step;
+} ggml_metal_kargs_arange;
+
 #endif // GGML_METAL_IMPL
