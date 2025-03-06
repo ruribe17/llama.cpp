@@ -3553,13 +3553,16 @@ static void ggml_metal_encode_node(
 
                 id<MTLComputePipelineState> pipeline = ctx->kernels[GGML_METAL_KERNEL_TYPE_TIMESTEP_EMBEDDING_F32].pipeline;
 
-                // TODO: add ggml_metal_kargs struct
+                ggml_metal_kargs_timestep_embedding args = {
+                    /*.nb1 =*/ nb1,
+                    /*.dim =*/ dim,
+                    /*.max_period =*/ max_period
+                };
+
                 [encoder setComputePipelineState:pipeline];
                 [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                 [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
-                [encoder setBytes:&nb1   length:sizeof(nb1) atIndex:2];
-                [encoder setBytes:&dim   length:sizeof(dim) atIndex:3];
-                [encoder setBytes:&max_period length:sizeof(max_period) atIndex:4];
+                [encoder setBytes:&args length:sizeof(args) atIndex:2];
 
                 const int nth = MIN(1024, half);
 

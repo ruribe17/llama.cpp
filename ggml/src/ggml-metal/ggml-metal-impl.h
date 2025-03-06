@@ -486,6 +486,12 @@ typedef struct {
 } ggml_metal_kargs_pad_reflect_1d;
 
 typedef struct {
+    uint64_t nb1;
+    int      dim;
+    int      max_period;
+} ggml_metal_kargs_timestep_embedding;
+
+typedef struct {
     int64_t  ne0;
     float    start;
     float    step;
