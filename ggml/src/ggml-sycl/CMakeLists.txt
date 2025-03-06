@@ -100,9 +100,11 @@ if (NOT oneMath_FOUND)
     FetchContent_MakeAvailable(ONEMATH)
     # Create alias to match with find_package targets name
     function(onemath_alias target)
-        if (TARGET ${target})
+        if (TARGET ${target}_obj)
             # Silence verbose warnings from external libraries
-            target_compile_options(${target} PRIVATE -Wno-uninitialized -Wno-unused-parameter -Wno-unused-variable -Wno-cast-qual)
+            target_compile_options(${target}_obj PRIVATE -w)
+        endif()
+        if (TARGET ${target})
             add_library(ONEMATH::${target} ALIAS ${target})
         endif()
     endfunction()
