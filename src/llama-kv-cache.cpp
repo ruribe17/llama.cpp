@@ -91,18 +91,20 @@ bool llama_kv_cache_init(
             return false;
         }
 
+        ggml_tensor * k;
+        ggml_tensor * v;
         if (model.arch == LLM_ARCH_DEEPSEEK2) {
             const uint32_t n_embd_head_qk_rope = hparams.n_rot;
             const uint32_t kv_lora_rank = hparams.n_lora_kv;
-            ggml_tensor * k = ggml_new_tensor_1d(ctx, type_k, (kv_lora_rank+n_embd_head_qk_rope)*kv_size);
+            k = ggml_new_tensor_1d(ctx, type_k, (kv_lora_rank+n_embd_head_qk_rope)*kv_size);
             if (cparams.flash_attn) {
-            	ggml_tensor * v = ggml_new_tensor_1d(ctx, type_v, 0); // FA reuses k in place of v
+            	v = ggml_new_tensor_1d(ctx, type_v, 0); // FA reuses k in place of v
             } else {
-            	ggml_tensor * v = ggml_new_tensor_1d(ctx, type_v, kv_lora_rank*kv_size); // transposed for non-FA
+            	v = ggml_new_tensor_1d(ctx, type_v, kv_lora_rank*kv_size); // transposed for non-FA
             }
         } else {
-            ggml_tensor * k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa*kv_size);
-            ggml_tensor * v = ggml_new_tensor_1d(ctx, type_v, n_embd_v_gqa*kv_size);
+            k = ggml_new_tensor_1d(ctx, type_k, n_embd_k_gqa*kv_size);
+            v = ggml_new_tensor_1d(ctx, type_v, n_embd_v_gqa*kv_size);
         }
 
         ggml_format_name(k, "cache_k_l%d", i);
