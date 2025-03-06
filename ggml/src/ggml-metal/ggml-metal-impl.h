@@ -347,4 +347,23 @@ typedef struct {
     int      n_past;
 } ggml_metal_kargs_diag_mask_inf;
 
+typedef struct {
+    int64_t  ne00;
+    int64_t  ne01;
+    int64_t  ne02;
+    uint64_t nb00;
+    uint64_t nb01;
+    uint64_t nb02;
+    int64_t  ne10;
+    int64_t  ne11;
+    uint64_t nb10;
+    uint64_t nb11;
+    int64_t  ne0;
+    int64_t  ne1;
+    int64_t  ne2;
+    uint64_t nb0;
+    uint64_t nb1;
+    uint64_t nb2;
+} ggml_metal_kargs_ssm_conv;
+
 #endif // GGML_METAL_IMPL
