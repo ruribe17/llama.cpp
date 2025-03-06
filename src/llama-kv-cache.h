@@ -6,9 +6,9 @@
 
 #include "ggml-cpp.h"
 
+#include <functional>
 #include <set>
 #include <vector>
-#include <algorithm>
 
 struct llama_cparams;
 struct llama_hparams;
@@ -62,7 +62,15 @@ struct llama_kv_cache_slot_info {
 // TODO: add notion of max sequences
 class llama_kv_cache_unified : public llama_kv_cache {
 public:
-    llama_kv_cache_unified(const llama_hparams & hparams);
+    // can be used to query data from the model if needed
+    struct callbacks {
+        std::function<ggml_tensor * (uint32_t n_ctx_per_seq, int il)> get_rope_factors;
+    };
+
+    llama_kv_cache_unified(
+            const llama_hparams & hparams,
+            callbacks             cbs);
+
     virtual ~llama_kv_cache_unified() = default;
 
     // TODO: become constructor
@@ -128,6 +136,8 @@ public:
     // members
 
     const llama_hparams & hparams;
+
+    callbacks cbs;
 
     bool has_shift = false;
     bool do_defrag = false;

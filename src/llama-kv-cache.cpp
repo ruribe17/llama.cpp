@@ -13,7 +13,7 @@
 
 static const llama_kv_cache_slot_info llama_kv_cache_slot_info_failed{false};
 
-llama_kv_cache_unified::llama_kv_cache_unified(const llama_hparams & hparams) : hparams(hparams) {
+llama_kv_cache_unified::llama_kv_cache_unified(const llama_hparams & hparams, callbacks cbs) : hparams(hparams), cbs(std::move(cbs)) {
 }
 
 bool llama_kv_cache_unified::init(

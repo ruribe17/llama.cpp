@@ -2,8 +2,9 @@
 
 #include "llama.h"
 #include "llama-arch.h"
-#include "llama-hparams.h"
 #include "llama-graph.h"
+#include "llama-hparams.h"
+#include "llama-memory.h"
 #include "llama-vocab.h"
 
 #include <memory>
@@ -366,7 +367,7 @@ struct llama_model {
     const struct ggml_tensor * get_tensor(const char * name) const;
 
     // TODO: move this to new llm_arch_model_i interface
-    ggml_tensor * build_rope_factors(uint32_t n_ctx_per_seq, int il) const;
+    llama_memory_i * create_memory() const; // TODO: params
 
     // TODO: move this to new llm_arch_model_i interface
     llm_graph_result_ptr build_graph(

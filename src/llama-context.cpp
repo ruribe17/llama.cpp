@@ -1729,7 +1729,7 @@ llama_context_kv_self::llama_context_kv_self(
 
     const auto & hparams = model.hparams;
 
-    kv_self = std::make_unique<llama_kv_cache_unified>(hparams);
+    kv_self.reset(static_cast<llama_kv_cache_unified *>(model.create_memory()));
 
     LLAMA_LOG_DEBUG("%s: n_ctx = %u\n", __func__, cparams.n_ctx);
 
@@ -1885,7 +1885,7 @@ llm_graph_result_ptr llama_context_kv_self::build_kv_self_shift(
         const int64_t n_head_kv    = hparams.n_head_kv(il);
         const int64_t n_embd_k_gqa = hparams.n_embd_k_gqa(il);
 
-        ggml_tensor * rope_factors = model.build_rope_factors(n_ctx_per_seq(), il);
+        ggml_tensor * rope_factors = kv_self->cbs.get_rope_factors(n_ctx_per_seq(), il);
 
         ggml_tensor * k =
             ggml_view_3d(ctx0, kv_self->k_l[il],
@@ -2665,7 +2665,7 @@ llama_context_recurrent::llama_context_recurrent(
 
     const auto & hparams = model.hparams;
 
-    kv_self = std::make_unique<llama_kv_cache_recurrent>(hparams);
+    kv_self.reset(static_cast<llama_kv_cache_recurrent *>(model.create_memory()));
 
     LLAMA_LOG_DEBUG("%s: n_ctx = %u\n", __func__, cparams.n_ctx);
 
