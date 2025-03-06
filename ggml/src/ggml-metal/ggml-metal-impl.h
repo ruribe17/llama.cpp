@@ -341,4 +341,10 @@ typedef struct {
     uint32_t n_head_log2;
 } ggml_metal_kargs_soft_max;
 
+typedef struct {
+    int64_t  ne00;
+    int64_t  ne01;
+    int      n_past;
+} ggml_metal_kargs_diag_mask_inf;
+
 #endif // GGML_METAL_IMPL
