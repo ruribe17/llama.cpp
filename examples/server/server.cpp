@@ -2397,7 +2397,7 @@ struct server_context {
         std::vector<float> embd_res(n_embd, 0.0f);
 
         for (int i = 0; i < batch.n_tokens; ++i) {
-            if (!batch.logits[i] || batch.seq_id[i][0] != slot.id) {
+            if (!batch.output[i] || batch.seq_id[i][0] != slot.id) {
                 continue;
             }
 
@@ -2435,7 +2435,7 @@ struct server_context {
         res->n_tokens = slot.n_prompt_tokens;
 
         for (int i = 0; i < batch.n_tokens; ++i) {
-            if (!batch.logits[i] || batch.seq_id[i][0] != slot.id) {
+            if (!batch.output[i] || batch.seq_id[i][0] != slot.id) {
                 continue;
             }
 
@@ -3093,7 +3093,7 @@ struct server_context {
                         }
 
                         // extract the logits only for the last token
-                        batch.logits[batch.n_tokens - 1] = true;
+                        batch.output[batch.n_tokens - 1] = true;
 
                         slot.n_decoded = 0;
                         slot.i_batch   = batch.n_tokens - 1;
@@ -3133,7 +3133,7 @@ struct server_context {
                 batch.pos      + i,
                 batch.n_seq_id + i,
                 batch.seq_id   + i,
-                batch.logits   + i,
+                batch.output   + i,
             };
 
             const int ret = llama_decode(ctx, batch_view);
