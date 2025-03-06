@@ -27,7 +27,9 @@ namespace toolcall
 
         client(std::unique_ptr<client_impl> impl) : impl_(std::move(impl)) {}
 
-        result_set call(const std::string & request);
+        result_set call(const std::string & name,
+                        const std::string & arguments,
+                        const std::string & id = "");
 
         std::string tool_list();
         bool tool_list_dirty() const;
@@ -55,7 +57,9 @@ namespace toolcall
             return tool_list_dirty_;
         }
 
-        virtual result_set call(const std::string & request) = 0;
+        virtual result_set call(const std::string & name,
+                                const std::string & arguments,
+                                const std::string & id = "") = 0;
 
         const std::string & tool_choice() const { return tool_choice_; }
 
@@ -76,9 +80,11 @@ namespace toolcall
             return tools_;
         }
 
-        virtual result_set call(const std::string & request) override {
+        virtual result_set call(const std::string & /* name */,
+                                const std::string & /* arguments */,
+                                const std::string & /* id = "" */) override {
             return result_set {
-                {"text", request, "text/plain", std::nullopt, false}
+                {"text", "", "text/plain", std::nullopt, false}
             };
         }
 
@@ -93,7 +99,10 @@ namespace toolcall
         mcp_impl(std::vector<std::string> argv, std::string tool_choice);
 
         virtual std::string tool_list() override;
-        virtual result_set call(const std::string & request) override;
+
+        virtual result_set call(const std::string & name,
+                                const std::string & arguments,
+                                const std::string & id = "") override;
 
         virtual void initialize() override;
 

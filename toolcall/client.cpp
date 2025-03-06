@@ -39,8 +39,10 @@ bool toolcall::client::tool_list_dirty() const {
     return impl_->tool_list_dirty();
 }
 
-toolcall::result_set toolcall::client::call(const std::string & request) {
-    return impl_->call(request);
+toolcall::result_set toolcall::client::call(const std::string & name,
+                                            const std::string & arguments,
+                                            const std::string & id) {
+    return impl_->call(name, arguments, id);
 }
 
 const std::string & toolcall::client::tool_choice() const {
@@ -180,15 +182,6 @@ std::string toolcall::mcp_impl::tool_list() {
     return tools_;
 }
 
-static mcp::tools_call_request tools_call_request_from_local_json(nlohmann::json id, const std::string & local_json) {
-    nlohmann::json j = json::parse(local_json);
-    mcp::tool_arg_list args;
-    for (const auto & [key, val] : j["parameters"].items()) {
-        args.push_back({key, val});
-    }
-    return mcp::tools_call_request(id, j["name"], args);
-}
-
 static toolcall::result_set tools_call_response_to_result(const mcp::tools_call_response & resp) {
     toolcall::result_set result;
     for (const auto & res : resp.tool_result()) {
@@ -199,7 +192,10 @@ static toolcall::result_set tools_call_response_to_result(const mcp::tools_call_
     return std::move(result);
 }
 
-toolcall::result_set toolcall::mcp_impl::call(const std::string & request) {
+toolcall::result_set toolcall::mcp_impl::call(const std::string & name,
+                                              const std::string & arguments,
+                                              const std::string & id)
+{
     using on_response = toolcall::callback<mcp::tools_call_response>;
 
     if (transport_ == nullptr) {
@@ -213,7 +209,14 @@ toolcall::result_set toolcall::mcp_impl::call(const std::string & request) {
         response = tools_call_response_to_result(resp);
         tools_populating_.notify_one();
     };
-    transport_->send(tools_call_request_from_local_json(next_id_++, request), set_response);
+    std::string req_id = id.empty() ? std::to_string(next_id_++) : id;
+    mcp::tool_arg_list req_args;
+    auto json_args = json::parse(arguments); // TODO check errors
+    for (const auto & [key, val] : json_args.items()) {
+        req_args.push_back({key, val});
+    }
+
+    transport_->send(mcp::tools_call_request(req_id, name, req_args), set_response);
     tools_populating_.wait_for(lock, std::chrono::seconds(15), [&response] { return ! response.empty(); });
 
     return response;
