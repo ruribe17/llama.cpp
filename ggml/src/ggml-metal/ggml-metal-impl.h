@@ -391,4 +391,15 @@ typedef struct {
     uint64_t nb52;
 } ggml_metal_kargs_ssm_scan;
 
+typedef struct {
+    int64_t  ne00;
+    uint64_t nb01;
+    uint64_t nb02; 
+    int64_t  ne10;
+    uint64_t nb10;
+    uint64_t nb11;
+    uint64_t nb1;
+    uint64_t nb2;
+} ggml_metal_kargs_get_rows;
+
 #endif // GGML_METAL_IMPL
