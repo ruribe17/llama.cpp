@@ -948,45 +948,22 @@ kernel void kernel_cos(
 kernel void kernel_sum_rows(
         device const float * src0,
         device       float * dst,
-        constant  int64_t & ne00,
-        constant  int64_t & ne01,
-        constant  int64_t & ne02,
-        constant  int64_t & ne03,
-        constant uint64_t & nb00,
-        constant uint64_t & nb01,
-        constant uint64_t & nb02,
-        constant uint64_t & nb03,
-        constant  int64_t & ne10,
-        constant  int64_t & ne11,
-        constant  int64_t & ne12,
-        constant  int64_t & ne13,
-        constant uint64_t & nb10,
-        constant uint64_t & nb11,
-        constant uint64_t & nb12,
-        constant uint64_t & nb13,
-        constant  int64_t & ne0,
-        constant  int64_t & ne1,
-        constant  int64_t & ne2,
-        constant  int64_t & ne3,
-        constant uint64_t & nb0,
-        constant uint64_t & nb1,
-        constant uint64_t & nb2,
-        constant uint64_t & nb3,
+        constant ggml_metal_kargs_sum_rows & args,
         uint3 tpig[[thread_position_in_grid]]) {
     int64_t i3 = tpig.z;
     int64_t i2 = tpig.y;
     int64_t i1 = tpig.x;
 
-    if (i3 >= ne03 || i2 >= ne02 || i1 >= ne01) {
+    if (i3 >= args.ne03 || i2 >= args.ne02 || i1 >= args.ne01) {
         return;
     }
 
-    device const float * src_row = (device const float *) ((device const char *) src0 + i1*nb01 + i2*nb02 + i3*nb03);
-    device       float * dst_row = (device       float *) ((device       char *) dst  + i1*nb1  + i2*nb2  + i3*nb3);
+    device const float * src_row = (device const float *) ((device const char *) src0 + i1*args.nb01 + i2*args.nb02 + i3*args.nb03);
+    device       float * dst_row = (device       float *) ((device       char *) dst  + i1*args.nb1  + i2*args.nb2  + i3*args.nb3);
 
     float row_sum = 0;
 
-    for (int64_t i0 = 0; i0 < ne00; i0++) {
+    for (int64_t i0 = 0; i0 < args.ne00; i0++) {
         row_sum += src_row[i0];
     }
 

@@ -303,4 +303,31 @@ typedef struct {
     int32_t  KHW; // KH * KW, pre-computed on CPU to save GPU resources
 } ggml_metal_kargs_im2col;
 
+typedef struct {
+    int64_t  ne00;
+    int64_t  ne01;
+    int64_t  ne02;
+    int64_t  ne03;
+    uint64_t nb00;
+    uint64_t nb01;
+    uint64_t nb02;
+    uint64_t nb03;
+    int64_t  ne10;
+    int64_t  ne11;
+    int64_t  ne12;
+    int64_t  ne13;
+    uint64_t nb10;
+    uint64_t nb11;
+    uint64_t nb12;
+    uint64_t nb13;
+    int64_t  ne0;
+    int64_t  ne1;
+    int64_t  ne2;
+    int64_t  ne3;
+    uint64_t nb0;
+    uint64_t nb1;
+    uint64_t nb2;
+    uint64_t nb3;
+} ggml_metal_kargs_sum_rows;
+
 #endif // GGML_METAL_IMPL
