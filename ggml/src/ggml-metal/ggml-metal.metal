@@ -2723,21 +2723,7 @@ kernel void kernel_pad_f32(
 kernel void kernel_pad_reflect_1d_f32(
     device  const char * src0,
     device        char * dst,
-    constant   int64_t & ne00,
-    constant   int64_t & ne01,
-    constant   int64_t & ne02,
-    constant   int64_t & ne03,
-    constant   int64_t & ne0,
-    constant  uint64_t & nb00,
-    constant  uint64_t & nb01,
-    constant  uint64_t & nb02,
-    constant  uint64_t & nb03,
-    constant  uint64_t & nb0,
-    constant  uint64_t & nb1,
-    constant  uint64_t & nb2,
-    constant  uint64_t & nb3,
-    constant   int32_t & p0,
-    constant   int32_t & p1,
+    constant   ggml_metal_kargs_pad_reflect_1d & args,
     uint3 tgpig[[threadgroup_position_in_grid]],
     uint3  tgpg[[threadgroups_per_grid]],
     uint3 tpitg[[thread_position_in_threadgroup]],
@@ -2751,17 +2737,17 @@ kernel void kernel_pad_reflect_1d_f32(
     const int64_t i02 = i2;
     const int64_t i01 = i1;
 
-    device const float * src0_ptr = (device const float *) (src0 + i03*nb03 + i02*nb02 + i01*nb01);
-    device       float * dst_ptr  = (device       float *) (dst  +  i3*nb3  +  i2*nb2  +  i1*nb1);
+    device const float * src0_ptr = (device const float *) (src0 + i03*args.nb03 + i02*args.nb02 + i01*args.nb01);
+    device       float * dst_ptr  = (device       float *) (dst  +  i3*args.nb3  +  i2*args.nb2  +  i1*args.nb1);
 
-    if (i1 < ne01 && i2 < ne02 && i3 < ne03) {
-        for (int i0 = tpitg.x; i0 < ne0; i0 += ntg.x) {
-            if (i0 < p0) {
-                dst_ptr[i0] = src0_ptr[p0 - i0];
-            } else if (i0 < ne0 - p1) {
-                dst_ptr[i0] = src0_ptr[i0 - p0];
+    if (i1 < args.ne01 && i2 < args.ne02 && i3 < args.ne03) {
+        for (int i0 = tpitg.x; i0 < args.ne0; i0 += ntg.x) {
+            if (i0 < args.p0) {
+                dst_ptr[i0] = src0_ptr[args.p0 - i0];
+            } else if (i0 < args.ne0 - args.p1) {
+                dst_ptr[i0] = src0_ptr[i0 - args.p0];
             } else {
-                dst_ptr[i0] = src0_ptr[(ne0 - p1 - p0) - (p1 + 1 - (ne0 - i0)) - 1];
+                dst_ptr[i0] = src0_ptr[(args.ne0 - args.p1 - args.p0) - (args.p1 + 1 - (args.ne0 - i0)) - 1];
             }
         }
     }
