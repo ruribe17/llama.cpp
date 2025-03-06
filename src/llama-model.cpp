@@ -7677,7 +7677,7 @@ struct llm_build_mamba : public llm_graph_context {
              ggml_tensor * state_mask,
       const llama_ubatch & ubatch,
                      int   il) const {
-        const llama_kv_cache_recurrent * kv_self = static_cast<const llama_kv_cache_recurrent *>(memory);
+        const llama_kv_cache_unified * kv_self = static_cast<const llama_kv_cache_unified *>(memory);
 
         const auto kv_head = kv_self->head;
 
@@ -10196,7 +10196,7 @@ struct llm_build_rwkv6_base : public llm_graph_context {
             ggml_tensor * state_mask,
             const llama_ubatch & ubatch,
             int   il) const {
-        const llama_kv_cache_recurrent * kv_self = static_cast<const llama_kv_cache_recurrent *>(memory);
+        const llama_kv_cache_unified * kv_self = static_cast<const llama_kv_cache_unified *>(memory);
 
         const auto n_tokens = ubatch.n_tokens;
         const auto n_seqs = ubatch.n_seqs;
@@ -10875,7 +10875,7 @@ llama_memory_i * llama_model::create_memory() const {
         case LLM_ARCH_RWKV6QWEN2:
         case LLM_ARCH_MAMBA:
             {
-                res = new llama_kv_cache_recurrent(hparams, {
+                res = new llama_kv_cache_unified(hparams, {
                     /*.get_rope_factors =*/ nullptr
                 });
             } break;
@@ -11088,6 +11088,7 @@ llm_graph_result_ptr llama_model::build_graph(
                     case LLM_GRAPH_TYPE_ENCODER:
                         llm = std::make_unique<llm_build_t5_enc>(*this, params, gf);
                         break;
+                    case LLM_GRAPH_TYPE_DEFAULT:
                     case LLM_GRAPH_TYPE_DECODER:
                         llm = std::make_unique<llm_build_t5_dec>(*this, params, gf);
                         break;

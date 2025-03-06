@@ -178,10 +178,10 @@ private:
 };
 
 // TODO: temporary reusing llama_kv_cache_unified -- implement recurrent cache and simplify llama_kv_cache_unified
-class llama_kv_cache_recurrent : public llama_kv_cache_unified {
-public:
-    using llama_kv_cache_unified::llama_kv_cache_unified;
-};
+//class llama_kv_cache_recurrent : public llama_kv_cache_unified {
+//public:
+//    using llama_kv_cache_unified::llama_kv_cache_unified;
+//};
 
 //
 // kv cache restore

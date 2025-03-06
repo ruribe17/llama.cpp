@@ -20,7 +20,6 @@ struct llama_layer;
 
 class llama_memory_i;
 class llama_kv_cache_unified;
-class llama_kv_cache_recurrent;
 
 // certain models (typically multi-modal) can produce different types of graphs
 enum llm_graph_type {
@@ -57,10 +56,13 @@ struct llama_cross {
     // the output embeddings from the encoder as a ggml tensor
     // TODO: this needs more work to be correct, for now copy the embeddings data to host memory
     //       ref: https://github.com/ggml-org/llama.cpp/pull/11213#discussion_r1969892524
-    ggml_tensor * t_embd = nullptr;
+    //ggml_tensor * t_embd = nullptr;
+
+    int64_t n_embd = 0;
+    int64_t n_enc  = 0;
 
     // embeddings data copied to host memory (tmp)
-    float * v_embd = nullptr;
+    std::vector<float> v_embd;
 
     // needed to construct the cross-attention mask in the decoder
     std::vector<std::set<llama_seq_id>> seq_ids_enc;
@@ -177,27 +179,27 @@ public:
 // I32 [kv_size]
 class llm_graph_input_s_copy : public llm_graph_input_i {
 public:
-    llm_graph_input_s_copy(const llama_kv_cache_recurrent * kv_self) : kv_self(kv_self) {}
+    llm_graph_input_s_copy(const llama_kv_cache_unified * kv_self) : kv_self(kv_self) {}
     virtual ~llm_graph_input_s_copy() = default;
 
     void set_input(const llama_ubatch * ubatch) override;
 
     ggml_tensor * s_copy;
 
-    const llama_kv_cache_recurrent * kv_self;
+    const llama_kv_cache_unified * kv_self;
 };
 
 // F32 [1, n_kv]
 class llm_graph_input_s_mask : public llm_graph_input_i {
 public:
-    llm_graph_input_s_mask(const llama_kv_cache_recurrent * kv_self) : kv_self(kv_self) {}
+    llm_graph_input_s_mask(const llama_kv_cache_unified * kv_self) : kv_self(kv_self) {}
     virtual ~llm_graph_input_s_mask() = default;
 
     void set_input(const llama_ubatch * ubatch) override;
 
     ggml_tensor * s_mask;
 
-    const llama_kv_cache_recurrent * kv_self;
+    const llama_kv_cache_unified * kv_self;
 };
 
 // F32 [n_embd, n_outputs_enc]
