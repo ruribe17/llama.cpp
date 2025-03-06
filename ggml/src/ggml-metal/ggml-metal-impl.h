@@ -330,4 +330,15 @@ typedef struct {
     uint64_t nb3;
 } ggml_metal_kargs_sum_rows;
 
+typedef struct {
+    int64_t  ne00;
+    int64_t  ne01;
+    int64_t  ne02;
+    float    scale;
+    float    max_bias; 
+    float    m0;
+    float    m1;
+    uint32_t n_head_log2;
+} ggml_metal_kargs_soft_max;
+
 #endif // GGML_METAL_IMPL
