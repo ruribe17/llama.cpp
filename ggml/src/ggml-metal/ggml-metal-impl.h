@@ -492,6 +492,10 @@ typedef struct {
 } ggml_metal_kargs_timestep_embedding;
 
 typedef struct {
+    float    slope;
+} ggml_metal_kargs_leaky_relu;
+
+typedef struct {
     int64_t  ncols;
     int64_t  ncols_pad;
 } ggml_metal_kargs_argsort;

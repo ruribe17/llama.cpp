@@ -2861,9 +2861,9 @@ template [[host_name("kernel_argsort_f32_i32_desc")]] kernel argsort_t kernel_ar
 kernel void kernel_leaky_relu_f32(
         device const float * src0,
         device       float * dst,
-        constant     float & slope,
+        constant     ggml_metal_kargs_leaky_relu & args,
         uint tpig[[thread_position_in_grid]]) {
-    dst[tpig] = src0[tpig] > 0.0f ? src0[tpig] : src0[tpig] * slope;
+    dst[tpig] = src0[tpig] > 0.0f ? src0[tpig] : src0[tpig] * args.slope;
 }
 
 // ref: https://arxiv.org/pdf/2307.08691.pdf
