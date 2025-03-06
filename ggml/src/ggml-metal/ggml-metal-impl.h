@@ -286,6 +286,17 @@ typedef struct {
 } ggml_metal_kargs_rms_norm;
 
 typedef struct {
+    int64_t  ne00;
+    int64_t  ne01;
+    int64_t  ne02;
+    uint64_t nb00;
+    uint64_t nb01;
+    uint64_t nb02;
+    int32_t  n_groups;
+    float    eps;
+} ggml_metal_kargs_group_norm;
+
+typedef struct {
     uint64_t  ofs0;
     uint64_t  ofs1;
     int32_t  IW;
