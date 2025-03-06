@@ -1874,12 +1874,10 @@ llm_graph_result_ptr llama_context_kv_self::build_kv_self_shift(
 
     //GGML_ASSERT(kv_self->size == n_ctx);
 
-    auto inp = std::make_shared<llm_graph_input_k_shift>(kv_self.get());
+    auto inp = std::make_unique<llm_graph_input_k_shift>(kv_self.get());
 
     inp->k_shift = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, cparams.n_ctx);
     ggml_set_input(inp->k_shift);
-
-    res->add_input(inp);
 
     for (uint32_t il = 0; il < n_layer; ++il) {
         const int64_t n_head_kv    = hparams.n_head_kv(il);
@@ -1898,6 +1896,8 @@ llm_graph_result_ptr llama_context_kv_self::build_kv_self_shift(
 
         ggml_build_forward_expand(gf, cur);
     }
+
+    res->add_input(std::move(inp));
 
     return res;
 }

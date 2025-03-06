@@ -3910,7 +3910,7 @@ struct llm_build_llama : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, kq_scale, il);
             }
@@ -4084,7 +4084,7 @@ struct llm_build_deci : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, kq_scale, il);
             }
@@ -4222,7 +4222,7 @@ struct llm_build_baichuan : public llm_graph_context {
                 cb(Qcur, "Qcur", il);
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -4330,7 +4330,8 @@ struct llm_build_xverse : public llm_graph_context {
                         ext_factor, attn_factor, beta_fast, beta_slow
                         );
                 cb(Kcur, "Kcur", il);
-                cur = build_attn(inp_attn.get(), gf,
+
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -4454,7 +4455,7 @@ struct llm_build_falcon : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -4578,7 +4579,7 @@ struct llm_build_grok : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f, il);
             }
@@ -4727,7 +4728,7 @@ struct llm_build_dbrx : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -4839,7 +4840,7 @@ struct llm_build_starcoder : public llm_graph_context {
 
                 Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head, n_tokens);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -4936,7 +4937,7 @@ struct llm_build_refact : public llm_graph_context {
                 Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head,    n_tokens);
                 cb(Qcur, "Qcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -5090,7 +5091,7 @@ struct llm_build_bert : public llm_graph_context {
             cb(Kcur, "Kcur", il);
             cb(Vcur, "Vcur", il);
 
-            cur = build_attn(inp_attn.get(), gf,
+            cur = build_attn(inp_attn, gf,
                     model.layers[il].wo, model.layers[il].bo,
                     Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             cb(cur, "kqv_out", il);
@@ -5205,7 +5206,7 @@ struct llm_build_bloom : public llm_graph_context {
 
                 Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head, n_tokens);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -5340,13 +5341,13 @@ struct llm_build_mpt : public llm_graph_context {
                     Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head,    n_tokens);
                     Kcur = ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_tokens);
 
-                    cur = build_attn(inp_attn.get(), gf,
+                    cur = build_attn(inp_attn, gf,
                             model.layers[il].wo, model.layers[il].bo,
                             Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
                 } else {
                     Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head, n_tokens);
 
-                    cur = build_attn(inp_attn.get(), gf,
+                    cur = build_attn(inp_attn, gf,
                             model.layers[il].wo, model.layers[il].bo,
                             Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
                 }
@@ -5492,7 +5493,7 @@ struct llm_build_stablelm : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -5614,7 +5615,7 @@ struct llm_build_qwen : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -5731,7 +5732,7 @@ struct llm_build_qwen2 : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -5851,7 +5852,7 @@ struct llm_build_qwen2vl : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -5966,7 +5967,7 @@ struct llm_build_qwen2moe : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -6127,7 +6128,7 @@ struct llm_build_phi2 : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f, il);
             }
@@ -6251,7 +6252,7 @@ struct llm_build_phi3 : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f, il);
             }
@@ -6378,7 +6379,7 @@ struct llm_build_plamo : public llm_graph_context {
                         ext_factor, attn_factor, beta_fast, beta_slow);
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -6483,7 +6484,7 @@ struct llm_build_gpt2 : public llm_graph_context {
 
                 Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head, n_tokens);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -6597,7 +6598,7 @@ struct llm_build_codeshell : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -6720,7 +6721,7 @@ struct llm_build_orion : public llm_graph_context {
             );
             cb(Kcur, "Kcur", il);
 
-            cur = build_attn(inp_attn.get(), gf,
+            cur = build_attn(inp_attn, gf,
                     model.layers[il].wo, NULL,
                     Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
         }
@@ -6841,7 +6842,7 @@ struct llm_build_internlm2 : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -7038,7 +7039,7 @@ struct llm_build_minicpm3 : public llm_graph_context {
                 struct ggml_tensor * k_states = ggml_concat(ctx0, k_nope, ggml_repeat(ctx0, k_pe, q_pe), 0);
                 cb(k_states, "k_states", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         q_states, k_states, v_states, nullptr, kq_scale, il);
             }
@@ -7162,7 +7163,7 @@ struct llm_build_gemma : public llm_graph_context {
                         ext_factor, attn_factor, beta_fast, beta_slow);
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f, il);
             }
@@ -7278,7 +7279,7 @@ struct llm_build_gemma2 : public llm_graph_context {
                         ext_factor, attn_factor, beta_fast, beta_slow);
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f, il);
             }
@@ -7553,7 +7554,7 @@ struct llm_build_starcoder2 : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -7891,7 +7892,7 @@ struct llm_build_command_r : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8028,7 +8029,7 @@ struct llm_build_cohere2 : public llm_graph_context {
                     cb(Kcur, "Kcur", il);
                 }
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8153,7 +8154,7 @@ struct llm_build_olmo : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, nullptr,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8270,7 +8271,7 @@ struct llm_build_olmo2 : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur_rope", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8400,7 +8401,7 @@ struct llm_build_olmoe : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur_rope", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8532,7 +8533,7 @@ struct llm_build_openelm : public llm_graph_context {
                 Vcur = ggml_reshape_2d(ctx0, Vcur, n_embd_head * n_head_kv, n_tokens);
                 cb(Qcur, "Vcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8644,7 +8645,7 @@ struct llm_build_gptneox : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8788,7 +8789,7 @@ struct llm_build_arctic : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -8937,7 +8938,7 @@ struct llm_build_deepseek : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, kq_scale, il);
             }
@@ -9167,7 +9168,7 @@ struct llm_build_deepseek2 : public llm_graph_context {
                 struct ggml_tensor * k_states = ggml_concat(ctx0, k_nope, ggml_repeat(ctx0, k_pe, q_pe), 0);
                 cb(k_states, "k_states", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         q_states, k_states, v_states, nullptr, kq_scale, il);
             }
@@ -9327,7 +9328,7 @@ struct llm_build_bitnet : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         NULL, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
 
@@ -9450,7 +9451,7 @@ struct llm_build_t5_enc : public llm_graph_context {
                 struct ggml_tensor * attn_rel_b = model.layers[il].attn_rel_b_enc ? model.layers[il].attn_rel_b_enc : model.layers[0].attn_rel_b_enc;
                 struct ggml_tensor * kq_b = build_pos_bias(pos_bucket_enc, attn_rel_b);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo_enc, nullptr,
                         Qcur, Kcur, Vcur, kq_b, 1.0f, il);
                 cb(cur, "kqv_out", il);
@@ -9555,7 +9556,7 @@ struct llm_build_t5_dec : public llm_graph_context {
                 struct ggml_tensor * attn_rel_b = model.layers[il].attn_rel_b ? model.layers[il].attn_rel_b : model.layers[0].attn_rel_b;
                 struct ggml_tensor * kq_b = build_pos_bias(pos_bucket_dec, attn_rel_b);
 
-                cur = build_attn(inp_attn->inp_kv_self.get(), gf, // !!!
+                cur = build_attn(inp_attn->inp_kv_self, gf, // !!!
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, kq_b, 1.0f, il);
                 cb(cur, "kqv_out", il);
@@ -9587,7 +9588,7 @@ struct llm_build_t5_dec : public llm_graph_context {
                 Kcur = ggml_reshape_3d(ctx0, Kcur, n_embd_head, n_head_kv, n_outputs_enc);
                 Vcur = ggml_reshape_3d(ctx0, Vcur, n_embd_head, n_head_kv, n_outputs_enc);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo_cross, nullptr,
                         Qcur, Kcur, Vcur, nullptr, 1.0f, il);
                 cb(cur, "kqv_out", il);
@@ -9718,7 +9719,7 @@ struct llm_build_jais : public llm_graph_context {
 
                 Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head, n_head, n_tokens);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/float(n_embd_head), il);
             }
@@ -9848,7 +9849,7 @@ struct llm_build_chatglm : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur_rope", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
 
@@ -9969,7 +9970,7 @@ struct llm_build_nemotron : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -10094,7 +10095,7 @@ struct llm_build_exaone : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, model.layers[il].bo,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
             }
@@ -10627,7 +10628,7 @@ struct llm_build_chameleon : public llm_graph_context {
                         );
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, nullptr,
                         Qcur, Kcur, Vcur, nullptr, 1.0f/sqrtf(float(n_embd_head)), il);
 
