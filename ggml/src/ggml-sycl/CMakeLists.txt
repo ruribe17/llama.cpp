@@ -87,6 +87,10 @@ if (NOT oneMath_FOUND)
         set(ENABLE_MKLCPU_BACKEND False)
         set(ENABLE_MKLGPU_BACKEND False)
         set(ENABLE_ROCBLAS_BACKEND True)
+        # Ensure setting a string variable here is not overriden by oneMath CACHE variables
+        cmake_policy(SET CMP0126 NEW)
+        # Setting the device architecture is only needed and useful for AMD devices in oneMath
+        set(HIP_TARGETS ${GGML_SYCL_DEVICE_ARCH} CACHE STRING "oneMath HIP target" FORCE)
     endif()
     FetchContent_Declare(
         ONEMATH
