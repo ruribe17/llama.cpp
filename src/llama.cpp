@@ -6535,7 +6535,7 @@ struct llm_build_context {
 
                 	// note: uses the same kv_self.k_l[il] for both k_cache and v_cache!
                     struct ggml_tensor * kv_cache = ggml_view_3d(ctx0, kv_self.k_l[il], kv_lora_rank + n_embd_head_qk_rope, n_kv, 1, ggml_row_size(kv_self.k_l[il]->type, kv_lora_rank + n_embd_head_qk_rope), ggml_row_size(kv_self.k_l[il]->type, (kv_lora_rank + n_embd_head_qk_rope) * n_kv), 0);
-                    cb(k_cache, "k_cache", il);
+                    cb(kv_cache, "kv_cache", il);
 
                     struct ggml_tensor * kqv_compressed = ggml_flash_attn_ext(ctx0, q_compressed_concat, kv_cache, kv_cache, KQ_mask, kq_scale, hparams.f_max_alibi_bias, 0.0f);
                     cb(kqv_compressed, "kqv_compressed_flash", il);
