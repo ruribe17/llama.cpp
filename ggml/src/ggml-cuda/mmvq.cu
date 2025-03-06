@@ -47,31 +47,34 @@ static constexpr __device__ int get_vdr_mmvq(ggml_type type) {
         1;
 }
 
-static constexpr __device__ int get_device_table_id()
-{
+enum mmvq_paramter_table_id {
+    MMVQ_PARAMTERS_GENERIC = 0,
+    MMVQ_PARAMTERS_GCN,
+    MMVQ_PARAMTERS_RDNA2
+};
+
+static constexpr __device__ mmvq_paramter_table_id get_device_table_id() {
 #if defined(RDNA2) || defined(RDNA3)
-    return 2;
+    return MMVQ_PARAMTERS_RDNA2;
 #elif defined(GCN) || defined(CDNA)
-    return 1;
+    return MMVQ_PARAMTERS_GCN;
 #else
-    return 0;
+    return MMVQ_PARAMTERS_GENERIC;
 #endif
 }
 
-static __host__ int get_device_table_id(int cc)
-{
+static __host__ mmvq_paramter_table_id get_device_table_id(int cc) {
     if (GGML_CUDA_CC_IS_RDNA2(cc) || GGML_CUDA_CC_IS_RDNA3(cc)) {
-        return 2;
+        return MMVQ_PARAMTERS_RDNA2;
     }
     if (GGML_CUDA_CC_IS_GCN(cc) || GGML_CUDA_CC_IS_CDNA(cc)) {
-        return 1;
+        return MMVQ_PARAMTERS_GCN;
     }
-    return 0;
+    return MMVQ_PARAMTERS_GENERIC;
 }
 
-static constexpr __host__ __device__ int calc_nwarps(int ncols_y,  int table_id)
-{
-    if (table_id == 0) {
+static constexpr __host__ __device__ int calc_nwarps(int ncols_y,  mmvq_paramter_table_id table_id) {
+    if (table_id == MMVQ_PARAMTERS_GENERIC) {
         switch (ncols_y) {
             case 1:
             case 2:
@@ -86,7 +89,7 @@ static constexpr __host__ __device__ int calc_nwarps(int ncols_y,  int table_id)
             default:
                 return 1;
         }
-    } else if(table_id == 1) {
+    } else if (table_id == MMVQ_PARAMTERS_GCN) {
         switch (ncols_y) {
             case 1:
             case 2:
@@ -104,9 +107,8 @@ static constexpr __host__ __device__ int calc_nwarps(int ncols_y,  int table_id)
     return 1;
 }
 
-static constexpr __host__ __device__ int calc_rows_per_block(int ncols_y, int table_id)
-{
-    if (table_id == 0 || table_id == 1) {
+static constexpr __host__ __device__ int calc_rows_per_block(int ncols_y, int table_id) {
+    if (table_id == MMVQ_PARAMTERS_GENERIC || table_id == MMVQ_PARAMTERS_GCN) {
         switch (ncols_y) {
             case 1:
                 return 1;
@@ -135,7 +137,7 @@ static __global__ void mul_mat_vec_q(
     constexpr int qk  = ggml_cuda_type_traits<type>::qk;
     constexpr int qi  = ggml_cuda_type_traits<type>::qi;
     constexpr int vdr = get_vdr_mmvq(type);
-    constexpr int table_id = get_device_table_id();
+    constexpr mmvq_paramter_table_id table_id = get_device_table_id();
     constexpr int nwarps = calc_nwarps(ncols_y, table_id);
     constexpr int rows_per_cuda_block = calc_rows_per_block(ncols_y, table_id);
     constexpr int warp_size = ggml_cuda_get_physical_warp_size();
@@ -201,7 +203,7 @@ static __global__ void mul_mat_vec_q(
     }
 }
 
-static std::pair<dim3, dim3> calc_launch_params(const int ncols_y, const int nrows_x, const int warp_size, int table_id)
+static std::pair<dim3, dim3> calc_launch_params(const int ncols_y, const int nrows_x, const int warp_size, const mmvq_paramter_table_id table_id)
 {
     const int64_t nblocks = (nrows_x + calc_rows_per_block(ncols_y, table_id) - 1) / calc_rows_per_block(ncols_y, table_id);
     const dim3 block_nums(nblocks, 1, 1);
@@ -213,15 +215,13 @@ template <ggml_type type>
 static void mul_mat_vec_q_cuda(
     const void * vx, const void * vy, float * dst,
     const int ncols_x, const int nrows_x, const int nrows_y, const int ncols_y, const int nrows_dst, cudaStream_t stream) {
-    int device;
-    int warp_size;
 
     GGML_ASSERT(ncols_x % ggml_blck_size(type) == 0);
     GGML_ASSERT(ncols_y <= MMVQ_MAX_BATCH_SIZE);
 
-    CUDA_CHECK(cudaGetDevice(&device));
-    warp_size = ggml_cuda_info().devices[device].warp_size;
-    int table_id = get_device_table_id(ggml_cuda_info().devices[device].cc);
+    const int device = ggml_cuda_get_device();
+    const int warp_size = ggml_cuda_info().devices[device].warp_size;
+    const mmvq_paramter_table_id table_id = get_device_table_id(ggml_cuda_info().devices[device].cc);
 
     switch (ncols_y) {
         case 1:
