@@ -3595,12 +3595,15 @@ static void ggml_metal_encode_node(
                     default: GGML_ABORT("fatal error");
                 };
 
-                // TODO: add ggml_metal_kargs struct
+                ggml_metal_kargs_argsort args = {
+                    /*.ncols =*/ ne00,
+                    /*.ncols_pad =*/ ne00_padded
+                };
+
                 [encoder setComputePipelineState:pipeline];
-                [encoder setBuffer:id_src0     offset:offs_src0        atIndex:0];
-                [encoder setBuffer:id_dst      offset:offs_dst         atIndex:1];
-                [encoder setBytes:&ne00        length:sizeof( int64_t) atIndex:2];
-                [encoder setBytes:&ne00_padded length:sizeof( int64_t) atIndex:3];
+                [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
+                [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
+                [encoder setBytes:&args length:sizeof(args) atIndex:2];
                 [encoder setThreadgroupMemoryLength:mem_size atIndex:0];
 
                 [encoder dispatchThreadgroups:MTLSizeMake(1, nrows, 1) threadsPerThreadgroup:MTLSizeMake(ne00_padded, 1, 1)];

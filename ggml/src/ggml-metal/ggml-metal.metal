@@ -2796,8 +2796,7 @@ kernel void kernel_timestep_embedding_f32(
 typedef void (argsort_t)(
         device const float  * x,
         device     int32_t  * dst,
-        constant   int64_t  & ncols,
-        constant   int64_t  & ncols_pad,
+        constant   ggml_metal_kargs_argsort & args,
         threadgroup int32_t * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3 tpitg[[thread_position_in_threadgroup]]);
@@ -2806,8 +2805,7 @@ template<ggml_sort_order order>
 kernel void kernel_argsort_f32_i32(
         device const float   * x,
         device       int32_t * dst,
-        constant     int64_t & ncols,
-        constant     int64_t & ncols_pad,
+        constant   ggml_metal_kargs_argsort & args,
         threadgroup int32_t  * shared_values [[threadgroup(0)]],
         uint3 tgpig[[threadgroup_position_in_grid]],
         uint3 tpitg[[thread_position_in_threadgroup]]) {
@@ -2815,9 +2813,9 @@ kernel void kernel_argsort_f32_i32(
     int col = tpitg[0];
     int row = tgpig[1];
 
-    if (col >= ncols_pad) return;
+    if (col >= args.ncols_pad) return;
 
-    device const float   * x_row   = x + row * ncols;
+    device const float   * x_row   = x + row * args.ncols;
     threadgroup int32_t  * dst_row = shared_values;
 
     // initialize indices
@@ -2825,21 +2823,21 @@ kernel void kernel_argsort_f32_i32(
 
     threadgroup_barrier(mem_flags::mem_threadgroup);
 
-    for (int k = 2; k <= ncols_pad; k *= 2) {
+    for (int k = 2; k <= args.ncols_pad; k *= 2) {
         for (int j = k / 2; j > 0; j /= 2) {
             int ixj = col ^ j;
             if (ixj > col) {
                 if ((col & k) == 0) {
-                    if (dst_row[col] >= ncols ||
-                        (dst_row[ixj] < ncols && (order == GGML_SORT_ORDER_ASC ?
+                    if (dst_row[col] >= args.ncols ||
+                        (dst_row[ixj] < args.ncols && (order == GGML_SORT_ORDER_ASC ?
                             x_row[dst_row[col]] > x_row[dst_row[ixj]] :
                             x_row[dst_row[col]] < x_row[dst_row[ixj]]))
                     ) {
                         SWAP(dst_row[col], dst_row[ixj]);
                     }
                 } else {
-                    if (dst_row[ixj] >= ncols ||
-                        (dst_row[col] < ncols && (order == GGML_SORT_ORDER_ASC ?
+                    if (dst_row[ixj] >= args.ncols ||
+                        (dst_row[col] < args.ncols && (order == GGML_SORT_ORDER_ASC ?
                             x_row[dst_row[col]] < x_row[dst_row[ixj]] :
                             x_row[dst_row[col]] > x_row[dst_row[ixj]]))
                     ) {
@@ -2852,8 +2850,8 @@ kernel void kernel_argsort_f32_i32(
     }
 
     // copy the result to dst without the padding
-    if (col < ncols) {
-        dst[row * ncols + col] = dst_row[col];
+    if (col < args.ncols) {
+        dst[row * args.ncols + col] = dst_row[col];
     }
 }
 

@@ -492,6 +492,11 @@ typedef struct {
 } ggml_metal_kargs_timestep_embedding;
 
 typedef struct {
+    int64_t  ncols;
+    int64_t  ncols_pad;
+} ggml_metal_kargs_argsort;
+
+typedef struct {
     int64_t  ne0;
     float    start;
     float    step;
