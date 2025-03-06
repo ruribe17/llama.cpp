@@ -366,4 +366,29 @@ typedef struct {
     uint64_t nb2;
 } ggml_metal_kargs_ssm_conv;
 
+typedef struct {
+    int64_t  d_state;
+    int64_t  d_inner;
+    int64_t  n_seq_tokens;
+    int64_t  n_seqs;
+    uint64_t nb00;
+    uint64_t nb01;
+    uint64_t nb02;
+    uint64_t nb10;
+    uint64_t nb11;
+    uint64_t nb12;
+    uint64_t nb13;
+    uint64_t nb20;
+    uint64_t nb21;
+    uint64_t nb22;
+    uint64_t nb30;
+    uint64_t nb31;
+    uint64_t nb40;
+    uint64_t nb41;
+    uint64_t nb42;
+    uint64_t nb50;
+    uint64_t nb51;
+    uint64_t nb52;
+} ggml_metal_kargs_ssm_scan;
+
 #endif // GGML_METAL_IMPL
