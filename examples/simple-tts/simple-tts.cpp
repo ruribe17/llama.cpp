@@ -12,6 +12,11 @@
 
 using json = nlohmann::ordered_json;
 
+enum outetts_version {
+    OUTETTS_V0_2,
+    OUTETTS_V0_3,
+};
+
 struct wav_header {
     char riff[4] = {'R', 'I', 'F', 'F'};
     uint32_t chunk_size;
@@ -50,6 +55,67 @@ static void save_wav16(const std::string & fname, const std::vector<float> & dat
     }
 
     file.close();
+}
+
+static outetts_version get_tts_version(llama_model *model, json speaker = json::object()) {
+    if (speaker.contains("version")) {
+        std::string version = speaker["version"].get<std::string>();
+        if (version == "0.2") {
+            return OUTETTS_V0_2;
+        } else if (version == "0.3") {
+            return OUTETTS_V0_3;
+        } else {
+            printf("%s: Unsupported speaker version '%s'\n", __func__, version.c_str());
+        }
+    }
+
+    // Also could get version from model itself
+    const char *chat_template = llama_model_chat_template(model, nullptr);
+    if (chat_template && std::string(chat_template) == "outetts-0.3") {
+        return OUTETTS_V0_3;
+    }
+
+    // Use 0.2 as the default version
+    return OUTETTS_V0_2;
+}
+
+static std::string audio_text_from_speaker(json speaker, const outetts_version tts_version = OUTETTS_V0_2) {
+    std::string audio_text = "<|text_start|>";
+
+    if (tts_version == OUTETTS_V0_2 || tts_version == OUTETTS_V0_3) {
+        std::string separator = (tts_version == OUTETTS_V0_3) ? "<|space|>" : "<|text_sep|>";
+        for (const auto &word : speaker["words"]) {
+            audio_text += word["word"].get<std::string>() + separator;
+        }
+    }
+
+    return audio_text;
+}
+
+static std::string audio_data_from_speaker(json speaker, const outetts_version tts_version = OUTETTS_V0_2) {
+    std::string audio_data = "<|audio_start|>\n";
+
+    if (tts_version == OUTETTS_V0_2 || tts_version == OUTETTS_V0_3) {
+        std::string code_start = (tts_version == OUTETTS_V0_3) ? "" : "<|code_start|>";
+        std::string code_end = (tts_version == OUTETTS_V0_3) ? "<|space|>" : "<|code_end|>";
+        for (const auto &word : speaker["words"]) {
+            std::string word_text = word["word"].get<std::string>();
+            double duration = word["duration"].get<double>();
+            std::vector<int> codes = word["codes"].get<std::vector<int>>();
+
+            // Create the audio output entry
+            std::ostringstream word_entry;
+            word_entry << word_text << "<|t_" << std::fixed << std::setprecision(2)
+                       << duration << "|>" + code_start;
+            for (const auto &Code : codes) {
+                word_entry << "<|" << Code << "|>";
+            }
+            word_entry << code_end << "\n";
+            audio_data += word_entry.str();
+        }
+    }
+
+    return audio_data;
 }
 
 static void print_usage(int, char ** argv) {
