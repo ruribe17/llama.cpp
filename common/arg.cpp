@@ -857,8 +857,6 @@ common_params_context common_params_parser_init(common_params & params, llama_ex
             if (!file) {
                 throw std::runtime_error(string_format("error: failed to open file '%s'\n", value.c_str()));
             }
-            // store the external file name in params
-            params.system_prompt_file = value;
             std::copy(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>(), back_inserter(params.system_prompt));
             if (!params.system_prompt.empty() && params.system_prompt.back() == '\n') {
                 params.system_prompt.pop_back();
