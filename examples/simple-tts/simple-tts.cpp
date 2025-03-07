@@ -125,6 +125,7 @@ static void print_usage(int, char ** argv) {
 }
 
 int main(int argc, char ** argv) {
+    std::string prompt;
     std::string model_path;
     std::string vocoder_path;
     json speaker;
@@ -154,6 +155,13 @@ int main(int argc, char ** argv) {
                         return 1;
                     }
                     speaker = json::parse(file);
+                } else {
+                    print_usage(argc, argv);
+                    return 1;
+                }
+            } else if (strcmp(argv[i], "-p") == 0) {
+                if (i + 1 < argc) {
+                    prompt = argv[++i];
                 } else {
                     print_usage(argc, argv);
                     return 1;
