@@ -49,7 +49,7 @@ bool llama_kv_cache_unified::init(
     auto ctx_for_buft = [&](ggml_backend_buffer_type_t buft) -> ggml_context * {
         auto it = ctx_map.find(buft);
         if (it == ctx_map.end()) {
-            struct ggml_init_params params = {
+            ggml_init_params params = {
                 /*.mem_size   =*/ size_t(2u*n_layer*ggml_tensor_overhead()),
                 /*.mem_buffer =*/ NULL,
                 /*.no_alloc   =*/ true,
@@ -450,8 +450,8 @@ bool llama_kv_cache_unified::get_can_shift() const {
     return can_shift;
 }
 
-struct llama_kv_cache_slot_info llama_kv_cache_unified::find_slot(
-       const struct llama_ubatch & ubatch) {
+llama_kv_cache_slot_info llama_kv_cache_unified::find_slot(
+       const llama_ubatch & ubatch) {
     const uint32_t n_tokens = ubatch.n_tokens;
     const uint32_t n_seqs   = ubatch.n_seqs;
     const uint32_t n_seq_tokens = ubatch.n_seq_tokens;
@@ -1335,8 +1335,8 @@ bool llama_kv_cache_can_shift(const llama_kv_cache * kv) {
 // kv cache view
 //
 
-struct llama_kv_cache_view llama_kv_cache_view_init(const struct llama_kv_cache & kv, int32_t n_seq_max) {
-    struct llama_kv_cache_view result = {
+llama_kv_cache_view llama_kv_cache_view_init(const llama_kv_cache & kv, int32_t n_seq_max) {
+    llama_kv_cache_view result = {
         /*.n_cells            = */ 0,
         /*.n_seq_max          = */ n_seq_max,
         /*.token_count        = */ 0,
@@ -1350,7 +1350,7 @@ struct llama_kv_cache_view llama_kv_cache_view_init(const struct llama_kv_cache 
     return result;
 }
 
-void llama_kv_cache_view_free(struct llama_kv_cache_view * view) {
+void llama_kv_cache_view_free(llama_kv_cache_view * view) {
     if (view->cells != nullptr) {
         free(view->cells);
         view->cells = nullptr;
@@ -1361,7 +1361,7 @@ void llama_kv_cache_view_free(struct llama_kv_cache_view * view) {
     }
 }
 
-void llama_kv_cache_view_update(struct llama_kv_cache_view * view, const struct llama_kv_cache * kv) {
+void llama_kv_cache_view_update(llama_kv_cache_view * view, const llama_kv_cache * kv) {
     // TODO: rework this in the future, for now quick hack
     const llama_kv_cache_unified * kvu = dynamic_cast<const llama_kv_cache_unified *>(kv);
     if (kvu == nullptr) {
@@ -1371,9 +1371,9 @@ void llama_kv_cache_view_update(struct llama_kv_cache_view * view, const struct 
 
     if (uint32_t(view->n_cells) < kvu->size || view->cells == nullptr) {
         view->n_cells = int32_t(kvu->size);
-        void * p = realloc(view->cells, sizeof(struct llama_kv_cache_view_cell) * view->n_cells);
+        void * p = realloc(view->cells, sizeof(llama_kv_cache_view_cell) * view->n_cells);
         GGML_ASSERT(p != nullptr && "Failed to alloc kv_cache_view cells");
-        view->cells = (struct llama_kv_cache_view_cell *)p;
+        view->cells = (llama_kv_cache_view_cell *)p;
         p = realloc(view->cells_sequences, sizeof(llama_seq_id) * view->n_seq_max * view->n_cells);
         GGML_ASSERT(p != nullptr && "Failed to alloc kv_cache_view cells sequences");
         view->cells_sequences = (llama_seq_id *)p;

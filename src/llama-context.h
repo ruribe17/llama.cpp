@@ -156,7 +156,7 @@ private:
           llm_graph_type   gtype);
 
     // returns the result of ggml_backend_sched_graph_compute_async execution
-    enum ggml_status graph_compute(
+    ggml_status graph_compute(
             ggml_cgraph * gf,
                    bool   batched);
 

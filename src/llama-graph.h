@@ -16,7 +16,6 @@ struct ggml_tensor;
 
 struct llama_ubatch;
 struct llama_cparams;
-struct llama_layer;
 
 class llama_memory_i;
 class llama_kv_cache_unified;

@@ -160,14 +160,14 @@ public:
 
     std::vector<llama_kv_cell> cells;
 
-    std::vector<struct ggml_tensor *> k_l; // per layer
-    std::vector<struct ggml_tensor *> v_l;
+    std::vector<ggml_tensor *> k_l; // per layer
+    std::vector<ggml_tensor *> v_l;
 
 private:
     ggml_type type_k = GGML_TYPE_F16;
     ggml_type type_v = GGML_TYPE_F16;
 
-    std::vector<ggml_context_ptr> ctxs;
+    std::vector<ggml_context_ptr>        ctxs;
     std::vector<ggml_backend_buffer_ptr> bufs;
 
     void state_write_meta(llama_io_write_i & io, const std::vector<std::pair<uint32_t, uint32_t>> & cell_ranges, llama_seq_id seq_id = -1) const;
@@ -209,7 +209,7 @@ struct llama_kv_slot_restorer {
     }
 
     // saves a slot information for future restoration
-    void save(const struct llama_kv_cache_slot_info & slot) {
+    void save(const llama_kv_cache_slot_info & slot) {
         if (slot) {
             do_restore = true;
             if (slot.boundaries.first != slot.boundaries.second) {
@@ -282,6 +282,6 @@ bool llama_kv_cache_can_shift(const llama_kv_cache * kv);
 // kv cache view
 //
 
-struct llama_kv_cache_view llama_kv_cache_view_init(const struct llama_kv_cache & kv, int32_t n_seq_max);
+llama_kv_cache_view llama_kv_cache_view_init(const llama_kv_cache & kv, int32_t n_seq_max);
 
-void llama_kv_cache_view_update(struct llama_kv_cache_view * view, const struct llama_kv_cache * kv);
+void llama_kv_cache_view_update(llama_kv_cache_view * view, const llama_kv_cache * kv);

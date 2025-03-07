@@ -1591,7 +1591,7 @@ int32_t llama_context::graph_max_nodes() const {
 }
 
 ggml_cgraph * llama_context::graph_init() {
-    struct ggml_init_params params = {
+    ggml_init_params params = {
         /*.mem_size   =*/ buf_compute_meta.size(),
         /*.mem_buffer =*/ buf_compute_meta.data(),
         /*.no_alloc   =*/ true,
@@ -1625,7 +1625,7 @@ llm_graph_result_ptr llama_context::graph_build(
             }, gf, gtype);
 }
 
-enum ggml_status llama_context::graph_compute(
+ggml_status llama_context::graph_compute(
             ggml_cgraph * gf,
                    bool   batched) {
     int n_threads        = batched ? cparams.n_threads_batch : cparams.n_threads;
@@ -2288,29 +2288,29 @@ llama_context * llama_init_from_model(
 }
 
 // deprecated
-struct llama_context * llama_new_context_with_model(
-                 struct llama_model * model,
-        struct llama_context_params   params) {
+llama_context * llama_new_context_with_model(
+                 llama_model * model,
+        llama_context_params   params) {
     return llama_init_from_model(model, params);
 }
 
-void llama_free(struct llama_context * ctx) {
+void llama_free(llama_context * ctx) {
     delete ctx;
 }
 
-uint32_t llama_n_ctx(const struct llama_context * ctx) {
+uint32_t llama_n_ctx(const llama_context * ctx) {
     return ctx->n_ctx();
 }
 
-uint32_t llama_n_batch(const struct llama_context * ctx) {
+uint32_t llama_n_batch(const llama_context * ctx) {
     return ctx->n_batch();
 }
 
-uint32_t llama_n_ubatch(const struct llama_context * ctx) {
+uint32_t llama_n_ubatch(const llama_context * ctx) {
     return ctx->n_ubatch();
 }
 
-uint32_t llama_n_seq_max(const struct llama_context * ctx) {
+uint32_t llama_n_seq_max(const llama_context * ctx) {
     return ctx->n_seq_max();
 }
 
@@ -2331,69 +2331,69 @@ enum llama_pooling_type llama_pooling_type(const llama_context * ctx) {
 }
 
 void llama_attach_threadpool(
-        struct llama_context * ctx,
-           ggml_threadpool_t   threadpool,
-           ggml_threadpool_t   threadpool_batch) {
+            llama_context * ctx,
+        ggml_threadpool_t   threadpool,
+        ggml_threadpool_t   threadpool_batch) {
     ctx->attach_threadpool(threadpool, threadpool_batch);
 }
 
-void llama_detach_threadpool(struct llama_context * ctx) {
+void llama_detach_threadpool(llama_context * ctx) {
     ctx->detach_threadpool();
 }
 
-void llama_set_n_threads(struct llama_context * ctx, int32_t n_threads, int32_t n_threads_batch) {
+void llama_set_n_threads(llama_context * ctx, int32_t n_threads, int32_t n_threads_batch) {
     ctx->set_n_threads(n_threads, n_threads_batch);
 }
 
-int32_t llama_n_threads(struct llama_context * ctx) {
+int32_t llama_n_threads(llama_context * ctx) {
     return ctx->n_threads();
 }
 
-int32_t llama_n_threads_batch(struct llama_context * ctx) {
+int32_t llama_n_threads_batch(llama_context * ctx) {
     return ctx->n_threads_batch();
 }
 
-void llama_set_abort_callback(struct llama_context * ctx, bool (*abort_callback)(void * data), void * abort_callback_data) {
+void llama_set_abort_callback(llama_context * ctx, bool (*abort_callback)(void * data), void * abort_callback_data) {
     ctx->set_abort_callback(abort_callback, abort_callback_data);
 }
 
-void llama_set_embeddings(struct llama_context * ctx, bool embeddings) {
+void llama_set_embeddings(llama_context * ctx, bool embeddings) {
     ctx->set_embeddings(embeddings);
 }
 
-void llama_set_causal_attn(struct llama_context * ctx, bool causal_attn) {
+void llama_set_causal_attn(llama_context * ctx, bool causal_attn) {
     ctx->set_causal_attn(causal_attn);
 }
 
-void llama_synchronize(struct llama_context * ctx) {
+void llama_synchronize(llama_context * ctx) {
     ctx->synchronize();
 }
 
-float * llama_get_logits(struct llama_context * ctx) {
+float * llama_get_logits(llama_context * ctx) {
     ctx->synchronize();
 
     return ctx->get_logits();
 }
 
-float * llama_get_logits_ith(struct llama_context * ctx, int32_t i) {
+float * llama_get_logits_ith(llama_context * ctx, int32_t i) {
     ctx->synchronize();
 
     return ctx->get_logits_ith(i);
 }
 
-float * llama_get_embeddings(struct llama_context * ctx) {
+float * llama_get_embeddings(llama_context * ctx) {
     ctx->synchronize();
 
     return ctx->get_embeddings();
 }
 
-float * llama_get_embeddings_ith(struct llama_context * ctx, int32_t i) {
+float * llama_get_embeddings_ith(llama_context * ctx, int32_t i) {
     ctx->synchronize();
 
     return ctx->get_embeddings_ith(i);
 }
 
-float * llama_get_embeddings_seq(struct llama_context * ctx, llama_seq_id seq_id) {
+float * llama_get_embeddings_seq(llama_context * ctx, llama_seq_id seq_id) {
     ctx->synchronize();
 
     return ctx->get_embeddings_seq(seq_id);
@@ -2402,8 +2402,8 @@ float * llama_get_embeddings_seq(struct llama_context * ctx, llama_seq_id seq_id
 // llama adapter API
 
 int32_t llama_set_adapter_lora(
-            struct llama_context * ctx,
-            struct llama_adapter_lora * adapter,
+            llama_context * ctx,
+            llama_adapter_lora * adapter,
             float scale) {
     ctx->set_adapter_lora(adapter, scale);
 
@@ -2411,19 +2411,19 @@ int32_t llama_set_adapter_lora(
 }
 
 int32_t llama_rm_adapter_lora(
-            struct llama_context * ctx,
-            struct llama_adapter_lora * adapter) {
+            llama_context * ctx,
+            llama_adapter_lora * adapter) {
     bool res = ctx->rm_adapter_lora(adapter);
 
     return res ? 0 : -1;
 }
 
-void llama_clear_adapter_lora(struct llama_context * ctx) {
+void llama_clear_adapter_lora(llama_context * ctx) {
     ctx->clear_adapter_lora();
 }
 
 int32_t llama_apply_adapter_cvec(
-        struct llama_context * ctx,
+        llama_context * ctx,
                  const float * data,
                       size_t   len,
                      int32_t   n_embd,
@@ -2438,7 +2438,7 @@ int32_t llama_apply_adapter_cvec(
 // kv cache view
 //
 
-struct llama_kv_cache_view llama_kv_cache_view_init(const llama_context * ctx, int32_t n_seq_max) {
+llama_kv_cache_view llama_kv_cache_view_init(const llama_context * ctx, int32_t n_seq_max) {
     const auto * kv = ctx->get_kv_self();
     if (kv == nullptr) {
         LLAMA_LOG_WARN("%s: the context does not have a KV cache\n", __func__);
@@ -2609,50 +2609,50 @@ void llama_kv_cache_update(llama_context * ctx) {
 // llama state API
 
 // deprecated
-size_t llama_get_state_size(struct llama_context * ctx) {
+size_t llama_get_state_size(llama_context * ctx) {
     return llama_state_get_size(ctx);
 }
 
 // deprecated
-size_t llama_copy_state_data(struct llama_context * ctx, uint8_t * dst) {
+size_t llama_copy_state_data(llama_context * ctx, uint8_t * dst) {
     return llama_state_get_data(ctx, dst, -1);
 }
 
 // deprecated
-size_t llama_set_state_data(struct llama_context * ctx, const uint8_t * src) {
+size_t llama_set_state_data(llama_context * ctx, const uint8_t * src) {
     return llama_state_set_data(ctx, src, -1);
 }
 
 // deprecated
-bool llama_load_session_file(struct llama_context * ctx, const char * path_session, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
+bool llama_load_session_file(llama_context * ctx, const char * path_session, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
     return llama_state_load_file(ctx, path_session, tokens_out, n_token_capacity, n_token_count_out);
 }
 
 // deprecated
-bool llama_save_session_file(struct llama_context * ctx, const char * path_session, const llama_token * tokens, size_t n_token_count) {
+bool llama_save_session_file(llama_context * ctx, const char * path_session, const llama_token * tokens, size_t n_token_count) {
     return llama_state_save_file(ctx, path_session, tokens, n_token_count);
 }
 
 // Returns the *actual* size of the state.
 // Intended to be used when saving to state to a buffer.
-size_t llama_state_get_size(struct llama_context * ctx) {
+size_t llama_state_get_size(llama_context * ctx) {
     return ctx->state_get_size();
 }
 
-size_t llama_state_get_data(struct llama_context * ctx, uint8_t * dst, size_t size) {
+size_t llama_state_get_data(llama_context * ctx, uint8_t * dst, size_t size) {
     ctx->synchronize();
 
     return ctx->state_get_data(dst, size);
 }
 
 // Sets the state reading from the specified source address
-size_t llama_state_set_data(struct llama_context * ctx, const uint8_t * src, size_t size) {
+size_t llama_state_set_data(llama_context * ctx, const uint8_t * src, size_t size) {
     ctx->synchronize();
 
     return ctx->state_set_data(src, size);
 }
 
-bool llama_state_load_file(struct llama_context * ctx, const char * path_session, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
+bool llama_state_load_file(llama_context * ctx, const char * path_session, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
     ctx->synchronize();
 
     try {
@@ -2663,7 +2663,7 @@ bool llama_state_load_file(struct llama_context * ctx, const char * path_session
     }
 }
 
-bool llama_state_save_file(struct llama_context * ctx, const char * path_session, const llama_token * tokens, size_t n_token_count) {
+bool llama_state_save_file(llama_context * ctx, const char * path_session, const llama_token * tokens, size_t n_token_count) {
     ctx->synchronize();
 
     try {
@@ -2674,23 +2674,23 @@ bool llama_state_save_file(struct llama_context * ctx, const char * path_session
     }
 }
 
-size_t llama_state_seq_get_size(struct llama_context * ctx, llama_seq_id seq_id) {
+size_t llama_state_seq_get_size(llama_context * ctx, llama_seq_id seq_id) {
     return ctx->state_seq_get_size(seq_id);
 }
 
-size_t llama_state_seq_get_data(struct llama_context * ctx, uint8_t * dst, size_t size, llama_seq_id seq_id) {
+size_t llama_state_seq_get_data(llama_context * ctx, uint8_t * dst, size_t size, llama_seq_id seq_id) {
     ctx->synchronize();
 
     return ctx->state_seq_get_data(seq_id, dst, size);
 }
 
-size_t llama_state_seq_set_data(struct llama_context * ctx, const uint8_t * src, size_t size, llama_seq_id seq_id) {
+size_t llama_state_seq_set_data(llama_context * ctx, const uint8_t * src, size_t size, llama_seq_id seq_id) {
     ctx->synchronize();
 
     return ctx->state_seq_set_data(seq_id, src, size);
 }
 
-size_t llama_state_seq_save_file(struct llama_context * ctx, const char * filepath, llama_seq_id seq_id, const llama_token * tokens, size_t n_token_count) {
+size_t llama_state_seq_save_file(llama_context * ctx, const char * filepath, llama_seq_id seq_id, const llama_token * tokens, size_t n_token_count) {
     ctx->synchronize();
 
     try {
@@ -2701,7 +2701,7 @@ size_t llama_state_seq_save_file(struct llama_context * ctx, const char * filepa
     }
 }
 
-size_t llama_state_seq_load_file(struct llama_context * ctx, const char * filepath, llama_seq_id dest_seq_id, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
+size_t llama_state_seq_load_file(llama_context * ctx, const char * filepath, llama_seq_id dest_seq_id, llama_token * tokens_out, size_t n_token_capacity, size_t * n_token_count_out) {
     ctx->synchronize();
 
     try {
@@ -2715,8 +2715,8 @@ size_t llama_state_seq_load_file(struct llama_context * ctx, const char * filepa
 ///
 
 int32_t llama_encode(
-        struct llama_context * ctx,
-          struct llama_batch   batch) {
+        llama_context * ctx,
+          llama_batch   batch) {
     const int ret = ctx->encode(batch);
     if (ret != 0) {
         LLAMA_LOG_ERROR("%s: failed to encode, ret = %d\n", __func__, ret);
@@ -2726,8 +2726,8 @@ int32_t llama_encode(
 }
 
 int32_t llama_decode(
-        struct llama_context * ctx,
-          struct llama_batch   batch) {
+        llama_context * ctx,
+          llama_batch   batch) {
     const int ret = ctx->decode(batch);
     if (ret != 0) {
         LLAMA_LOG_ERROR("%s: failed to decode, ret = %d\n", __func__, ret);
