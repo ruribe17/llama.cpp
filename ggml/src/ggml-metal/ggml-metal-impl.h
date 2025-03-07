@@ -355,7 +355,7 @@ typedef struct {
     int64_t  ne01;
     int64_t  ne02;
     float    scale;
-    float    max_bias; 
+    float    max_bias;
     float    m0;
     float    m1;
     uint32_t n_head_log2;
@@ -414,7 +414,7 @@ typedef struct {
 typedef struct {
     int64_t  ne00;
     uint64_t nb01;
-    uint64_t nb02; 
+    uint64_t nb02;
     int64_t  ne10;
     uint64_t nb10;
     uint64_t nb11;
@@ -510,7 +510,7 @@ typedef struct {
     int32_t  k0;
     int32_t  k1;
     int32_t  s0;
-    int32_t  s1; 
+    int32_t  s1;
     int32_t  p0;
     int32_t  p1;
     int64_t  IH;

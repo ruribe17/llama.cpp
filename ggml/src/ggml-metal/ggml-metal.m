@@ -2187,7 +2187,7 @@ static void ggml_metal_encode_node(
                     /*.nb51 =*/ nb51,
                     /*.nb52 =*/ nb52,
                 };
-                
+
                 [encoder setComputePipelineState:pipeline];
                 [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                 [encoder setBuffer:id_src1 offset:offs_src1 atIndex:1];
@@ -3431,7 +3431,7 @@ static void ggml_metal_encode_node(
                     /*.sf0 =*/ sf0,
                     /*.sf1 =*/ sf1,
                     /*.sf2 =*/ sf2,
-                    /*.sf3 =*/ sf3                    
+                    /*.sf3 =*/ sf3
                 };
 
                 [encoder setComputePipelineState:pipeline];
@@ -3467,7 +3467,7 @@ static void ggml_metal_encode_node(
                     /*.nb2 =*/ nb2,
                     /*.nb3 =*/ nb3
                 };
-                
+
                 [encoder setComputePipelineState:pipeline];
                 [encoder setBuffer:id_src0 offset:offs_src0 atIndex:0];
                 [encoder setBuffer:id_dst  offset:offs_dst  atIndex:1];
@@ -3527,7 +3527,7 @@ static void ggml_metal_encode_node(
                 memcpy(&step,  ((const int32_t *) dst->op_params) + 2, sizeof(float));
 
                 id<MTLComputePipelineState> pipeline = ctx->kernels[GGML_METAL_KERNEL_TYPE_ARANGE_F32].pipeline;
-                
+
                 ggml_metal_kargs_arange args = {
                     /*.ne0 =*/ ne0,
                     /*.start =*/ start,
@@ -4199,7 +4199,7 @@ static void ggml_metal_encode_node(
                 const int64_t parallel_elements = N * OC * OH * OW;
                 const int64_t n_threads = MIN((int64_t)[pipeline maxTotalThreadsPerThreadgroup], parallel_elements);
                 const int64_t n_tg = (parallel_elements + n_threads - 1) / n_threads;
-                
+
                 ggml_metal_kargs_pool_2d args_pool_2d = {
                     /* .k0 = */ k0,
                     /* .k1 = */ k1,
