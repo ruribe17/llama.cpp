@@ -18,23 +18,15 @@ class llama_io_read_i;
 class llama_io_write_i;
 
 struct llama_context {
+    // init scheduler and compute buffers, reserve worst-case graphs
     llama_context(
             const llama_model & model,
                   llama_context_params params);
 
     ~llama_context();
 
-    // init scheduler and compute buffers, reserve worst-case graphs
-    // call once after the context is constructed
-    void init();
-
     void synchronize();
 
-protected:
-    // called by init() to reserve the worst-case graphs
-    void reserve();
-
-public:
     const llama_model & get_model() const;
 
     uint32_t n_ctx()         const;
@@ -92,82 +84,6 @@ public:
     int encode(llama_batch & inp_batch);
     int decode(llama_batch & inp_batch);
 
-protected:
-    //
-    // output
-    //
-
-    // Make sure enough space is available for outputs.
-    // Returns max number of outputs for which space was reserved.
-    int32_t output_reserve(int32_t n_outputs);
-
-    // make the outputs have the same order they had in the user-provided batch
-    // TODO: maybe remove this
-    void output_reorder();
-
-    //
-    // graph
-    //
-
-    int32_t graph_max_nodes() const;
-
-    // zero-out inputs and create the ctx_compute for the compute graph
-    ggml_cgraph * graph_init();
-
-    llm_graph_result_ptr graph_build(
-            ggml_context * ctx,
-             ggml_cgraph * gf,
-      const llama_ubatch & ubatch,
-          llm_graph_type   gtype);
-
-    // returns the result of ggml_backend_sched_graph_compute_async execution
-    enum ggml_status graph_compute(
-            ggml_cgraph * gf,
-                   bool   batched);
-
-    llm_graph_cb graph_get_cb() const;
-
-    ggml_context_ptr ctx_compute;
-
-    // used by kv_self_update()
-private:
-    ggml_tensor * build_rope_shift(
-        ggml_context * ctx0,
-        ggml_tensor * cur,
-        ggml_tensor * shift,
-        ggml_tensor * factors,
-        ggml_backend_buffer * bbuf) const;
-
-    llm_graph_result_ptr build_kv_self_shift(
-            ggml_context * ctx0,
-            ggml_cgraph * gf) const;
-
-    llm_graph_result_ptr build_kv_self_defrag(
-            ggml_context * ctx0,
-            ggml_cgraph * gf) const;
-
-public:
-    //
-    // perf
-    //
-
-    llama_perf_context_data perf_get_data() const;
-    void perf_reset();
-
-protected:
-    // TODO: become private
-    mutable int64_t t_start_us  = 0;
-    mutable int64_t t_load_us   = 0;
-    mutable int64_t t_p_eval_us = 0;
-    mutable int64_t t_eval_us   = 0;
-
-    mutable int64_t t_compute_start_us = 0;
-    mutable int64_t n_queued_tokens    = 0;
-
-    mutable int32_t n_p_eval = 0; // number of tokens in eval calls for the prompt (with batch size > 1)
-    mutable int32_t n_eval   = 0; // number of eval calls
-
-public:
     //
     // state save/load
     //
@@ -204,15 +120,71 @@ public:
      const llama_token * tokens,
                 size_t   n_token_count);
 
-protected:
-    // TODO: read/write adapters
+    //
+    // perf
+    //
+
+    llama_perf_context_data perf_get_data() const;
+    void perf_reset();
+
+private:
+    //
+    // output
+    //
+
+    // Make sure enough space is available for outputs.
+    // Returns max number of outputs for which space was reserved.
+    int32_t output_reserve(int32_t n_outputs);
+
+    // make the outputs have the same order they had in the user-provided batch
+    // TODO: maybe remove this
+    void output_reorder();
+
+    //
+    // graph
+    //
+
+    int32_t graph_max_nodes() const;
+
+    // zero-out inputs and create the ctx_compute for the compute graph
+    ggml_cgraph * graph_init();
+
+    llm_graph_result_ptr graph_build(
+            ggml_context * ctx,
+             ggml_cgraph * gf,
+      const llama_ubatch & ubatch,
+          llm_graph_type   gtype);
+
+    // returns the result of ggml_backend_sched_graph_compute_async execution
+    enum ggml_status graph_compute(
+            ggml_cgraph * gf,
+                   bool   batched);
+
+    llm_graph_cb graph_get_cb() const;
+
+    // used by kv_self_update()
+    ggml_tensor * build_rope_shift(
+        ggml_context * ctx0,
+        ggml_tensor * cur,
+        ggml_tensor * shift,
+        ggml_tensor * factors,
+        ggml_backend_buffer * bbuf) const;
+
+    llm_graph_result_ptr build_kv_self_shift(
+            ggml_context * ctx0,
+            ggml_cgraph * gf) const;
+
+    llm_graph_result_ptr build_kv_self_defrag(
+            ggml_context * ctx0,
+            ggml_cgraph * gf) const;
+
+    // TODO: read/write lora adapters and cvec
     size_t state_write_data(llama_io_write_i & io);
     size_t state_read_data (llama_io_read_i  & io);
 
     size_t state_seq_write_data(llama_io_write_i & io, llama_seq_id seq_id);
     size_t state_seq_read_data (llama_io_read_i  & io, llama_seq_id seq_id);
 
-public:
     //
     // members
     //
@@ -224,16 +196,9 @@ public:
     llama_adapter_loras loras;
     llama_sbatch        sbatch;
 
-    ggml_backend_sched_ptr sched;
-
-    // TODO: these are needed by the cb() method
-    ggml_backend_t backend_cpu = nullptr;
-    std::vector<ggml_backend_ptr> backends;
+    llama_cross cross; // TODO: tmp for handling cross-attention - need something better probably
 
     std::unique_ptr<llama_kv_cache_unified> kv_self;
-
-protected:
-    // TODO: these below likely need some rework in the future, together with the batch-refactoring
 
     // TODO: remove
     bool logits_all = false;
@@ -256,10 +221,12 @@ protected:
 
     std::vector<int32_t> output_ids; // map batch token positions to ids of the logits and embd buffers
 
-    llama_cross cross;
+    ggml_backend_sched_ptr sched;
 
-private:
-    // base functionality - should not leak into derived classes
+    ggml_backend_t backend_cpu = nullptr;
+    std::vector<ggml_backend_ptr> backends;
+
+    ggml_context_ptr ctx_compute;
 
     ggml_threadpool_t threadpool       = nullptr;
     ggml_threadpool_t threadpool_batch = nullptr;
@@ -280,4 +247,16 @@ private:
     ggml_backend_buffer_ptr buf_output;
 
     bool has_evaluated_once = false;
+
+    // perf
+    mutable int64_t t_start_us  = 0;
+    mutable int64_t t_load_us   = 0;
+    mutable int64_t t_p_eval_us = 0;
+    mutable int64_t t_eval_us   = 0;
+
+    mutable int64_t t_compute_start_us = 0;
+    mutable int64_t n_queued_tokens    = 0;
+
+    mutable int32_t n_p_eval = 0; // number of tokens in eval calls for the prompt (with batch size > 1)
+    mutable int32_t n_eval   = 0; // number of eval calls
 };

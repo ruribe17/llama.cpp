@@ -123,8 +123,7 @@ llama_context::llama_context(
         for (auto * dev : model.devices) {
             ggml_backend_t backend = ggml_backend_dev_init(dev, nullptr);
             if (backend == nullptr) {
-                LLAMA_LOG_ERROR("%s: failed to initialize %s backend\n", __func__, ggml_backend_dev_name(dev));
-                throw std::runtime_error("failed to initialize backend");
+                throw std::runtime_error(format("failed to initialize %s backend", ggml_backend_dev_name(dev)));
             }
             backends.emplace_back(backend);
         }
@@ -135,8 +134,7 @@ llama_context::llama_context(
             if (ggml_backend_dev_type(dev) == GGML_BACKEND_DEVICE_TYPE_ACCEL) {
                 ggml_backend_t backend = ggml_backend_dev_init(dev, nullptr);
                 if (backend == nullptr) {
-                    LLAMA_LOG_ERROR("%s: failed to initialize %s backend\n", __func__, ggml_backend_dev_name(dev));
-                    throw std::runtime_error("failed to initialize backend");
+                    throw std::runtime_error(format("failed to initialize %s backend", ggml_backend_dev_name(dev)));
                 }
                 backends.emplace_back(backend);
             }
@@ -145,7 +143,6 @@ llama_context::llama_context(
         // add CPU backend
         backend_cpu = ggml_backend_init_by_type(GGML_BACKEND_DEVICE_TYPE_CPU, nullptr);
         if (backend_cpu == nullptr) {
-            LLAMA_LOG_ERROR("%s: failed to initialize CPU backend\n", __func__);
             throw std::runtime_error("failed to initialize CPU backend");
         }
         backends.emplace_back(backend_cpu);
@@ -168,7 +165,6 @@ llama_context::llama_context(
         {
             // resized during inference when a batch uses more outputs
             if ((uint32_t) output_reserve(params.n_seq_max) < params.n_seq_max) {
-                LLAMA_LOG_ERROR("%s: failed to reserve initial output buffer\n", __func__);
                 throw std::runtime_error("failed to reserve initial output buffer");
             }
 
@@ -178,33 +174,33 @@ llama_context::llama_context(
         }
     }
 
+    // init the memory module
     // TODO: for now, always create a unified KV cache
-    kv_self.reset(static_cast<llama_kv_cache_unified *>(model.create_memory()));
-
-    LLAMA_LOG_DEBUG("%s: n_ctx = %u\n", __func__, cparams.n_ctx);
-
-    cparams.n_ctx = GGML_PAD(cparams.n_ctx, kv_self->get_padding(cparams));
-
-    LLAMA_LOG_DEBUG("%s: n_ctx = %u (padded)\n", __func__, cparams.n_ctx);
-
-    uint32_t kv_size = cparams.n_ctx;
-    ggml_type type_k = params.type_k;
-    ggml_type type_v = params.type_v;
-
-    if (llama_model_is_recurrent(&model)) {
-        // Mamba needs at least as many KV cells as there are sequences kept at any time
-        kv_size = std::max((uint32_t) 1, params.n_seq_max);
-        // it's probably best to keep as much precision as possible for the states
-        type_k = GGML_TYPE_F32; // required by ggml_ssm_conv for Mamba's conv_states
-        type_v = GGML_TYPE_F32; // required by ggml_ssm_scan for Mamba's ssm_states
-    }
-
-    GGML_ASSERT(hparams.n_embd_head_k % ggml_blck_size(type_k) == 0);
-    GGML_ASSERT(hparams.n_embd_head_v % ggml_blck_size(type_v) == 0);
-
     if (!hparams.vocab_only) {
+        kv_self.reset(static_cast<llama_kv_cache_unified *>(model.create_memory()));
+
+        LLAMA_LOG_DEBUG("%s: n_ctx = %u\n", __func__, cparams.n_ctx);
+
+        cparams.n_ctx = GGML_PAD(cparams.n_ctx, kv_self->get_padding(cparams));
+
+        LLAMA_LOG_DEBUG("%s: n_ctx = %u (padded)\n", __func__, cparams.n_ctx);
+
+        uint32_t kv_size = cparams.n_ctx;
+        ggml_type type_k = params.type_k;
+        ggml_type type_v = params.type_v;
+
+        if (llama_model_is_recurrent(&model)) {
+            // Mamba needs at least as many KV cells as there are sequences kept at any time
+            kv_size = std::max((uint32_t) 1, params.n_seq_max);
+            // it's probably best to keep as much precision as possible for the states
+            type_k = GGML_TYPE_F32; // required by ggml_ssm_conv for Mamba's conv_states
+            type_v = GGML_TYPE_F32; // required by ggml_ssm_scan for Mamba's ssm_states
+        }
+
+        GGML_ASSERT(hparams.n_embd_head_k % ggml_blck_size(type_k) == 0);
+        GGML_ASSERT(hparams.n_embd_head_v % ggml_blck_size(type_v) == 0);
+
         if (!kv_self->init(model, cparams, type_k, type_v, kv_size, cparams.offload_kqv)) {
-            LLAMA_LOG_ERROR("%s: llama_kv_cache_init() failed for self-attention cache\n", __func__);
             throw std::runtime_error("failed to initialize self-attention cache");
         }
 
@@ -213,26 +209,14 @@ llama_context::llama_context(
             const size_t memory_size_v = kv_self->size_v_bytes();
 
             LLAMA_LOG_INFO("%s: KV self size  = %7.2f MiB, K (%s): %7.2f MiB, V (%s): %7.2f MiB\n", __func__,
-                      (float)(memory_size_k + memory_size_v) / (1024.0f * 1024.0f),
-                ggml_type_name(type_k), (float)memory_size_k / (1024.0f * 1024.0f),
-                ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f));
+                    (float)(memory_size_k + memory_size_v) / (1024.0f * 1024.0f),
+                    ggml_type_name(type_k), (float)memory_size_k / (1024.0f * 1024.0f),
+                    ggml_type_name(type_v), (float)memory_size_v / (1024.0f * 1024.0f));
         }
     }
-}
 
-llama_context::~llama_context() = default;
-
-void llama_context::init() {
-    LLAMA_LOG_DEBUG("%s: call\n", __func__);
-
-    const auto & hparams = model.hparams;
-
-    if (hparams.vocab_only) {
-        LLAMA_LOG_WARN("%s: model is vocab-only -- no computation will be performed\n", __func__);
-        return;
-    }
-
-    {
+    // init backends
+    if (!hparams.vocab_only) {
         LLAMA_LOG_DEBUG("%s: enumerating backends\n", __func__);
 
         backend_buft.clear();
@@ -298,10 +282,90 @@ void llama_context::init() {
         }
     }
 
-    LLAMA_LOG_DEBUG("%s: calling reserve()\n", __func__);
+    // reserve worst-case graph
+    if (!hparams.vocab_only) {
+        uint32_t n_seqs = 1; // TODO: worst-case number of sequences
+        uint32_t n_tokens = std::min(cparams.n_ctx, cparams.n_ubatch);
 
-    reserve();
+        llama_token token = model.vocab.token_bos(); // not actually used by llama_build_graph, but required to choose between token and embedding inputs graph
+
+        // max number of outputs
+        n_outputs = n_tokens;
+
+        LLAMA_LOG_DEBUG("%s: n_tokens = %d, n_seqs = %d, n_outputs = %d\n", __func__, n_tokens, n_seqs, n_outputs);
+
+        int n_splits_pp = -1;
+        int n_nodes_pp  = -1;
+
+        int n_splits_tg = -1;
+        int n_nodes_tg  = -1;
+
+        // simulate full KV cache
+        kv_self->n = kv_self->size;
+
+        cross.v_embd.clear();
+
+        // reserve pp graph first so that buffers are only allocated once
+        {
+            llama_ubatch ubatch_pp = { true, n_tokens, n_tokens / n_seqs, n_seqs, &token, nullptr, nullptr, nullptr, nullptr, nullptr};
+            auto * gf = graph_init();
+            graph_build(ctx_compute.get(), gf, ubatch_pp, LLM_GRAPH_TYPE_DEFAULT);
+            if (!ggml_backend_sched_reserve(sched.get(), gf)) {
+                throw std::runtime_error("failed to allocate compute pp buffers");
+            }
+
+            n_splits_pp = ggml_backend_sched_get_n_splits(sched.get());
+            n_nodes_pp  = ggml_graph_n_nodes(gf);
+        }
+
+        // reserve with tg graph to get the number of splits and nodes
+        {
+            llama_ubatch ubatch_tg = { true, 1, 1, n_seqs, &token, nullptr, nullptr, nullptr, nullptr, nullptr};
+            auto * gf = graph_init();
+            graph_build(ctx_compute.get(), gf, ubatch_tg, LLM_GRAPH_TYPE_DEFAULT);
+            if (!ggml_backend_sched_reserve(sched.get(), gf)) {
+                throw std::runtime_error("failed to allocate compute tg buffers");
+            }
+            n_splits_tg = ggml_backend_sched_get_n_splits(sched.get());
+            n_nodes_tg  = ggml_graph_n_nodes(gf);
+        }
+
+        // reserve again with pp graph to avoid ggml-alloc reallocations during inference
+        {
+            llama_ubatch ubatch_pp = { true, n_tokens, n_tokens / n_seqs, n_seqs, &token, nullptr, nullptr, nullptr, nullptr, nullptr};
+            auto * gf = graph_init();
+            graph_build(ctx_compute.get(), gf, ubatch_pp, LLM_GRAPH_TYPE_DEFAULT);
+            if (!ggml_backend_sched_reserve(sched.get(), gf)) {
+                throw std::runtime_error("failed to allocate compute pp buffers");
+            }
+        }
+
+        for (size_t i = 0; i < backend_ptrs.size(); ++i) {
+            ggml_backend_t             backend = backend_ptrs[i];
+            ggml_backend_buffer_type_t buft    = backend_buft[i];
+            size_t size = ggml_backend_sched_get_buffer_size(sched.get(), backend);
+            if (size > 1) {
+                LLAMA_LOG_INFO("%s: %10s compute buffer size = %8.2f MiB\n", __func__,
+                        ggml_backend_buft_name(buft),
+                        size / 1024.0 / 1024.0);
+            }
+        }
+
+        if (n_nodes_pp == n_nodes_tg) {
+            LLAMA_LOG_INFO("%s: graph nodes  = %d\n", __func__, n_nodes_pp);
+        } else {
+            LLAMA_LOG_INFO("%s: graph nodes  = %d (with bs=%d), %d (with bs=1)\n", __func__, n_nodes_pp, n_tokens, n_nodes_tg);
+        }
+
+        if (n_splits_pp == n_splits_tg) {
+            LLAMA_LOG_INFO("%s: graph splits = %d\n", __func__, n_splits_pp);
+        } else {
+            LLAMA_LOG_INFO("%s: graph splits = %d (with bs=%d), %d (with bs=1)\n", __func__, n_splits_pp, n_tokens, n_splits_tg);
+        }
+    }
 }
+
+llama_context::~llama_context() = default;
 
 void llama_context::synchronize() {
     ggml_backend_sched_synchronize(sched.get());
@@ -331,90 +395,6 @@ void llama_context::synchronize() {
 
     n_queued_tokens = 0;
     t_compute_start_us = 0;
-}
-
-void llama_context::reserve() {
-    uint32_t n_seqs = 1; // TODO: worst-case number of sequences
-    uint32_t n_tokens = std::min(cparams.n_ctx, cparams.n_ubatch);
-
-    llama_token token = model.vocab.token_bos(); // not actually used by llama_build_graph, but required to choose between token and embedding inputs graph
-
-    // max number of outputs
-    n_outputs = n_tokens;
-
-    LLAMA_LOG_DEBUG("%s: n_tokens = %d, n_seqs = %d, n_outputs = %d\n", __func__, n_tokens, n_seqs, n_outputs);
-
-    int n_splits_pp = -1;
-    int n_nodes_pp  = -1;
-
-    int n_splits_tg = -1;
-    int n_nodes_tg  = -1;
-
-    // simulate full KV cache
-    kv_self->n = kv_self->size;
-
-    cross.v_embd.clear();
-
-    // reserve pp graph first so that buffers are only allocated once
-    {
-        llama_ubatch ubatch_pp = { true, n_tokens, n_tokens / n_seqs, n_seqs, &token, nullptr, nullptr, nullptr, nullptr, nullptr};
-        auto * gf = graph_init();
-        graph_build(ctx_compute.get(), gf, ubatch_pp, LLM_GRAPH_TYPE_DEFAULT);
-        if (!ggml_backend_sched_reserve(sched.get(), gf)) {
-            LLAMA_LOG_ERROR("%s: failed to allocate compute pp buffers\n", __func__);
-            throw std::runtime_error("failed to allocate compute buffers");
-        }
-
-        n_splits_pp = ggml_backend_sched_get_n_splits(sched.get());
-        n_nodes_pp  = ggml_graph_n_nodes(gf);
-    }
-
-    // reserve with tg graph to get the number of splits and nodes
-    {
-        llama_ubatch ubatch_tg = { true, 1, 1, n_seqs, &token, nullptr, nullptr, nullptr, nullptr, nullptr};
-        auto * gf = graph_init();
-        graph_build(ctx_compute.get(), gf, ubatch_tg, LLM_GRAPH_TYPE_DEFAULT);
-        if (!ggml_backend_sched_reserve(sched.get(), gf)) {
-            LLAMA_LOG_ERROR("%s: failed to allocate compute tg buffers\n", __func__);
-            throw std::runtime_error("failed to allocate compute buffers");
-        }
-        n_splits_tg = ggml_backend_sched_get_n_splits(sched.get());
-        n_nodes_tg  = ggml_graph_n_nodes(gf);
-    }
-
-    // reserve again with pp graph to avoid ggml-alloc reallocations during inference
-    {
-        llama_ubatch ubatch_pp = { true, n_tokens, n_tokens / n_seqs, n_seqs, &token, nullptr, nullptr, nullptr, nullptr, nullptr};
-        auto * gf = graph_init();
-        graph_build(ctx_compute.get(), gf, ubatch_pp, LLM_GRAPH_TYPE_DEFAULT);
-        if (!ggml_backend_sched_reserve(sched.get(), gf)) {
-            LLAMA_LOG_ERROR("%s: failed to allocate compute pp buffers\n", __func__);
-            throw std::runtime_error("failed to allocate compute buffers");
-        }
-    }
-
-    for (size_t i = 0; i < backend_ptrs.size(); ++i) {
-        ggml_backend_t             backend = backend_ptrs[i];
-        ggml_backend_buffer_type_t buft    = backend_buft[i];
-        size_t size = ggml_backend_sched_get_buffer_size(sched.get(), backend);
-        if (size > 1) {
-            LLAMA_LOG_INFO("%s: %10s compute buffer size = %8.2f MiB\n", __func__,
-                    ggml_backend_buft_name(buft),
-                    size / 1024.0 / 1024.0);
-        }
-    }
-
-    if (n_nodes_pp == n_nodes_tg) {
-        LLAMA_LOG_INFO("%s: graph nodes  = %d\n", __func__, n_nodes_pp);
-    } else {
-        LLAMA_LOG_INFO("%s: graph nodes  = %d (with bs=%d), %d (with bs=1)\n", __func__, n_nodes_pp, n_tokens, n_nodes_tg);
-    }
-
-    if (n_splits_pp == n_splits_tg) {
-        LLAMA_LOG_INFO("%s: graph splits = %d\n", __func__, n_splits_pp);
-    } else {
-        LLAMA_LOG_INFO("%s: graph splits = %d (with bs=%d), %d (with bs=1)\n", __func__, n_splits_pp, n_tokens, n_splits_tg);
-    }
 }
 
 const llama_model & llama_context::get_model() const {
@@ -1090,11 +1070,8 @@ int llama_context::encode(llama_batch & inp_batch) {
             case LLAMA_POOLING_TYPE_NONE:
                 {
                     // extract token embeddings
-                    GGML_ASSERT(embd != nullptr);
-                    float * embd_out = embd;
-
                     GGML_ASSERT(n_tokens*n_embd <= (int64_t) embd_size);
-                    ggml_backend_tensor_get_async(backend_embd, t_embd, embd_out, 0, n_tokens*n_embd*sizeof(float));
+                    ggml_backend_tensor_get_async(backend_embd, t_embd, embd, 0, n_tokens*n_embd*sizeof(float));
                 } break;
             case LLAMA_POOLING_TYPE_MEAN:
             case LLAMA_POOLING_TYPE_CLS:
@@ -1134,13 +1111,13 @@ int llama_context::encode(llama_batch & inp_batch) {
     ggml_backend_sched_reset(sched.get());
 
     // TODO: hacky solution
-    if (model.arch == LLM_ARCH_T5) {
+    if (model.arch == LLM_ARCH_T5 && t_embd) {
         //cross.t_embd = t_embd;
 
         cross.n_embd = t_embd->ne[0];
         cross.n_enc  = t_embd->ne[1];
         cross.v_embd.resize(cross.n_embd*cross.n_enc);
-        memcpy(cross.v_embd.data(), embd, cross.n_embd*cross.n_enc*sizeof(float));
+        memcpy(cross.v_embd.data(), embd, ggml_nbytes(t_embd));
 
         // remember the sequence ids used during the encoding - needed for cross attention later
         cross.seq_ids_enc.resize(n_tokens);
@@ -1642,7 +1619,7 @@ llm_graph_result_ptr llama_context::graph_build(
                 /*.cvec        =*/ &cvec,
                 /*.loras       =*/ &loras,
                 /*.memory      =*/ kv_self.get(),
-                /*.cross       =*/ gtype == LLM_GRAPH_TYPE_ENCODER ? nullptr : &cross,
+                /*.cross       =*/ &cross,
                 /*.n_outputs   =*/ n_outputs,
                 /*.cb          =*/ graph_get_cb(),
             }, gf, gtype);
@@ -1706,29 +1683,6 @@ llm_graph_cb llama_context::graph_get_cb() const {
             }
         }
     };
-}
-
-//
-// perf
-//
-
-llama_perf_context_data llama_context::perf_get_data() const {
-    llama_perf_context_data data = {};
-
-    data.t_start_ms  = 1e-3 * t_start_us;
-    data.t_load_ms   = 1e-3 * t_load_us;
-    data.t_p_eval_ms = 1e-3 * t_p_eval_us;
-    data.t_eval_ms   = 1e-3 * t_eval_us;
-    data.n_p_eval    = std::max(1, n_p_eval);
-    data.n_eval      = std::max(1, n_eval);
-
-    return data;
-}
-
-void llama_context::perf_reset() {
-    t_start_us  = ggml_time_us();
-    t_eval_us   = n_eval = 0;
-    t_p_eval_us = n_p_eval = 0;
 }
 
 //
@@ -2229,6 +2183,29 @@ size_t llama_context::state_seq_read_data(llama_io_read_i & io, llama_seq_id seq
 }
 
 //
+// perf
+//
+
+llama_perf_context_data llama_context::perf_get_data() const {
+    llama_perf_context_data data = {};
+
+    data.t_start_ms  = 1e-3 * t_start_us;
+    data.t_load_ms   = 1e-3 * t_load_us;
+    data.t_p_eval_ms = 1e-3 * t_p_eval_us;
+    data.t_eval_ms   = 1e-3 * t_eval_us;
+    data.n_p_eval    = std::max(1, n_p_eval);
+    data.n_eval      = std::max(1, n_eval);
+
+    return data;
+}
+
+void llama_context::perf_reset() {
+    t_start_us  = ggml_time_us();
+    t_eval_us   = n_eval = 0;
+    t_p_eval_us = n_p_eval = 0;
+}
+
+//
 // interface implementation
 //
 
@@ -2300,11 +2277,14 @@ llama_context * llama_init_from_model(
         return nullptr;
     }
 
-    auto * ctx = new llama_context(*model, params);
+    try {
+        auto * ctx = new llama_context(*model, params);
+        return ctx;
+    } catch (const std::exception & err) {
+        LLAMA_LOG_ERROR("%s: failed to initialize the context: %s\n", __func__, err.what());
+    }
 
-    ctx->init();
-
-    return ctx;
+    return nullptr;
 }
 
 // deprecated
