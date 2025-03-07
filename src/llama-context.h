@@ -102,8 +102,6 @@ struct llama_context {
     struct ggml_tensor * inp_mean;          // F32 [n_batch, n_batch]
     struct ggml_tensor * inp_cls;           // I32 [n_batch]
     struct ggml_tensor * inp_s_copy;        // I32 [kv_size]
-    struct ggml_tensor * inp_s_mask;        // F32 [1, n_kv]
-    struct ggml_tensor * inp_s_seq;         // I32 [n_kv, n_batch]
     struct ggml_tensor * inp_pos_bucket;    // I32 [n_batch|n_kv, n_batch]
     struct ggml_tensor * inp_embd_enc;      // F32 [n_embd, n_outputs_enc]
     struct ggml_tensor * inp_KQ_mask_cross; // F32 [n_outputs_enc, n_batch]

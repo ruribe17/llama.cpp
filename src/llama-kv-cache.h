@@ -47,6 +47,10 @@ struct llama_kv_cache {
     // computed before each graph build
     uint32_t n = 0;
 
+    // first zero-ed state
+    // NOTE: only used by recurrent models
+    int32_t rs_z = -1;
+
     ggml_type type_k = GGML_TYPE_F16;
     ggml_type type_v = GGML_TYPE_F16;
 

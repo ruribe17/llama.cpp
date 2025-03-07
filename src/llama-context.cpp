@@ -356,24 +356,6 @@ void llama_set_inputs(llama_context & lctx, const llama_ubatch & ubatch) {
     if (kv_self.recurrent) {
         const int64_t n_kv = kv_self.n;
 
-        if (lctx.inp_s_mask) {
-            GGML_ASSERT(ggml_backend_buffer_is_host(lctx.inp_s_mask->buffer));
-            float * data = (float *) lctx.inp_s_mask->data;
-
-            // clear unused states
-            for (int i = 0; i < n_kv; ++i) {
-                const uint32_t  cell_id = i + kv_self.head;
-                llama_kv_cell & kv_cell = lctx.kv_self.cells[cell_id];
-
-                data[i] = (float) (kv_cell.src >= 0);
-
-                // only clear once
-                if (kv_cell.src < 0) {
-                    kv_cell.src = cell_id;
-                }
-            }
-        }
-
         if (lctx.inp_s_copy) {
             GGML_ASSERT(ggml_backend_buffer_is_host(lctx.inp_s_copy->buffer));
             int32_t * data = (int32_t *) lctx.inp_s_copy->data;
@@ -383,8 +365,12 @@ void llama_set_inputs(llama_context & lctx, const llama_ubatch & ubatch) {
                 const uint32_t  cell_id = i + kv_self.head;
                 llama_kv_cell & kv_cell = lctx.kv_self.cells[cell_id];
 
-                // prevent out-of-bound sources
-                if (kv_cell.src < 0 || (uint32_t) kv_cell.src >= kv_self.size) {
+                if (kv_cell.src < 0) {
+                    GGML_ASSERT(kv_self.rs_z >= 0); // Need a valid zero-ed cell as a source
+                    kv_cell.src = kv_self.rs_z;
+                }
+                if ((uint32_t) kv_cell.src >= kv_self.size) {
+                    // ignore out-of-bound sources
                     kv_cell.src = cell_id;
                 }
 

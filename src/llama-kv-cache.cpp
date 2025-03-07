@@ -32,7 +32,7 @@ bool llama_kv_cache_init(
 
     cache.recurrent = llama_model_is_recurrent(&model);
     cache.v_trans   = !cache.recurrent && !cparams.flash_attn;
-    cache.can_shift = !cache.recurrent && model.arch != LLM_ARCH_DEEPSEEK2; // not supported due to MLA
+    cache.can_shift = model.arch != LLM_ARCH_DEEPSEEK2; // not supported due to MLA
 
     LLAMA_LOG_INFO("%s: kv_size = %d, offload = %d, type_k = '%s', type_v = '%s', n_layer = %d, can_shift = %d\n",
             __func__, kv_size, offload, ggml_type_name(type_k), ggml_type_name(type_v), n_layer, cache.can_shift);
@@ -274,6 +274,15 @@ struct llama_kv_cache_slot_info llama_kv_cache_find_slot(
                 const llama_seq_id seq_id = ubatch.seq_id[s][j];
                 cell.seq_id.insert(seq_id);
                 cache.cells[seq_id].tail = cell_id;
+            }
+        }
+
+        // Find first to-be-cleared cell
+        cache.rs_z = -1;
+        for (int i = min; i <= max; ++i) {
+            if (cache.cells[i].src == -1) {
+                cache.rs_z = i;
+                break;
             }
         }
 
