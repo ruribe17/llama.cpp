@@ -54,6 +54,14 @@ if (Vulkan_FOUND)
     target_link_libraries(ggml-vulkan PRIVATE Vulkan::Vulkan)
     target_include_directories(ggml-vulkan PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
+    # Also link to ittnotify when we're using it
+    find_package(ittnotify)
+    message("-- ittnotify found:" ${ittnotify_FOUND})
+    if (${ittnotify_FOUND})
+        target_include_directories(ggml-vulkan PRIVATE ${ittnotify_INCLUDE_DIRS})
+        target_link_libraries(ggml-vulkan PRIVATE ${ittnotify_LIBRARIES})
+    endif()
+
     # Workaround to the "can't dereference invalidated vector iterator" bug in clang-cl debug build
     # Posssibly relevant: https://stackoverflow.com/questions/74748276/visual-studio-no-displays-the-correct-length-of-stdvector
     if (MSVC AND CMAKE_CXX_COMPILER_ID STREQUAL "Clang")

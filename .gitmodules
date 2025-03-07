@@ -2,5 +2,5 @@
 	path = ggml/src/ggml-kompute/kompute
 	url = https://github.com/nomic-ai/kompute.git
 [submodule "ittapi"]
-	path = external/ittapi
+	path = ggml/external/ittapi
 	url = https://github.com/intel/ittapi.git

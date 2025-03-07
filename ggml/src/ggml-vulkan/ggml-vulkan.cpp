@@ -23,6 +23,7 @@
 #include <mutex>
 #include <future>
 #include <thread>
+#include <ittnotify.h>
 
 #include "ggml-impl.h"
 #include "ggml-backend-impl.h"
@@ -57,6 +58,9 @@
 #else
 #define VK_LOG_DEBUG(msg) ((void) 0)
 #endif // GGML_VULKAN_DEBUG
+
+__itt_domain* g_domain = __itt_domain_create("Vulkan");
+__itt_string_handle* g_compute_forward = __itt_string_handle_create("compute_forward");
 
 struct ggml_backend_vk_context;
 
@@ -7699,6 +7703,7 @@ static bool ggml_vk_compute_forward(ggml_backend_vk_context * ctx, ggml_tensor *
         use_fence = true;
     }
 
+    __itt_task_begin(g_domain, __itt_null, __itt_null, g_compute_forward);
     // Only run if ctx hasn't been submitted yet
     if (!subctx->seqs.empty()) {
 #ifdef GGML_VULKAN_CHECK_RESULTS
@@ -7732,6 +7737,7 @@ static bool ggml_vk_compute_forward(ggml_backend_vk_context * ctx, ggml_tensor *
         subctx->out_memcpys.clear();
     }
 
+    __itt_task_end(g_domain);
     return true;
 }
 
