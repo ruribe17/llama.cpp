@@ -125,6 +125,9 @@ static void print_usage(int, char ** argv) {
 }
 
 int main(int argc, char ** argv) {
+    const int n_parallel = 1;
+    const int n_predict  = 4096;
+
     std::string prompt;
     std::string model_path;
     std::string vocoder_path;
@@ -180,4 +183,37 @@ int main(int argc, char ** argv) {
         print_usage(argc, argv);
         return 1;
     }
+
+    llama_model_params model_params = llama_model_default_params();
+
+    llama_model * model = llama_model_load_from_file(model_path.c_str(), model_params);
+    if (!model) {
+        fprintf(stderr, "%s: error: failed to load the model\n", __func__);
+        return 1;
+    }
+
+    llama_model * vocoder = llama_model_load_from_file(vocoder_path.c_str(), model_params);
+    if (!vocoder) {
+        fprintf(stderr, "%s: error: failed to load the vocoder\n", __func__);
+        return 1;
+    }
+
+    llama_context_params ctx_params = llama_context_default_params();
+    ctx_params.n_ctx = 8192;
+    ctx_params.n_batch = 8192;
+    
+    llama_context * ctx = llama_init_from_model(model, ctx_params);
+    if (!ctx) {
+        fprintf(stderr, "%s: error: failed to create the llama_context\n", __func__);
+        return 1;
+    }
+
+    ctx_params.embeddings = true;
+
+    llama_context * ctx_vocoder = llama_init_from_model(vocoder, ctx_params);
+    if (!ctx_vocoder) {
+        fprintf(stderr, "%s: error: failed to create the vocoder llama_context\n", __func__);
+        return 1;
+    }
+    
 }
