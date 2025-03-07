@@ -203,8 +203,7 @@ static __global__ void mul_mat_vec_q(
     }
 }
 
-static std::pair<dim3, dim3> calc_launch_params(const int ncols_y, const int nrows_x, const int warp_size, const mmvq_parameter_table_id table_id)
-{
+static std::pair<dim3, dim3> calc_launch_params(const int ncols_y, const int nrows_x, const int warp_size, const mmvq_parameter_table_id table_id) {
     const int64_t nblocks = (nrows_x + calc_rows_per_block(ncols_y, table_id) - 1) / calc_rows_per_block(ncols_y, table_id);
     const dim3 block_nums(nblocks, 1, 1);
     const dim3 block_dims(warp_size, calc_nwarps(ncols_y, table_id), 1);
