@@ -297,8 +297,17 @@ static int ggml_backend_opencl_n_devices = 0;
 struct ProfilingInfo {
     std::string op_name;
     std::string kernel_name;
-    // Kernel execution time in nanoseconds.
-    cl_ulong duration_ns;
+    // For the times below, see spec for clGetEventProfilingInfo
+    // The time kernel spent in cmd queue - SUBMIT - QUEUED
+    cl_ulong cmd_queued_duration_ns;
+    // The time kernel spent for submission - START - SUBMIT
+    cl_ulong cmd_submit_duration_ns;
+    // Kernel execution time in nanoseconds - END - START
+    cl_ulong cmd_duration_ns;
+    // The time for the kernel to complete - COMPLETE - END
+    cl_ulong cmd_complete_duration_ns;
+    // Total time to finish the kernel - COMPELTE - QUEUED
+    cl_ulong cmd_total_duration_ns;
     // Global and local work sizes.
     size_t global_size[3];
     size_t local_size[3];
@@ -904,11 +913,16 @@ static void ggml_cl2_free(void) {
     }
 
     float total_kernel_time = 0;
-    fprintf(fperf, "op name, kernel name, duration (ms), global size, local size, output size\n");
+    fprintf(fperf, "op name, kernel name, queued duration (ms), submit duration(ms), exec duration (ms), complete duration (ms), total duration (ms), global size, local size, output size\n");
     for (const ProfilingInfo & info : g_profiling_info) {
-        total_kernel_time += info.duration_ns/1.e6f;
-        fprintf(fperf, "%s,%s,%f,%zux%zux%zu,%zux%zux%zu,%zux%zux%zux%zu\n",
-            info.op_name.c_str(), info.kernel_name.c_str(), info.duration_ns/1.e6f,
+        total_kernel_time += info.cmd_duration_ns/1.e6f;
+        fprintf(fperf, "%s,%s,%f,%f,%f,%f,%f,%zux%zux%zu,%zux%zux%zu,%zux%zux%zux%zu\n",
+            info.op_name.c_str(), info.kernel_name.c_str(),
+            info.cmd_queued_duration_ns/1.e6f,
+            info.cmd_submit_duration_ns/1.e6f,
+            info.cmd_duration_ns/1.e6f,
+            info.cmd_complete_duration_ns/1.e6f,
+            info.cmd_total_duration_ns/1.e6f,
             info.global_size[0], info.global_size[1], info.global_size[2],
             info.local_size[0], info.local_size[2], info.local_size[2],
             info.output_size[0], info.output_size[1], info.output_size[2], info.output_size[3]);
@@ -2062,23 +2076,39 @@ static void dump_tensor(ggml_backend_t backend, const struct ggml_tensor * tenso
 // Profiling utility
 //------------------------------------------------------------------------------
 #ifdef GGML_OPENCL_PROFILING
-void populateProfilingInfo(
+static void populateProfilingInfo(
         ProfilingInfo& info, cl_event evt, cl_kernel kernel,
         size_t global_size[3], size_t local_size[3],
         const ggml_tensor * tensor) {
-    cl_ulong start;
-    cl_ulong end;
+    cl_ulong cmd_queued;
+    cl_ulong cmd_submit;
+    cl_ulong cmd_start;
+    cl_ulong cmd_end;
+    cl_ulong cmd_complete;
+
     CL_CHECK(clWaitForEvents(1, &evt));
     CL_CHECK(clGetEventProfilingInfo(
-        evt, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &start, NULL));
+        evt, CL_PROFILING_COMMAND_QUEUED, sizeof(cl_ulong), &cmd_queued, NULL));
     CL_CHECK(clGetEventProfilingInfo(
-        evt, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &end, NULL));
+        evt, CL_PROFILING_COMMAND_SUBMIT, sizeof(cl_ulong), &cmd_submit, NULL));
+    CL_CHECK(clGetEventProfilingInfo(
+        evt, CL_PROFILING_COMMAND_START, sizeof(cl_ulong), &cmd_start, NULL));
+    CL_CHECK(clGetEventProfilingInfo(
+        evt, CL_PROFILING_COMMAND_END, sizeof(cl_ulong), &cmd_end, NULL));
+    CL_CHECK(clGetEventProfilingInfo(
+        evt, CL_PROFILING_COMMAND_COMPLETE, sizeof(cl_ulong), &cmd_complete, NULL));
+    CL_CHECK(clReleaseEvent(evt));
 
     char kernel_name[512];
     CL_CHECK(clGetKernelInfo(kernel, CL_KERNEL_FUNCTION_NAME,
         sizeof(kernel_name), kernel_name, NULL));
 
-    info.duration_ns = end - start;
+    info.cmd_queued_duration_ns     = cmd_submit    - cmd_queued;
+    info.cmd_submit_duration_ns     = cmd_start     - cmd_submit;
+    info.cmd_duration_ns            = cmd_end       - cmd_start;
+    info.cmd_complete_duration_ns   = cmd_complete  - cmd_end;
+    info.cmd_total_duration_ns      = cmd_complete  - cmd_queued;
+
     info.op_name = tensor->name;
     info.kernel_name = kernel_name;
     info.local_size[0]  = local_size[0];
