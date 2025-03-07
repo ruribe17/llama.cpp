@@ -62,7 +62,11 @@
 
 __itt_domain* g_domain = __itt_domain_create("Vulkan");
 __itt_string_handle* g_compute_forward = __itt_string_handle_create("compute_forward");
-std::vector<int64_t> g_duration_list;
+struct ComputeLog {
+    std::string name;
+    int64_t     duration;
+};
+std::vector<ComputeLog> g_duration_list;
 
 struct ggml_backend_vk_context;
 
@@ -7743,11 +7747,14 @@ static bool ggml_vk_compute_forward(ggml_backend_vk_context * ctx, ggml_tensor *
 
     __itt_task_end(g_domain);
     auto end = std::chrono::high_resolution_clock::now();
-    auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
-    g_duration_list.push_back(msec);
-    std::cout
-        << "ggml_vk_compute_forward(" << tensor << ", name=" << tensor->name << ", op=" << ggml_op_name(tensor->op) << ", type=" << tensor->type << ", ne0=" << tensor->ne[0] << ", ne1=" << tensor->ne[1] << ", ne2=" << tensor->ne[2] << ", ne3=" << tensor->ne[3] << ", nb0=" << tensor->nb[0] << ", nb1=" << tensor->nb[1] << ", nb2=" << tensor->nb[2] << ", nb3=" << tensor->nb[3] << ", view_src=" << tensor->view_src << ", view_offs=" << tensor->view_offs
-        << " : " << msec << " ms" << std::endl;
+    auto usec = std::chrono::duration_cast<std::chrono::microseconds>(end-start).count();
+    std::stringstream ss;
+    ss << "ggml_vk_compute_forward(" << tensor << ", name=" << tensor->name << ", op=" << ggml_op_name(tensor->op)
+       << ", type=" << tensor->type << ", ne0=" << tensor->ne[0] << ", ne1=" << tensor->ne[1]
+       << ", ne2=" << tensor->ne[2] << ", ne3=" << tensor->ne[3] << ", nb0=" << tensor->nb[0]
+       << ", nb1=" << tensor->nb[1] << ", nb2=" << tensor->nb[2] << ", nb3=" << tensor->nb[3]
+       << ", view_src=" << tensor->view_src << ", view_offs=" << tensor->view_offs << ")";
+    g_duration_list.push_back({ss.str(), usec});
     return true;
 }
 
@@ -8061,13 +8068,9 @@ static void ggml_backend_vk_free(ggml_backend_t backend) {
     ggml_backend_vk_context * ctx = (ggml_backend_vk_context *)backend->context;
     VK_LOG_DEBUG("ggml_backend_vk_free(" << ctx->name << ")");
 
-    auto maxit = std::max_element(g_duration_list.begin(), g_duration_list.end());
-    auto minit = std::min_element(g_duration_list.begin(), g_duration_list.end());
-    std::cout
-        << "Max: " << *maxit << " ms "
-        << "Min: " << *minit << " ms"
-        << std::endl;
-
+    for (const auto& l : g_duration_list) {
+        std::cout << l.name << ": " << l.duration << " usec" << std::endl;
+    }
     ggml_vk_cleanup(ctx);
 
     delete ctx;
