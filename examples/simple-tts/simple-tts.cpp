@@ -216,4 +216,20 @@ int main(int argc, char ** argv) {
         return 1;
     }
     
+    std::vector<llama_sampler> samplers(n_parallel);
+    for (int i = 0; i < n_parallel; ++i) {
+        llama_sampler * smpl = &samplers[i];
+        smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
+        llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1));
+        llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.8f));
+        llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+    }
+
+    outetts_version tts_version = get_tts_version(model);
+
+    std::string audio_text = audio_text_from_speaker(speaker, tts_version);
+    std::string audio_data = audio_data_from_speaker(speaker, tts_version);
+
+    std::vector<llama_token> codes;
+    std::vector<llama_token> guide_tokens;
 }
