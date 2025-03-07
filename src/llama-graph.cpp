@@ -313,7 +313,7 @@ void llm_graph_input_cross_embd::set_input(const llama_ubatch * ubatch) {
     }
 }
 
-void llm_graph_input_attn_base::set_input(const llama_ubatch * ubatch) {
+void llm_graph_input_attn_no_cache::set_input(const llama_ubatch * ubatch) {
     if (kq_mask) {
         if (cparams.causal_attn) {
             const int64_t n_kv         = ubatch->n_tokens;
@@ -400,7 +400,7 @@ void llm_graph_input_attn_base::set_input(const llama_ubatch * ubatch) {
     }
 }
 
-void llm_graph_input_attn_kv_self::set_input(const llama_ubatch * ubatch) {
+void llm_graph_input_attn_kv_unified::set_input(const llama_ubatch * ubatch) {
     if (self_kq_mask || self_kq_mask_swa) {
         // NOTE: hparams.causal_attn indicates the model is capable of generation and uses the kv cache.
         if (cparams.causal_attn) {
@@ -523,9 +523,7 @@ void llm_graph_input_attn_kv_self::set_input(const llama_ubatch * ubatch) {
     }
 }
 
-void llm_graph_input_attn_dec::set_input(const llama_ubatch * ubatch) {
-    inp_kv_self->set_input(ubatch);
-
+void llm_graph_input_attn_cross::set_input(const llama_ubatch * ubatch) {
     if (cross_kq_mask) {
         const int64_t n_enc    = cross_kq_mask->ne[0];
         const int64_t n_tokens = ubatch->n_tokens;
@@ -1066,7 +1064,6 @@ ggml_tensor * llm_graph_context::build_inp_s_copy() const {
     auto & cur = inp->s_copy;
 
     cur = ggml_new_tensor_1d(ctx0, GGML_TYPE_I32, n_kv);
-    //cb(cur, "inp_s_copy", -1);
     ggml_set_input(cur);
 
     res->add_input(std::move(inp));
@@ -1084,7 +1081,6 @@ ggml_tensor * llm_graph_context::build_inp_s_mask() const {
     auto & cur = inp->s_mask;
 
     cur = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, 1, n_kv);
-    //cb(cur, "inp_s_mask", -1);
     ggml_set_input(cur);
 
     res->add_input(std::move(inp));
@@ -1151,15 +1147,11 @@ ggml_tensor * llm_graph_context::build_pos_bias(ggml_tensor * pos_bucket, ggml_t
     cb(pos_bucket_1d, "pos_bucket_1d", -1);
 
     ggml_tensor * pos_bias = ggml_get_rows(ctx0, attn_rel_b, pos_bucket_1d);
-    cb(pos_bias, "pos_bias", -1);
 
     pos_bias = ggml_reshape_3d(ctx0, pos_bias, pos_bias->ne[0], pos_bucket->ne[0], pos_bucket->ne[1]);
-    cb(pos_bias, "pos_bias", -1);
+    pos_bias = ggml_permute   (ctx0, pos_bias, 2, 0, 1, 3);
+    pos_bias = ggml_cont      (ctx0, pos_bias);
 
-    pos_bias = ggml_permute(ctx0, pos_bias, 2, 0, 1, 3);
-    cb(pos_bias, "pos_bias", -1);
-
-    pos_bias = ggml_cont(ctx0, pos_bias);
     cb(pos_bias, "pos_bias", -1);
 
     return pos_bias;
@@ -1257,26 +1249,21 @@ ggml_tensor * llm_graph_context::build_attn_mha(
     return cur;
 }
 
-llm_graph_input_attn_base * llm_graph_context::build_attn_inp_base(
-                      bool   causal,
-                      bool   swa) const {
-    auto inp = std::make_unique<llm_graph_input_attn_base>(hparams, cparams);
+llm_graph_input_attn_no_cache * llm_graph_context::build_attn_inp_no_cache() const {
+    auto inp = std::make_unique<llm_graph_input_attn_no_cache>(hparams, cparams);
 
     // note: there is no KV cache, so the number of KV values is equal to the number of tokens in the batch
-    GGML_UNUSED(causal);
-    GGML_UNUSED(swa);
-
     inp->kq_mask = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_tokens, GGML_PAD(n_tokens, GGML_KQ_MASK_PAD));
     //cb(inp_kq_mask, "KQ_mask", -1);
     ggml_set_input(inp->kq_mask);
 
     inp->kq_mask_cnv = cparams.flash_attn ? ggml_cast(ctx0, inp->kq_mask, GGML_TYPE_F16) : inp->kq_mask;
 
-    return (llm_graph_input_attn_base *) res->add_input(std::move(inp));
+    return (llm_graph_input_attn_no_cache *) res->add_input(std::move(inp));
 }
 
 ggml_tensor * llm_graph_context::build_attn(
-        llm_graph_input_attn_base * inp,
+        llm_graph_input_attn_no_cache * inp,
         ggml_cgraph * gf,
         ggml_tensor * wo,
         ggml_tensor * wo_b,
@@ -1324,12 +1311,12 @@ ggml_tensor * llm_graph_context::build_attn(
     return cur;
 }
 
-llm_graph_input_attn_kv_self * llm_graph_context::build_attn_inp_kv_self(
+llm_graph_input_attn_kv_unified * llm_graph_context::build_attn_inp_kv_unified(
                 bool   causal,
                 bool   swa) const {
     const llama_kv_cache_unified * kv_self = static_cast<const llama_kv_cache_unified *>(memory);
 
-    auto inp = std::make_unique<llm_graph_input_attn_kv_self>(hparams, cparams, kv_self);
+    auto inp = std::make_unique<llm_graph_input_attn_kv_unified>(hparams, cparams, kv_self);
 
     const auto n_kv = kv_self->n;
 
@@ -1353,11 +1340,11 @@ llm_graph_input_attn_kv_self * llm_graph_context::build_attn_inp_kv_self(
         inp->self_kq_mask_swa_cnv = cparams.flash_attn ? ggml_cast(ctx0, inp->self_kq_mask_swa, GGML_TYPE_F16) : inp->self_kq_mask_swa;
     }
 
-    return (llm_graph_input_attn_kv_self *) res->add_input(std::move(inp));
+    return (llm_graph_input_attn_kv_unified *) res->add_input(std::move(inp));
 }
 
 ggml_tensor * llm_graph_context::build_attn(
-        llm_graph_input_attn_kv_self * inp,
+        llm_graph_input_attn_kv_unified * inp,
         ggml_cgraph * gf,
         ggml_tensor * wo,
         ggml_tensor * wo_b,
@@ -1495,12 +1482,8 @@ ggml_tensor * llm_graph_context::build_attn(
     return cur;
 }
 
-llm_graph_input_attn_dec * llm_graph_context::build_attn_inp_dec(
-                    bool   causal,
-                    bool   swa) const {
-    auto * inp_kv_self = build_attn_inp_kv_self(causal, swa);
-
-    auto inp = std::make_unique<llm_graph_input_attn_dec>(inp_kv_self, cross);
+llm_graph_input_attn_cross * llm_graph_context::build_attn_inp_cross() const {
+    auto inp = std::make_unique<llm_graph_input_attn_cross>(cross);
 
     const int32_t n_enc = !cross->v_embd.empty() ? cross->n_enc : hparams.n_ctx_train;
 
@@ -1509,11 +1492,11 @@ llm_graph_input_attn_dec * llm_graph_context::build_attn_inp_dec(
 
     inp->cross_kq_mask_cnv = cparams.flash_attn ? ggml_cast(ctx0, inp->cross_kq_mask, GGML_TYPE_F16) : inp->cross_kq_mask;
 
-    return (llm_graph_input_attn_dec *) res->add_input(std::move(inp));
+    return (llm_graph_input_attn_cross *) res->add_input(std::move(inp));
 }
 
 ggml_tensor * llm_graph_context::build_attn(
-        llm_graph_input_attn_dec * inp,
+        llm_graph_input_attn_cross * inp,
         ggml_cgraph * gf,
         ggml_tensor * wo,
         ggml_tensor * wo_b,
