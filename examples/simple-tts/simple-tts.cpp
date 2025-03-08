@@ -586,12 +586,11 @@ int main(int argc, char ** argv) {
         return 1;
     }
     
-    std::vector<llama_sampler> samplers(n_parallel);
+    std::vector<llama_sampler *> smpl(n_parallel);
     for (int i = 0; i < n_parallel; ++i) {
-        llama_sampler * smpl = &samplers[i];
-        smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-        llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
-        llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
+        smpl[i] = llama_sampler_chain_init(llama_sampler_chain_default_params());
+        llama_sampler_chain_add(smpl[i], llama_sampler_init_greedy());
+        llama_sampler_chain_add(smpl[i], llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
     }
 
     outetts_version tts_version = get_tts_version(model);
@@ -664,7 +663,7 @@ int main(int argc, char ** argv) {
                 continue;
             }
 
-            llama_token new_token_id = llama_sampler_sample(&samplers[i], ctx, i_batch[i]);
+            llama_token new_token_id = llama_sampler_sample(smpl[i], ctx, i_batch[i]);
 
             //guide tokens help prevent hallucinations by forcing the TTS to use the correct word
             if (!guide_tokens.empty() && next_token_uses_guide_token && !llama_vocab_is_control(vocab, new_token_id) && !llama_vocab_is_eog(vocab, new_token_id)) {
@@ -676,7 +675,7 @@ int main(int argc, char ** argv) {
             //this is the token id that always precedes a new word
             next_token_uses_guide_token = (new_token_id == 198);
 
-            llama_sampler_accept(&samplers[i], new_token_id);
+            llama_sampler_accept(smpl[i], new_token_id);
 
             codes.push_back(new_token_id);
 
