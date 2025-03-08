@@ -322,6 +322,196 @@ void batch_add(struct llama_batch & batch, llama_token id,llama_pos pos, const s
     batch.n_tokens++;
 }
 
+static void save_wav16(const std::string & fname, const std::vector<float> & data, int sample_rate) {
+    std::ofstream file(fname, std::ios::binary);
+    if (!file) {
+        fprintf(stderr, "%s: Failed to open file '%s' for writing", __func__, fname.c_str());
+        return;
+    }
+
+    wav_header header;
+    header.sample_rate = sample_rate;
+    header.byte_rate = header.sample_rate * header.num_channels * (header.bits_per_sample / 8);
+    header.block_align = header.num_channels * (header.bits_per_sample / 8);
+    header.data_size = data.size() * (header.bits_per_sample / 8);
+    header.chunk_size = 36 + header.data_size;
+
+    file.write(reinterpret_cast<const char*>(&header), sizeof(header));
+
+    for (const auto & sample : data) {
+        int16_t pcm_sample = static_cast<int16_t>(std::clamp(sample * 32767.0, -32768.0, 32767.0));
+        file.write(reinterpret_cast<const char*>(&pcm_sample), sizeof(pcm_sample));
+    }
+
+    file.close();
+}
+
+static void fill_hann_window(int length, bool periodic, float * output) {
+    int offset = -1;
+    if (periodic) {
+        offset = 0;
+    }
+    for (int i = 0; i < length; i++) {
+        output[i] = 0.5 * (1.0 - cosf((2.0 * M_PI * i) / (length + offset)));
+    }
+}
+
+// very poor-man fft
+static void twiddle(float * real, float * imag, int k, int N) {
+    float angle = 2 * M_PI * k / N;
+    *real = cos(angle);
+    *imag = sin(angle);
+}
+
+static void irfft(int n, const float * inp_cplx, float * out_real) {
+    int N = n / 2 + 1;
+
+    std::vector<float> real_input(N);
+    std::vector<float> imag_input(N);
+    for (int i = 0; i < N; ++i) {
+        real_input[i] = inp_cplx[2 * i];
+        imag_input[i] = inp_cplx[2 * i + 1];
+    }
+
+    std::vector<float> real_output(n);
+    std::vector<float> imag_output(n);
+
+    for (int k = 0; k < n; ++k) {
+        real_output[k] = 0.0f;
+        imag_output[k] = 0.0f;
+        for (int m = 0; m < N; ++m) {
+            float twiddle_real;
+            float twiddle_imag;
+
+            twiddle(&twiddle_real, &twiddle_imag, k * m, n);
+
+            real_output[k] += real_input[m] * twiddle_real - imag_input[m] * twiddle_imag;
+            imag_output[k] += real_input[m] * twiddle_imag + imag_input[m] * twiddle_real;
+        }
+    }
+
+    for (int i = 0; i < n; ++i) {
+        out_real[i] = real_output[i] / N;
+    }
+}
+
+//
+//  y = torch.nn.functional.fold(
+//       data, output_size=(1, output_size), kernel_size=(1, self.win_length), stride=(1, self.hop_length),
+//  )[:, 0, 0, pad:-pad]
+//
+// data.shape =  torch.Size([1, 1280, 261])
+// output_size =  84480
+// win_length =  1280
+// hop_length =  320
+// pad =  480
+//
+static void fold(const std::vector<float> & data, int64_t n_out, int64_t n_win, int64_t n_hop, int64_t n_pad, std::vector<float> & output) {
+    int64_t output_height = n_out;
+    int64_t kernel_w = n_win;
+    int64_t stride_w = n_hop;
+    int64_t width    = n_out;
+
+    output.resize(width, 0.0f);
+
+    int64_t col_idx = 0;
+    for (int64_t w_col = 0; w_col < width; ++w_col) {
+        int64_t start = w_col * stride_w - n_pad;
+        int64_t end   = start + kernel_w;
+
+        for (int64_t w_im = start; w_im < end; ++w_im) {
+            if (w_im >= 0 && w_im < output_height && col_idx < (int64_t) data.size()) {
+                output[w_im] += data[col_idx];
+            }
+            col_idx++;
+        }
+    }
+
+    output.resize(n_out - 2 * n_pad);
+}
+
+// TODO: not optimized at all
+static std::vector<float> embd_to_audio(
+        const float * embd,
+        const int n_codes,
+        const int n_embd,
+        const int n_thread) {
+    const int n_fft = 1280;
+    const int n_hop = 320;
+    const int n_win = 1280;
+    const int n_pad = (n_win - n_hop)/2;
+    const int n_out = (n_codes - 1)*n_hop + n_win;
+
+    std::vector<float> hann(n_fft);
+
+    fill_hann_window(hann.size(), true, hann.data());
+
+    int n_spec = n_embd*n_codes;
+
+    std::vector<float> E (n_spec);
+    std::vector<float> S (n_spec);
+    std::vector<float> ST(n_spec);
+
+    for (int l = 0; l < n_codes; ++l) {
+        for (int k = 0; k < n_embd; ++k) {
+            E[k*n_codes + l] = embd[l*n_embd + k];
+        }
+    }
+
+    for (int k = 0; k < n_embd/2; ++k) {
+        for (int l = 0; l < n_codes; ++l) {
+            float mag = E[(k           )*n_codes + l];
+            float phi = E[(k + n_embd/2)*n_codes + l];
+
+            mag = exp(mag);
+
+            if (mag > 1e2) {
+                mag = 1e2;
+            }
+            S[2*(k*n_codes + l) + 0] = mag*cosf(phi);
+            S[2*(k*n_codes + l) + 1] = mag*sinf(phi);
+        }
+    }
+
+    for (int l = 0; l < n_codes; ++l) {
+        for (int k = 0; k < n_embd/2; ++k) {
+            ST[l*n_embd + 2*k + 0] = S[2*(k*n_codes + l) + 0];
+            ST[l*n_embd + 2*k + 1] = S[2*(k*n_codes + l) + 1];
+        }
+    }
+
+    std::vector<float> res  (n_codes*n_fft);
+    std::vector<float> hann2(n_codes*n_fft);
+
+    std::vector<std::thread> workers(n_thread);
+    for (int i = 0; i < n_thread; ++i) {
+        workers[i] = std::thread([&, i]() {
+            for (int l = i; l < n_codes; l += n_thread) {
+                irfft(n_fft, ST.data() + l*n_embd, res.data() + l*n_fft);
+                for (int j = 0; j < n_fft; ++j) {
+                    res  [l*n_fft + j] *= hann[j];
+                    hann2[l*n_fft + j]  = hann[j] * hann[j];
+                }
+            }
+        });
+    }
+    for (int i = 0; i < n_thread; ++i) {
+        workers[i].join();
+    }
+
+    std::vector<float> audio;
+    std::vector<float> env;
+
+    fold(res,   n_out, n_win, n_hop, n_pad, audio);
+    fold(hann2, n_out, n_win, n_hop, n_pad, env); // TODO: can be done once
+
+    for (size_t i = 0; i < audio.size(); ++i) {
+        audio[i] /= env[i];
+    }
+
+    return audio;
+}
+
 static void print_usage(int, char ** argv) {
     printf("\nexample usage:\n");
     printf("\n    %s -m model.gguf -mv vocoder.gguf -v en_male_1.json -p \"Hello!\"\n", argv[0]);
@@ -476,5 +666,114 @@ int main(int argc, char ** argv) {
 
     llama_synchronize(ctx);
 
+    // main loop
+
+    // remember the batch index of the last token for each parallel sequence
+    // we need this to determine which logits to sample from
+    std::vector<int32_t> i_batch(n_parallel, batch.n_tokens - 1);
+
+    int n_past   = batch.n_tokens;
+    int n_decode = 0;
+
+    bool next_token_uses_guide_token = true;
+
     std::vector<llama_token> codes;
+
+    while (n_decode <= n_predict) {
+        batch.n_tokens = 0;
+
+        // sample the next token for each parallel sequence / stream
+        for (int32_t i = 0; i < n_parallel; ++i) {
+            if (i_batch[i] < 0) {
+                // the stream has already finished
+                continue;
+            }
+
+            llama_token new_token_id = llama_sampler_sample(&samplers[i], ctx, i_batch[i]);
+
+            //guide tokens help prevent hallucinations by forcing the TTS to use the correct word
+            if (!guide_tokens.empty() && next_token_uses_guide_token && !llama_vocab_is_control(vocab, new_token_id) && !llama_vocab_is_eog(vocab, new_token_id)) {
+                llama_token guide_token = guide_tokens[0];
+                guide_tokens.erase(guide_tokens.begin());
+                new_token_id = guide_token; //ensure correct word fragment is used
+            }
+
+            //this is the token id that always precedes a new word
+            next_token_uses_guide_token = (new_token_id == 198);
+
+            llama_sampler_accept(&samplers[i], new_token_id);
+
+            codes.push_back(new_token_id);
+
+            if (llama_vocab_is_eog(vocab, new_token_id) || n_decode == n_predict) {
+                // Mark the stream as finished
+                i_batch[i] = -1;
+                continue;
+            }
+
+            i_batch[i] = batch.n_tokens;
+
+            batch_add(batch, new_token_id, n_past, { i }, true);
+        }
+
+        // all streams are finished
+        if (batch.n_tokens == 0) {
+            break;
+        }
+
+        n_decode += 1;
+        n_past += 1;
+
+        // evaluate the current batch with the transformer model
+        if (llama_decode(ctx, batch)) {
+            fprintf(stderr, "%s: llama_decode() failed\n", __func__);
+            return 1;
+        }
+    }
+    
+    llama_batch_free(batch);
+
+    // remove all non-audio tokens (i.e. < 151672 || > 155772)
+    codes.erase(std::remove_if(codes.begin(), codes.end(), [](llama_token t) { return t < 151672 || t > 155772; }), codes.end());
+
+    for (auto & token : codes) {
+        token -= 151672;
+    }
+
+    const int n_codes = codes.size();
+
+    llama_batch batch = llama_batch_init(n_codes, 0, 1);
+
+    for (size_t i = 0; i < codes.size(); ++i) {
+        batch_add(batch, codes[i], i, { 0 }, true); // TODO: all logits?
+    }
+
+    // evaluate the current batch with the transformer model
+    if (llama_decode(ctx_vocoder, batch)) {
+        fprintf(stderr, "%s: llama_decode() failed\n", __func__);
+        return 1;
+    }
+
+    llama_synchronize(ctx_vocoder);
+
+    // spectral operations
+    const int n_embd = llama_model_n_embd(vocoder);
+    const float * embd = llama_get_embeddings(ctx_vocoder);
+
+    auto audio = embd_to_audio(embd, n_codes, n_embd, ctx_params.n_threads);
+
+    const std::string fname = "output.wav";
+
+    const int n_sr = 24000; // sampling rate
+
+    // zero out first 0.25 seconds
+    for (int i = 0; i < 24000/4; ++i) {
+        audio[i] = 0.0f;
+    }
+
+    save_wav16(fname, audio, n_sr);
+
+    llama_backend_free();
+
+    return 0;
 }
