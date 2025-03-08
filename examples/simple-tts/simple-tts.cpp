@@ -590,8 +590,7 @@ int main(int argc, char ** argv) {
     for (int i = 0; i < n_parallel; ++i) {
         llama_sampler * smpl = &samplers[i];
         smpl = llama_sampler_chain_init(llama_sampler_chain_default_params());
-        llama_sampler_chain_add(smpl, llama_sampler_init_min_p(0.05f, 1));
-        llama_sampler_chain_add(smpl, llama_sampler_init_temp(0.8f));
+        llama_sampler_chain_add(smpl, llama_sampler_init_greedy());
         llama_sampler_chain_add(smpl, llama_sampler_init_dist(LLAMA_DEFAULT_SEED));
     }
 
