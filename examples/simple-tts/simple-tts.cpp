@@ -563,7 +563,7 @@ int main(int argc, char ** argv) {
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx = 8192;
     ctx_params.n_batch = 8192;
-    
+
     llama_context * ctx = llama_init_from_model(model, ctx_params);
     if (!ctx) {
         fprintf(stderr, "%s: error: failed to create the llama_context\n", __func__);
@@ -577,7 +577,7 @@ int main(int argc, char ** argv) {
         fprintf(stderr, "%s: error: failed to create the vocoder llama_context\n", __func__);
         return 1;
     }
-    
+
     std::vector<llama_sampler *> smpl(n_parallel);
     for (int i = 0; i < n_parallel; ++i) {
         smpl[i] = llama_sampler_chain_init(llama_sampler_chain_default_params());
@@ -696,7 +696,7 @@ int main(int argc, char ** argv) {
             return 1;
         }
     }
-    
+
     llama_batch_free(batch);
 
     // remove all non-audio tokens (i.e. < 151672 || > 155772)
