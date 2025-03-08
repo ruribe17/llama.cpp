@@ -322,30 +322,6 @@ void batch_add(struct llama_batch & batch, llama_token id,llama_pos pos, const s
     batch.n_tokens++;
 }
 
-static void save_wav16(const std::string & fname, const std::vector<float> & data, int sample_rate) {
-    std::ofstream file(fname, std::ios::binary);
-    if (!file) {
-        fprintf(stderr, "%s: Failed to open file '%s' for writing", __func__, fname.c_str());
-        return;
-    }
-
-    wav_header header;
-    header.sample_rate = sample_rate;
-    header.byte_rate = header.sample_rate * header.num_channels * (header.bits_per_sample / 8);
-    header.block_align = header.num_channels * (header.bits_per_sample / 8);
-    header.data_size = data.size() * (header.bits_per_sample / 8);
-    header.chunk_size = 36 + header.data_size;
-
-    file.write(reinterpret_cast<const char*>(&header), sizeof(header));
-
-    for (const auto & sample : data) {
-        int16_t pcm_sample = static_cast<int16_t>(std::clamp(sample * 32767.0, -32768.0, 32767.0));
-        file.write(reinterpret_cast<const char*>(&pcm_sample), sizeof(pcm_sample));
-    }
-
-    file.close();
-}
-
 static void fill_hann_window(int length, bool periodic, float * output) {
     int offset = -1;
     if (periodic) {
@@ -742,7 +718,7 @@ int main(int argc, char ** argv) {
 
     const int n_codes = codes.size();
 
-    llama_batch batch = llama_batch_init(n_codes, 0, 1);
+    batch = llama_batch_init(n_codes, 0, 1);
 
     for (size_t i = 0; i < codes.size(); ++i) {
         batch_add(batch, codes[i], i, { 0 }, true); // TODO: all logits?
