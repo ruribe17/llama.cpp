@@ -1,3 +1,5 @@
+#define _USE_MATH_DEFINES // For M_PI on MSVC
+
 #include "llama.h"
 #include "json.hpp"
 #include <algorithm>
