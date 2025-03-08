@@ -118,19 +118,11 @@ static std::string audio_data_from_speaker(json speaker, const outetts_version t
     return audio_data;
 }
 
-static void prompt_add(std::vector<llama_token> & prompt, llama_token token) {
-    prompt.push_back(token);
-}
-
-static void prompt_add(std::vector<llama_token> & prompt, const std::vector<llama_token> & tokens) {
-    prompt.insert(prompt.end(), tokens.begin(), tokens.end());
-}
-
 static void prompt_add(std::vector<llama_token> & prompt, const llama_vocab * vocab, const std::string & txt, bool add_special, bool parse_special) {
     std::vector<llama_token> tmp(txt.size());
     auto n_tmp = llama_tokenize(vocab, txt.c_str(), txt.size(), tmp.data(), tmp.size(), add_special, parse_special);
     tmp.resize(n_tmp);
-    prompt_add(prompt, tmp);
+    prompt.insert(prompt.end(), tmp.begin(), tmp.end());
 }
 
 static void prompt_init(std::vector<llama_token> & prompt, const llama_vocab * vocab) {
