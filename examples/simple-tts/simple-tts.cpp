@@ -277,7 +277,7 @@ static std::vector<llama_token> prepare_guide_tokens(const llama_vocab * vocab, 
     size_t end = str.find(delimiter);
 
     //first token is always a newline, as it was not previously added
-    result.push_back(llama_token_nl(vocab));
+    result.push_back(llama_vocab_nl(vocab));
 
     while (end != std::string::npos) {
         std::string current_word = str.substr(start, end - start);
