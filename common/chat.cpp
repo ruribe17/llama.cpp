@@ -442,6 +442,7 @@ std::string common_chat_format_name(common_chat_format format) {
         case COMMON_CHAT_FORMAT_FUNCTIONARY_V3_2: return "Functionary v3.2";
         case COMMON_CHAT_FORMAT_FUNCTIONARY_V3_1_LLAMA_3_1: return "Functionary v3.1 Llama 3.1";
         case COMMON_CHAT_FORMAT_HERMES_2_PRO: return "Hermes 2 Pro";
+        case COMMON_CHAT_FORMAT_HERMES_2_PRO_EXTRACT_REASONING: return "Hermes 2 Pro (extract reasoning)";
         case COMMON_CHAT_FORMAT_COMMAND_R7B: return "Command R7B";
         case COMMON_CHAT_FORMAT_COMMAND_R7B_EXTRACT_REASONING: return "Command R7B (extract reasoning)";
         default:
@@ -1102,34 +1103,42 @@ static common_chat_params common_chat_params_init_deepseek_r1(const common_chat_
     data.format = inputs.extract_reasoning ? COMMON_CHAT_FORMAT_DEEPSEEK_R1_EXTRACT_REASONING : COMMON_CHAT_FORMAT_DEEPSEEK_R1;
     return data;
 }
-static common_chat_msg common_chat_parse_deepseek_r1(const std::string & input, bool extract_reasoning) {
-    static std::regex function_regex("<｜tool▁call▁begin｜>function<｜tool▁sep｜>([^\n]+)\n```json\n");
-    static std::regex close_regex("```[\\s\\r\\n]*<｜tool▁call▁end｜>");
-    static std::regex reasoning_content_regex("((?:<think>)?([\\s\\S\\r\\n]*?)</think>)?([\\s\\S\\r\\n]*)");
-    static std::regex tool_calls_regex("[\\s\\r\\n]*(?:<｜tool▁calls▁begin｜>|<｜tool_calls_begin｜>|<｜tool calls begin｜>|<｜tool\\\\_calls\\\\_begin｜>)([\\s\\S\\r\\n]*?)<｜tool▁calls▁end｜>");
-    common_chat_msg msg;
-    msg.role = "assistant";
+static common_chat_msg handle_think_tag_prelude(const std::string & input, bool extract_reasoning, const std::function<common_chat_msg(const std::string &)> & rest_parser) {
     std::smatch match;
+    static std::regex reasoning_content_regex("((?:<think>)?([\\s\\S\\r\\n]*?)</think>)?([\\s\\S\\r\\n]*)");
     if (std::regex_match(input, match, reasoning_content_regex)) {
-        std::string rest;
+        auto rest = match[3].str();
+        auto msg = rest_parser(rest);
+        auto reasoning_content = string_strip(match[2].str());
         if (extract_reasoning) {
-            msg.reasoning_content = string_strip(match[2].str());
-        } else {
-            msg.content = match[1].str();
+            msg.reasoning_content = reasoning_content;
+        } else if (!reasoning_content.empty()) {
+            std::ostringstream content;
+            content << "<think>" << reasoning_content << "</think>" << msg.content;
+            msg.content = content.str();
         }
-        rest = match[3].str();
-
-        if (std::regex_search(rest, match, tool_calls_regex)) {
+        return msg;
+    }
+    return rest_parser(input);
+}
+static common_chat_msg common_chat_parse_deepseek_r1(const std::string & input, bool extract_reasoning) {
+    return handle_think_tag_prelude(input, extract_reasoning, [](const std::string & input) {
+        static std::regex function_regex("<｜tool▁call▁begin｜>function<｜tool▁sep｜>([^\n]+)\n```json\n");
+        static std::regex close_regex("```[\\s\\r\\n]*<｜tool▁call▁end｜>");
+        static std::regex tool_calls_regex("[\\s\\r\\n]*(?:<｜tool▁calls▁begin｜>|<｜tool_calls_begin｜>|<｜tool calls begin｜>|<｜tool\\\\_calls\\\\_begin｜>)([\\s\\S\\r\\n]*?)<｜tool▁calls▁end｜>");
+        
+        common_chat_msg msg;
+        msg.role = "assistant";
+        std::smatch match;
+        if (std::regex_search(input, match, tool_calls_regex)) {
             auto tool_calls = match[1].str();
             auto msg2 = parse_json_tool_calls(tool_calls, std::nullopt, function_regex, close_regex);
             msg.tool_calls = std::move(msg2.tool_calls);
         } else {
-            msg.content += std::string(rest.begin() + rest.find_first_not_of(" \r\n"), rest.end());
+            msg.content = input;
         }
-    } else {
-        msg.content = input;
-    }
-    return msg;
+        return msg;
+    });
 }
 
 static common_chat_params common_chat_params_init_firefunction_v2(const common_chat_template & tmpl, const struct templates_params & inputs) {
@@ -1406,6 +1415,8 @@ static common_chat_params common_chat_params_init_hermes_2_pro(const common_chat
             "(?:```(?:json|xml)?\n\\s*)?(?:<function_call>|<tools>|<xml><json>|<response>)?\\s*\\{\\s*\"", //name\"\\s*:\\s*\"" + escaped_name + "\"",
         });
         data.preserved_tokens = {
+            "<think>",
+            "</think>",
             "<tool_call>",
             "</tool_call>",
             "<function",
@@ -1426,122 +1437,123 @@ static common_chat_params common_chat_params_init_hermes_2_pro(const common_chat
     });
 
     data.prompt = apply(tmpl, inputs.messages, inputs.tools.empty() ? json() : inputs.tools, inputs.add_generation_prompt);
-    data.format = COMMON_CHAT_FORMAT_HERMES_2_PRO;
+    data.format = inputs.extract_reasoning ? COMMON_CHAT_FORMAT_HERMES_2_PRO_EXTRACT_REASONING : COMMON_CHAT_FORMAT_HERMES_2_PRO;
     return data;
 }
-static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input) {
-    const static std::regex open_regex(
-        "(?:"
-        "(```(?:xml|json)?\\n\\s*)?"         // match 1 (block_start)
-        "(<tool_call>"                   // match 2 (open_tag)
-        "|<function_call>"
-        "|<tool>"
-        "|<tools>"
-        "|<response>"
-        "|<json>"
-        "|<xml>"
-        "|<JSON>"
-        ")?"
-        "(\\s*\\{\\s*\"name\"\\s*:[\\s\\S]*)"    // match 3 (named tool call + rest)
-        ")"
-        "|"
-        "(?:<function=([^>]+)>"            // match 4 (function name)
-        "|<function name=\"([^\"]+)\">)" // match 5 (function name again)
-        "([\\s\\S]*)"                   // match 6 (function arguments + rest)})"
-    );
+static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input, bool extract_reasoning) {
+    return handle_think_tag_prelude(input, extract_reasoning, [](const std::string & input) {
+        const static std::regex open_regex(
+            "(?:"
+            "(```(?:xml|json)?\\n\\s*)?"         // match 1 (block_start)
+            "(<tool_call>"                   // match 2 (open_tag)
+            "|<function_call>"
+            "|<tool>"
+            "|<tools>"
+            "|<response>"
+            "|<json>"
+            "|<xml>"
+            "|<JSON>"
+            ")?"
+            "(\\s*\\{\\s*\"name\"\\s*:[\\s\\S]*)"    // match 3 (named tool call + rest)
+            ")"
+            "|"
+            "(?:<function=([^>]+)>"            // match 4 (function name)
+            "|<function name=\"([^\"]+)\">)" // match 5 (function name again)
+            "([\\s\\S]*)"                   // match 6 (function arguments + rest)})"
+        );
 
-    try {
+        try {
+            common_chat_msg msg;
+            msg.role = "assistant";
 
-        common_chat_msg msg;
-        msg.role = "assistant";
+            std::string::const_iterator it = input.begin();
+            const std::string::const_iterator end = input.end();
+            std::smatch match;
+            
+            while (it != end) {
+                if (std::regex_search(it, end, match, open_regex)) {
+                    // Add content before the match
+                    msg.content += std::string(it, match[0].first);
 
-        std::string::const_iterator it = input.begin();
-        const std::string::const_iterator end = input.end();
-        std::smatch match;
+                    auto block_start = match[1].str();
+                    std::string block_end = block_start.empty() ? "" : "```";
 
-        while (it != end) {
-            if (std::regex_search(it, end, match, open_regex)) {
-                // Add content before the match
-                msg.content += std::string(it, match[0].first);
+                    auto open_tag = match[2].str();
+                    std::string close_tag;
 
-                auto block_start = match[1].str();
-                std::string block_end = block_start.empty() ? "" : "```";
+                    if (match[3].matched) {
+                        close_tag = open_tag.empty() ? "" : "</" + open_tag.substr(1);
+                        auto json_it = match[3].first;
+                        json tool_call;
+                        if (parse_json(json_it, end, tool_call) && tool_call.contains("name") && tool_call.contains("arguments")) {
 
-                auto open_tag = match[2].str();
-                std::string close_tag;
+                            msg.tool_calls.emplace_back(process_tool_call(tool_call));
+                            it = json_it;  // Move iterator past parsed JSON
 
-                if (match[3].matched) {
-                    close_tag = open_tag.empty() ? "" : "</" + open_tag.substr(1);
-                    auto json_it = match[3].first;
-                    json tool_call;
-                    if (parse_json(json_it, end, tool_call) && tool_call.contains("name") && tool_call.contains("arguments")) {
-
-                        msg.tool_calls.emplace_back(process_tool_call(tool_call));
-                        it = json_it;  // Move iterator past parsed JSON
-
-                        // Handle close tags
-                        consume_spaces(it, end);
-                        if (!close_tag.empty() && !parse_literal(it, end, close_tag)) {
-                            throw std::runtime_error("Failed to parse closing tag");
+                            // Handle close tags
+                            consume_spaces(it, end);
+                            if (!close_tag.empty() && !parse_literal(it, end, close_tag)) {
+                                throw std::runtime_error("Failed to parse closing tag");
+                            }
+                            consume_spaces(it, end);
+                            if (!block_end.empty() && !parse_literal(it, end, block_end)) {
+                                throw std::runtime_error("Failed to parse block end");
+                            }
+                            consume_spaces(it, end);
+                        } else {
+                            // Not a valid tool call, treat as content
+                            msg.content += std::string(match[0].first, match[0].second);
+                            it = match[0].second;
                         }
-                        consume_spaces(it, end);
-                        if (!block_end.empty() && !parse_literal(it, end, block_end)) {
-                            throw std::runtime_error("Failed to parse block end");
-                        }
-                        consume_spaces(it, end);
                     } else {
-                        // Not a valid tool call, treat as content
-                        msg.content += std::string(match[0].first, match[0].second);
-                        it = match[0].second;
+                        auto function_name = match[4].str();
+                        if (function_name.empty()) {
+                            function_name = match[5].str();
+                        }
+                        GGML_ASSERT(!function_name.empty());
+
+                        close_tag = "</function>";
+                        // Start parsing from after the opening tags
+                        auto json_it = match[6].first;
+                        json arguments;
+                        if (parse_json(json_it, end, arguments)) {
+                            msg.tool_calls.emplace_back(process_tool_call({
+                                {"name", function_name},
+                                {"arguments", arguments},
+                            }));
+                            it = json_it;  // Move iterator past parsed JSON
+
+                            // Handle close tags
+                            consume_spaces(it, end);
+                            if (!close_tag.empty() && !parse_literal(it, end, close_tag)) {
+                                throw std::runtime_error("Failed to parse closing tag");
+                            }
+                            consume_spaces(it, end);
+                            if (!block_end.empty() && !parse_literal(it, end, block_end)) {
+                                throw std::runtime_error("Failed to parse block end");
+                            }
+                            consume_spaces(it, end);
+                        } else {
+                            // Not a valid tool call, treat as content
+                            msg.content += std::string(match[0].first, match[0].second);
+                            it = match[0].second;
+                        }
                     }
                 } else {
-                    auto function_name = match[4].str();
-                    if (function_name.empty()) {
-                        function_name = match[5].str();
-                    }
-                    GGML_ASSERT(!function_name.empty());
-
-                    close_tag = "</function>";
-                    // Start parsing from after the opening tags
-                    auto json_it = match[6].first;
-                    json arguments;
-                    if (parse_json(json_it, end, arguments)) {
-                        msg.tool_calls.emplace_back(process_tool_call({
-                            {"name", function_name},
-                            {"arguments", arguments},
-                        }));
-                        it = json_it;  // Move iterator past parsed JSON
-
-                        // Handle close tags
-                        consume_spaces(it, end);
-                        if (!close_tag.empty() && !parse_literal(it, end, close_tag)) {
-                            throw std::runtime_error("Failed to parse closing tag");
-                        }
-                        consume_spaces(it, end);
-                        if (!block_end.empty() && !parse_literal(it, end, block_end)) {
-                            throw std::runtime_error("Failed to parse block end");
-                        }
-                        consume_spaces(it, end);
-                    } else {
-                        // Not a valid tool call, treat as content
-                        msg.content += std::string(match[0].first, match[0].second);
-                        it = match[0].second;
-                    }
+                    // Add remaining content
+                    msg.content += std::string(it, end);
+                    break;
                 }
-            } else {
-                // Add remaining content
-                msg.content += std::string(it, end);
-                break;
             }
+            return msg;
+        } catch (const std::exception & e) {
+            LOG_ERR("Failed to parse hermes 2 pro input: %s\n", e.what());
+            common_chat_msg msg;
+            msg.role = "assistant";
+            msg.content = input;
+            return msg;
         }
-        return msg;
-    } catch (const std::exception & e) {
-        LOG_ERR("Failed to parse hermes 2 pro input: %s\n", e.what());
-        common_chat_msg msg;
-        msg.role = "assistant";
-        msg.content = input;
-        return msg;
-    }
+    });
 }
 
 static common_chat_params common_chat_params_init_without_tools(const common_chat_template & tmpl, const struct templates_params & inputs) {
@@ -1606,6 +1618,11 @@ static common_chat_params common_chat_templates_apply_jinja(
         return common_chat_params_init_command_r7b(tmpl, params);
     }
 
+    // Hermes 2/3 Pro, Qwen 2.5 Instruct (w/ tools)
+    if (src.find("<tool_call>") != std::string::npos && params.json_schema.is_null()) {
+        return common_chat_params_init_hermes_2_pro(tmpl, params);
+    }
+
     // Use generic handler when mixing tools + JSON schema.
     // TODO: support that mix in handlers below.
     if ((params.tools.is_array() && params.json_schema.is_object())) {
@@ -1625,11 +1642,6 @@ static common_chat_params common_chat_templates_apply_jinja(
     // Plain handler (no tools)
     if (params.tools.is_null() || inputs.tool_choice == COMMON_CHAT_TOOL_CHOICE_NONE) {
         return common_chat_params_init_without_tools(tmpl, params);
-    }
-
-    // Hermes 2/3 Pro, Qwen 2.5 Instruct (w/ tools)
-    if (src.find("<tool_call>") != std::string::npos) {
-        return common_chat_params_init_hermes_2_pro(tmpl, params);
     }
 
     // Functionary v3.1 (w/ tools)
@@ -1749,7 +1761,9 @@ common_chat_msg common_chat_parse(const std::string & input, common_chat_format 
         case COMMON_CHAT_FORMAT_FUNCTIONARY_V3_1_LLAMA_3_1:
             return common_chat_parse_functionary_v3_1_llama_3_1(input);
         case COMMON_CHAT_FORMAT_HERMES_2_PRO:
-            return common_chat_parse_hermes_2_pro(input);
+            return common_chat_parse_hermes_2_pro(input, /* extract_reasoning= */ false);
+        case COMMON_CHAT_FORMAT_HERMES_2_PRO_EXTRACT_REASONING:
+            return common_chat_parse_hermes_2_pro(input, /* extract_reasoning= */ true);
         case COMMON_CHAT_FORMAT_FIREFUNCTION_V2:
             return common_chat_parse_firefunction_v2(input);
         case COMMON_CHAT_FORMAT_COMMAND_R7B:
