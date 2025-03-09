@@ -337,13 +337,13 @@ block:hardware_types
     CPU
     GPU
     NPU
+    DSP
 end
 
 block:hardware_archs
     x86
     arm
     risc
-    dsp
     loongson
 end
 ```
