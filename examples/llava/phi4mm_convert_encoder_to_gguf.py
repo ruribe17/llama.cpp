@@ -43,6 +43,7 @@ SIGLIP_MODEL = {
     }
 }
 N_LAYERS = 27
+FEATURE_LAYER = -2
 HEAD_COUNT = 16
 
 
@@ -159,7 +160,7 @@ class Phi4MM:
         self.gguf_writer.add_array  ("clip.vision.image_mean",           SIGLIP_MODEL["image_mean"])
         self.gguf_writer.add_array  ("clip.vision.image_std",            SIGLIP_MODEL["image_std"])
         self.gguf_writer.add_bool   ("clip.use_gelu",                    False)
-        self.gguf_writer.add_array  ("clip.vision.feature_layer",        [N_LAYERS])
+        self.gguf_writer.add_array  ("clip.vision.feature_layer",        [N_LAYERS + FEATURE_LAYER])
 
         # load tensors
         for name, data_torch in self.get_tensors(dir_model):

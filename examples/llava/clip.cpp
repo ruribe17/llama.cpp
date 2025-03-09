@@ -881,11 +881,15 @@ static ggml_cgraph * clip_image_build_graph(clip_ctx * ctx, const clip_image_f32
     // FIXME: phi-4, wrap this into an "if" condition
     int n_tokens = embeddings->ne[1];
     int n_tokens_sqrt = sqrtf(n_tokens);
+    int downscale_factor = 2;
     printf("embeddings shape: %d %d %d %d\n", embeddings->ne[0], embeddings->ne[1], embeddings->ne[2], embeddings->ne[3]);
     embeddings = ggml_cont(ctx0, ggml_transpose(ctx0, embeddings));
-    embeddings = ggml_reshape_4d(ctx0, embeddings, n_tokens_sqrt, n_tokens_sqrt, hidden_size, batch_size);
-    embeddings = ggml_pool_2d(ctx0, embeddings, GGML_OP_POOL_AVG, 2, 2, 2, 2, 0, 0);
-    embeddings = ggml_reshape_3d(ctx0, embeddings, hidden_size, n_tokens / 4, batch_size);
+    embeddings = ggml_reshape_3d(ctx0, embeddings, n_tokens_sqrt, n_tokens_sqrt, hidden_size);
+    // downscale n_tokens_sqrt*n_tokens_sqrt to n_tokens_sqrt/2*n_tokens_sqrt/2
+    embeddings = ggml_pool_2d(ctx0, embeddings, GGML_OP_POOL_AVG, downscale_factor, downscale_factor, downscale_factor, downscale_factor, 0, 0);
+    // flatten first two dimensions
+    embeddings = ggml_reshape_2d(ctx0, embeddings, n_tokens_sqrt/2*n_tokens_sqrt/2, hidden_size);
+    embeddings = ggml_cont(ctx0, ggml_transpose(ctx0, embeddings));
     printf("embeddings shape: %d %d %d %d\n", embeddings->ne[0], embeddings->ne[1], embeddings->ne[2], embeddings->ne[3]);
     // mlp
     embeddings = ggml_mul_mat(ctx0, model.mm_0_w, embeddings);
