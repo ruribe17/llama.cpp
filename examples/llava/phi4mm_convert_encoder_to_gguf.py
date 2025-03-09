@@ -42,6 +42,8 @@ SIGLIP_MODEL = {
         "width": 224
     }
 }
+N_LAYERS = 27
+HEAD_COUNT = 16
 
 
 # (copied from convert_hf_to_gguf.py)
@@ -151,12 +153,13 @@ class Phi4MM:
         self.gguf_writer.add_uint32 ("clip.vision.embedding_length",     1152)
         self.gguf_writer.add_uint32 ("clip.vision.feed_forward_length",  4304)
         self.gguf_writer.add_uint32 ("clip.vision.projection_dim",       hparams["hidden_size"])
-        self.gguf_writer.add_uint32 ("clip.vision.block_count",          12)
-        self.gguf_writer.add_uint32 ("clip.vision.attention.head_count", 12)
+        self.gguf_writer.add_uint32 ("clip.vision.block_count",          N_LAYERS)
+        self.gguf_writer.add_uint32 ("clip.vision.attention.head_count", HEAD_COUNT)
         self.gguf_writer.add_float32("clip.vision.attention.layer_norm_epsilon", 1e-6)
         self.gguf_writer.add_array  ("clip.vision.image_mean",           SIGLIP_MODEL["image_mean"])
         self.gguf_writer.add_array  ("clip.vision.image_std",            SIGLIP_MODEL["image_std"])
         self.gguf_writer.add_bool   ("clip.use_gelu",                    False)
+        self.gguf_writer.add_array  ("clip.vision.feature_layer",        [N_LAYERS])
 
         # load tensors
         for name, data_torch in self.get_tensors(dir_model):
