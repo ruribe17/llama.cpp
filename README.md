@@ -287,11 +287,6 @@ block:ggmlbackends
   end
 end
 
-block:ggml_pal
-  ggml_pal["Platform Abstraction Layer"]
-  style ggml_pal fill:#c33,color:#000,stroke:#000
-end
-
 block:ggml_backendsubsystem
   ggml_backendsubsystem["GGML backend subsystem"]
   style ggml_backendsubsystem fill:#3c3,color:#000,stroke:#000
