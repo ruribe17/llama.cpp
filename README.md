@@ -354,11 +354,10 @@ flowchart LR
     classDef EXIST fill:#888,color:#000,stroke:#000
     classDef DONE fill:#3c3,color:#000,stroke:#000
     classDef WIP fill:#cc3,color:#000,stroke:#000
-    classDef TODO fill:#c33,color:#000,stroke:#000
     classDef NEW fill:#fff,color:#000,stroke:#f00,stroke-width:2,stroke-dasharray:5
     subgraph Legend
       direction LR
-      EXIST:::EXIST ~~~ TODO:::TODO ~~~ WIP:::WIP ~~~ DONE:::DONE ~~~ NEW:::NEW
+      EXIST:::EXIST ~~~ WIP:::WIP ~~~ DONE:::DONE ~~~ NEW:::NEW
     end
 ```
 
