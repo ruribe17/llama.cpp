@@ -294,11 +294,9 @@ std::string common_chat_format_single(
         const std::vector<common_chat_msg> & past_msg,
         const common_chat_msg & new_msg,
         bool add_ass,
-        bool use_jinja,
-        const struct common_chat_templates_inputs * input_extra,
-        struct common_chat_params * out_params) {
+        bool use_jinja) {
 
-    common_chat_templates_inputs inputs = input_extra ? *input_extra : common_chat_templates_inputs();
+    common_chat_templates_inputs inputs;
     inputs.use_jinja = use_jinja;
 
     std::string fmt_past_msg;
@@ -315,13 +313,9 @@ std::string common_chat_format_single(
     // format chat with new_msg
     inputs.messages.push_back(new_msg);
     inputs.add_generation_prompt = add_ass;
-    auto chat_params = common_chat_templates_apply(tmpls, inputs);
-    auto fmt_new_msg = chat_params.prompt;
+    auto fmt_new_msg = common_chat_templates_apply(tmpls, inputs).prompt;
     // get the diff part
     ss << fmt_new_msg.substr(fmt_past_msg.size(), fmt_new_msg.size() - fmt_past_msg.size());
-    if (out_params) {
-        *out_params = std::move(chat_params);
-    }
     return ss.str();
 }
 
