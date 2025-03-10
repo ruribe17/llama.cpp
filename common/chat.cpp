@@ -1129,7 +1129,7 @@ static common_chat_msg common_chat_parse_deepseek_r1(const std::string & input, 
         static const std::regex function_regex("<｜tool▁call▁begin｜>function<｜tool▁sep｜>([^\n]+)\n```json\n");
         static const std::regex close_regex("```[\\s\\r\\n]*<｜tool▁call▁end｜>");
         static const std::regex tool_calls_regex("[\\s\\r\\n]*(?:<｜tool▁calls▁begin｜>|<｜tool_calls_begin｜>|<｜tool calls begin｜>|<｜tool\\\\_calls\\\\_begin｜>)([\\s\\S\\r\\n]*?)<｜tool▁calls▁end｜>");
-        
+
         common_chat_msg msg;
         msg.role = "assistant";
         std::smatch match;
@@ -1472,7 +1472,7 @@ static common_chat_msg common_chat_parse_hermes_2_pro(const std::string& input, 
             std::string::const_iterator it = input.begin();
             const std::string::const_iterator end = input.end();
             std::smatch match;
-            
+
             while (it != end) {
                 if (std::regex_search(it, end, match, open_regex)) {
                     // Add content before the match
