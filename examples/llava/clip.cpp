@@ -627,7 +627,7 @@ struct clip_ctx {
         if (backend) {
             ggml_backend_free(backend);
         }
-        if (backend_cpu) {
+        if (backend_cpu && backend_cpu != backend) {
             ggml_backend_free(backend_cpu);
         }
     }
