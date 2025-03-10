@@ -6552,11 +6552,11 @@ struct llm_build_context {
                      cb(k_nope_view, "k_nope_view", il);
 
                      // {n_embd_head_qk_nope + n_embd_head_qk_rope, n_head, n_tokens}
-                     struct ggml_tensor * q_states = ggml_concat(ctx0, q_nope_view, q_mqa_view, 0);
+                     struct ggml_tensor * q_states = ggml_concat(ctx0, q_mqa_view, q_nope_view, 0);
                      cb(q_states, "q_states", il);
 
                      // {n_embd_head_qk_nope + n_embd_head_qk_rope, n_head, n_tokens}
-                     struct ggml_tensor * k_states = ggml_concat(ctx0, k_nope_view, ggml_repeat(ctx0, k_mqa_view, q_mqa_view), 0);
+                     struct ggml_tensor * k_states = ggml_concat(ctx0, ggml_repeat(ctx0, k_mqa_view, q_mqa_view), k_nope_view, 0);
                      cb(k_states, "k_states", il);
 
                      // {kv_lora_rank, n_head * n_embd_head_v} * {kv_lora_rank, n_tokens} -> {n_head * n_embd_head_v, n_tokens}
@@ -6588,7 +6588,7 @@ struct llm_build_context {
                     cb(q_nope_absorbed, "q_nope_absorbed_perm", il);
 
                     // {kv_lora_rank + n_embd_head_qk_rope, n_head, n_tokens}
-                    struct ggml_tensor * q_states = ggml_concat(ctx0, q_nope_absorbed, q_mqa_view, 0);
+                    struct ggml_tensor * q_states = ggml_concat(ctx0, q_mqa_view, q_nope_absorbed, 0);
                     cb(q_states, "q_states", il);
 
                     // {kv_lora_rank, 1, n_tokens}
@@ -6600,7 +6600,7 @@ struct llm_build_context {
                     cb(kv_compressed_view, "kv_compressed_view", il);
 
                     // {kv_lora_rank + n_embd_head_qk_rope, 1, n_tokens}
-                    struct ggml_tensor * k_states = ggml_concat(ctx0, kv_compressed_view, k_mqa_view, 0);
+                    struct ggml_tensor * k_states = ggml_concat(ctx0, k_mqa_view, kv_compressed_view, 0);
                     cb(k_states, "k_states", il);
 
                     // {kv_lora_rank, 1, n_tokens}
