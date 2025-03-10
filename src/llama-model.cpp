@@ -2890,14 +2890,20 @@ bool llama_model::load_tensors(llama_model_loader & ml) {
 
                         if (!is_lite) {
                             layer.wq_a = create_tensor(tn(LLM_TENSOR_ATTN_Q_A, "weight", i), {n_embd, q_lora_rank}, 0);
-                            layer.wq_b = create_tensor(tn(LLM_TENSOR_ATTN_Q_B, "weight", i), {q_lora_rank, n_head * n_embd_head_k}, 0);
+                            layer.wq_b = create_tensor(tn(LLM_TENSOR_ATTN_Q_B, "weight", i), {q_lora_rank, n_head * n_embd_head_qk_nope}, 0);
+                            layer.wq_b_mqa = create_tensor(tn(LLM_TENSOR_ATTN_Q_B_MQA, "weight", i), {q_lora_rank, n_head * n_embd_head_qk_rope}, 0);
                         } else {
-                            layer.wq = create_tensor(tn(LLM_TENSOR_ATTN_Q, "weight", i), {n_embd, n_embd_k_gqa}, 0);
+                            layer.wq = create_tensor(tn(LLM_TENSOR_ATTN_Q, "weight", i), {n_embd, n_head * n_embd_head_qk_nope}, 0);
+                            layer.wq_mqa = create_tensor(tn(LLM_TENSOR_ATTN_Q_MQA, "weight", i), {n_embd, n_head * n_embd_head_qk_rope}, 0);
                         }
 
-                        layer.wkv_a_mqa = create_tensor(tn(LLM_TENSOR_ATTN_KV_A_MQA, "weight", i), {n_embd, kv_lora_rank + (n_embd_head_qk_rope)}, 0);
-                        layer.wkv_b     = create_tensor(tn(LLM_TENSOR_ATTN_KV_B,     "weight", i), {kv_lora_rank, n_head * (n_embd_head_qk_nope + n_embd_head_v)}, 0);
-                        layer.wo        = create_tensor(tn(LLM_TENSOR_ATTN_OUT,      "weight", i), {              n_head * (                      n_embd_head_v), n_embd}, 0);
+                        layer.wkv_a = create_tensor(tn(LLM_TENSOR_ATTN_KV_A, "weight", i), {n_embd, kv_lora_rank}, 0);
+                        layer.wk_mqa = create_tensor(tn(LLM_TENSOR_ATTN_K_MQA, "weight", i), {n_embd, n_embd_head_qk_rope}, 0);
+                        layer.wk_b_trans = create_tensor(tn(LLM_TENSOR_ATTN_K_B_TRANS, "weight", i), {n_embd_head_qk_nope, n_head * kv_lora_rank}, 0);
+                        layer.wk_b      = create_tensor(tn(LLM_TENSOR_ATTN_K_B, "weight", i), {kv_lora_rank, n_head * n_embd_head_qk_nope}, 0);
+                        layer.wv_b      = create_tensor(tn(LLM_TENSOR_ATTN_V_B, "weight", i), {kv_lora_rank, n_head * n_embd_head_v}, 0);
+
+                        layer.wo        = create_tensor(tn(LLM_TENSOR_ATTN_OUT, "weight", i), {n_head * n_embd_head_v, n_embd}, 0);
 
                         layer.ffn_norm = create_tensor(tn(LLM_TENSOR_FFN_NORM, "weight", i), {n_embd}, 0);
 

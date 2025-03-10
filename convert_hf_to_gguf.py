@@ -4141,6 +4141,78 @@ class DeepseekV2Model(Model):
             else:
                 return []
 
+        n_embed = self.hparams.get("hidden_size", self.hparams.get("n_embed"))
+        n_head_kv = self.hparams["num_key_value_heads"]
+        qk_nope_head_dim = self.hparams["qk_nope_head_dim"]
+        qk_rope_head_dim = self.hparams["qk_rope_head_dim"]
+        v_head_dim = self.hparams["v_head_dim"]
+        kv_lora_rank = self.hparams["kv_lora_rank"]        
+
+        # (v2-lite) split q_proj into: q_proj and q_mqa_proj
+        if name.endswith("q_proj.weight"):
+            assert data_torch.shape[0] == n_head_kv * (qk_nope_head_dim + qk_rope_head_dim)
+            assert data_torch.shape[1] == n_embed
+
+            q_proj_with_mqa = data_torch.view(n_head_kv, qk_nope_head_dim + qk_rope_head_dim, n_embed)
+            q_proj, q_mqa_proj = torch.split(q_proj_with_mqa, [qk_nope_head_dim, qk_rope_head_dim], dim = 1)
+
+            q_proj = q_proj.reshape(n_head_kv * qk_nope_head_dim, n_embed)
+            q_mqa_proj = q_mqa_proj.reshape(n_head_kv * qk_rope_head_dim, n_embed)
+
+            return [
+                (self.map_tensor_name(name), q_proj),
+                (self.map_tensor_name(name.replace("q_proj", "q_mqa_proj")), q_mqa_proj)
+            ]
+
+        # (v2/v3/r1) split q_b_proj into: q_b_proj and q_b_mqa_proj
+        if name.endswith("q_b_proj.weight"):
+            q_lora_rank = self.hparams["q_lora_rank"]
+
+            assert data_torch.shape[0] == n_head_kv * (qk_nope_head_dim + qk_rope_head_dim)
+            assert data_torch.shape[1] == q_lora_rank
+
+            q_b_proj_with_mqa = data_torch.view(n_head_kv, qk_nope_head_dim + qk_rope_head_dim, q_lora_rank)
+            q_b_proj, q_b_mqa_proj = torch.split(q_b_proj_with_mqa, [qk_nope_head_dim, qk_rope_head_dim], dim = 1)
+
+            q_b_proj = q_b_proj.reshape(n_head_kv * qk_nope_head_dim, q_lora_rank)
+            q_b_mqa_proj = q_b_mqa_proj.reshape(n_head_kv * qk_rope_head_dim, q_lora_rank)
+
+            return [
+                (self.map_tensor_name(name), q_b_proj),
+                (self.map_tensor_name(name.replace("q_b_proj", "q_b_mqa_proj")), q_b_mqa_proj)
+            ]
+
+        # split kv_a_proj_with_mqa into: kv_a_proj and k_mqa_proj
+        if name.endswith("kv_a_proj_with_mqa.weight"):
+            assert data_torch.shape[0] == kv_lora_rank + qk_rope_head_dim
+            assert data_torch.shape[1] == n_embed
+
+            kv_a_proj_with_mqa = data_torch.view(kv_lora_rank + qk_rope_head_dim, n_embed)
+            kv_a_proj, k_mqa_proj = torch.split(kv_a_proj_with_mqa, [kv_lora_rank, qk_rope_head_dim], dim = 0)
+
+            return [
+                (self.map_tensor_name(name.replace("kv_a_proj_with_mqa", "kv_a_proj")), kv_a_proj),
+                (self.map_tensor_name(name.replace("kv_a_proj_with_mqa", "k_mqa_proj")), k_mqa_proj)
+            ]
+
+        # split kv_b_proj into: k_b_proj, v_b_proj, and k_b_trans_proj (for deepseek-mla)
+        if name.endswith("kv_b_proj.weight"):
+            assert data_torch.shape[0] == n_head_kv * (v_head_dim + qk_nope_head_dim)
+            assert data_torch.shape[1] == kv_lora_rank
+
+            kv_b_proj = data_torch.view(n_head_kv, v_head_dim + qk_nope_head_dim, kv_lora_rank)            
+            k_b_proj, v_b_proj = torch.split(kv_b_proj, [qk_nope_head_dim, v_head_dim], dim = 1)
+
+            k_b_trans_proj = k_b_proj.transpose(1, 2).reshape(n_head_kv * kv_lora_rank, qk_nope_head_dim)            
+            k_b_proj = k_b_proj.reshape(n_head_kv * qk_nope_head_dim, kv_lora_rank)
+            v_b_proj = v_b_proj.reshape(n_head_kv * v_head_dim, kv_lora_rank)
+
+            return [
+                (self.map_tensor_name(name.replace("kv_b_proj", "k_b_trans_proj")), k_b_trans_proj),
+                (self.map_tensor_name(name.replace("kv_b_proj", "k_b_proj")), k_b_proj),
+                (self.map_tensor_name(name.replace("kv_b_proj", "v_b_proj")), v_b_proj)
+            ]
+
         return [(self.map_tensor_name(name), data_torch)]
 
     def prepare_tensors(self):

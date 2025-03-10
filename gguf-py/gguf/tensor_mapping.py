@@ -586,6 +586,34 @@ class TensorNameMap:
             "model.layers.{bid}.self_attn.kv_b_proj", # deepseek2
         ),
 
+        MODEL_TENSOR.ATTN_Q_MQA: (
+            "model.layers.{bid}.self_attn.q_mqa_proj",  # deepseek2 (v2-lite)
+        ),
+
+        MODEL_TENSOR.ATTN_Q_B_MQA: (
+            "model.layers.{bid}.self_attn.q_b_mqa_proj",  # deepseek2 (v2/v3/r1)
+        ),
+
+        MODEL_TENSOR.ATTN_KV_A: (
+            "model.layers.{bid}.self_attn.kv_a_proj",  # deepseek2
+        ),
+
+        MODEL_TENSOR.ATTN_K_MQA: (
+            "model.layers.{bid}.self_attn.k_mqa_proj",  # deepseek2
+        ),
+
+        MODEL_TENSOR.ATTN_K_B_TRANS: (
+            "model.layers.{bid}.self_attn.k_b_trans_proj",  # deepseek2 (mla only)
+        ),
+
+        MODEL_TENSOR.ATTN_K_B: (
+            "model.layers.{bid}.self_attn.k_b_proj",  # deepseek2
+        ),
+
+        MODEL_TENSOR.ATTN_V_B: (
+            "model.layers.{bid}.self_attn.v_b_proj",  # deepseek2
+        ),
+
         MODEL_TENSOR.ATTN_Q_A_NORM: (
             "model.layers.{bid}.self_attn.q_a_layernorm", # deepseek2
         ),
