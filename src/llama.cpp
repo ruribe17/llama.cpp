@@ -727,9 +727,6 @@ static struct ggml_tensor * llm_build_kv(
                     float     kq_scale,
          const llm_build_cb & cb,
                     int       il) {
-    const llama_hparams & hparams = lctx.model.hparams;
-    const llama_cparams & cparams = lctx.cparams;
-
     // these nodes are added to the graph together so that they are not reordered
     // by doing so, the number of splits in the graph is reduced
     ggml_build_forward_expand(graph, q_cur);
