@@ -1209,7 +1209,7 @@ struct clip_ctx * clip_model_load(const char * fname, const int verbosity = 1) {
     });
 }
 
-struct clip_ctx * clip_init(const char * fname, clip_context_params ctx_params) {
+struct clip_ctx * clip_init(const char * fname, struct clip_context_params ctx_params) {
     int verbosity = ctx_params.verbosity;
     struct ggml_context * meta = NULL;
 
