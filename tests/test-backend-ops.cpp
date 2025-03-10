@@ -3929,14 +3929,15 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
         test_cases.emplace_back(new test_set(GGML_TYPE_I32, GGML_TYPE_I32, {6, 5, 4, 3}, dim));
     }
 
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_Q8_0, GGML_TYPE_Q8_0, {256, 2, 3, 4}, {0, 1, 2, 3}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_Q8_0, GGML_TYPE_Q8_0, {256, 2, 3, 4}, {0, 2, 1, 3}));
+    for (int nr = 1; nr < 4; ++nr) {
+        for (ggml_type type : all_types) {
+            const auto neb = ggml_blck_size(type);
 
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_Q4_0, GGML_TYPE_Q4_0, {256, 2, 3, 4}, {0, 1, 2, 3}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_Q4_0, GGML_TYPE_Q4_0, {256, 2, 3, 4}, {0, 2, 3, 1}));
-
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_Q4_K, GGML_TYPE_Q4_K, {256, 2, 3, 4}, {0, 1, 2, 3}));
-    test_cases.emplace_back(new test_cpy(GGML_TYPE_Q4_K, GGML_TYPE_Q4_K, {256, 2, 3, 4}, {0, 3, 1, 2}));
+            test_cases.emplace_back(new test_cpy(type, type, {4*neb, 2, 3, 4}, {0, 1, 2, 3}));
+            test_cases.emplace_back(new test_cpy(type, type, {4*neb, 2, 3, 4}, {0, 2, 1, 3}));
+            test_cases.emplace_back(new test_cpy(type, type, {4*neb, 2, 3, 4}, {0, 3, 1, 2}));
+        }
+    }
 
     for (ggml_type type_src : {GGML_TYPE_F16, GGML_TYPE_F32}) {
         for (ggml_type type_dst : all_types) {
