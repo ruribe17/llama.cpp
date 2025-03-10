@@ -606,6 +606,9 @@ struct clip_ctx {
 
     std::vector<uint8_t> buf_compute_meta;
 
+    std::vector<ggml_backend_t> backend_ptrs;
+    std::vector<ggml_backend_buffer_type_t> backend_buft;
+
     ggml_backend_t backend     = nullptr;
     ggml_backend_t backend_cpu = nullptr;
     ggml_backend_buffer_t buf  = nullptr;
@@ -613,6 +616,29 @@ struct clip_ctx {
     ggml_backend_sched_ptr sched;
 
     struct clip_image_size * load_image_size;
+
+    clip_ctx(clip_context_params & ctx_params) {
+        backend_cpu = ggml_backend_init_by_type(GGML_BACKEND_DEVICE_TYPE_CPU, nullptr);
+        backend     = ctx_params.use_gpu
+                        ? ggml_backend_init_by_type(GGML_BACKEND_DEVICE_TYPE_GPU, nullptr)
+                        : nullptr;
+
+        if (backend) {
+            LOG_INF("%s: CLIP using %s backend\n", __func__, ggml_backend_name(backend));
+            backend_ptrs.push_back(backend);
+            backend_buft.push_back(ggml_backend_get_default_buffer_type(backend));
+        } else {
+            backend = backend_cpu;
+            LOG_INF("%s: CLIP using CPU backend\n", __func__);
+        }
+
+        backend_ptrs.push_back(backend_cpu);
+        backend_buft.push_back(ggml_backend_get_default_buffer_type(backend_cpu));
+
+        sched.reset(
+            ggml_backend_sched_new(backend_ptrs.data(), backend_buft.data(), backend_ptrs.size(), 8192, false)
+        );
+    }
 
     ~clip_ctx() {
         if (ctx_data) {
@@ -1304,7 +1330,7 @@ struct clip_ctx * clip_init(const char * fname, struct clip_context_params ctx_p
         }
     }
 
-    clip_ctx * new_clip = new clip_ctx{};
+    clip_ctx * new_clip = new clip_ctx(ctx_params);
 
     // update projector type
     {
@@ -1322,53 +1348,6 @@ struct clip_ctx * clip_init(const char * fname, struct clip_context_params ctx_p
             }
         }
     }
-
-    std::vector<ggml_backend_buffer_type_t> backend_buft;
-    std::vector<ggml_backend_t> backend_ptrs;
-
-    new_clip->backend_cpu = ggml_backend_cpu_init();
-
-    if (ctx_params.use_gpu) {
-#ifdef GGML_USE_CUDA
-        new_clip->backend = ggml_backend_cuda_init(0);
-        LOG_INF("%s: CLIP using CUDA backend\n", __func__);
-#endif
-
-#ifdef GGML_USE_METAL
-        new_clip->backend = ggml_backend_metal_init();
-        LOG_INF("%s: CLIP using Metal backend\n", __func__);
-#endif
-
-#ifdef GGML_USE_CANN
-        new_clip->backend = ggml_backend_cann_init(0);
-        LOG_INF("%s: CLIP using CANN backend\n", __func__);
-#endif
-
-#ifdef GGML_USE_VULKAN
-        new_clip->backend = ggml_backend_vk_init(0);
-        LOG_INF("%s: CLIP using Vulkan backend\n", __func__);
-#endif
-
-#ifdef GGML_USE_SYCL
-        new_clip->backend = ggml_backend_sycl_init(0);
-        LOG_INF("%s: CLIP using SYCL backend\n", __func__);
-#endif
-    }
-
-    if (new_clip->backend) {
-        backend_ptrs.push_back(new_clip->backend);
-        backend_buft.push_back(ggml_backend_get_default_buffer_type(new_clip->backend));
-    } else {
-        new_clip->backend = new_clip->backend_cpu;
-        LOG_INF("%s: CLIP using CPU backend\n", __func__);
-    }
-
-    backend_ptrs.push_back(new_clip->backend_cpu);
-    backend_buft.push_back(ggml_backend_get_default_buffer_type(new_clip->backend_cpu));
-
-    new_clip->sched.reset(
-        ggml_backend_sched_new(backend_ptrs.data(), backend_buft.data(), backend_ptrs.size(), 8192, false)
-    );
 
     // model size and capabilities
     {
@@ -1771,9 +1750,9 @@ struct clip_ctx * clip_init(const char * fname, struct clip_context_params ctx_p
         batch.data = nullptr;
         ggml_cgraph * gf = clip_image_build_graph(new_clip, &batch, nullptr, false);
         ggml_backend_sched_reserve(new_clip->sched.get(), gf);
-        for (size_t i = 0; i < backend_ptrs.size(); ++i) {
-            ggml_backend_t backend = backend_ptrs[i];
-            ggml_backend_buffer_type_t buft = backend_buft[i];
+        for (size_t i = 0; i < new_clip->backend_ptrs.size(); ++i) {
+            ggml_backend_t backend = new_clip->backend_ptrs[i];
+            ggml_backend_buffer_type_t buft = new_clip->backend_buft[i];
             size_t size = ggml_backend_sched_get_buffer_size(new_clip->sched.get(), backend);
             if (size > 1) {
                 LOG_INF("%s: %10s compute buffer size = %8.2f MiB\n", __func__,
