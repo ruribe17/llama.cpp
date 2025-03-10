@@ -10,26 +10,6 @@
 #include "ggml-backend.h"
 #include "gguf.h"
 
-#ifdef GGML_USE_CUDA
-#include "ggml-cuda.h"
-#endif
-
-#ifdef GGML_USE_SYCL
-#include "ggml-sycl.h"
-#endif
-
-#ifdef GGML_USE_METAL
-#include "ggml-metal.h"
-#endif
-
-#ifdef GGML_USE_CANN
-#include "ggml-cann.h"
-#endif
-
-#ifdef GGML_USE_VULKAN
-#include "ggml-vulkan.h"
-#endif
-
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
@@ -641,19 +621,11 @@ struct clip_ctx {
     }
 
     ~clip_ctx() {
-        if (ctx_data) {
-            ggml_free(ctx_data);
-        }
-        if (ctx_gguf) {
-            gguf_free(ctx_gguf);
-        }
-        if (buf) {
-            ggml_backend_buffer_free(buf);
-        }
-        if (backend) {
-            ggml_backend_free(backend);
-        }
-        if (backend_cpu && backend_cpu != backend) {
+        ggml_free(ctx_data);
+        gguf_free(ctx_gguf);
+        ggml_backend_buffer_free(buf);
+        ggml_backend_free(backend);
+        if (backend_cpu != backend) {
             ggml_backend_free(backend_cpu);
         }
     }
