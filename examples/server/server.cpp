@@ -384,8 +384,9 @@ struct server_task {
                             SRV_DBG("Grammar trigger token: %d (`%s`)\n", token, word.c_str());
                             common_grammar_trigger trigger;
                             trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN;
-                            trigger.value = (llama_token) token;
-                            params.sampling.grammar_triggers.push_back(trigger);
+                            trigger.value = word;
+                            trigger.token = token;
+                            params.sampling.grammar_triggers.push_back(std::move(trigger));
                         } else {
                             SRV_DBG("Grammar trigger word: `%s`\n", word.c_str());
                             params.sampling.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, word});
@@ -750,7 +751,10 @@ struct server_task_result_cmpl_final : server_task_result {
                         {"name", tc.name},
                         {"arguments", tc.arguments},
                     }},
-                    {"id", tc.id},
+                    // Some templates generate and require an id (sometimes in a very specific format, e.g. Mistral Nemo).
+                    // We only generate a random id for the ones that don't generate one by themselves
+                    // (they also won't get to see it as their template likely doesn't use it, so it's all for the client)
+                    {"id", tc.id.empty() ? gen_tool_call_id() : tc.id},
                 });
             }
             message["tool_calls"] = tool_calls;
@@ -1312,7 +1316,7 @@ struct server_slot {
         return task_type == SERVER_TASK_TYPE_EMBEDDING || task_type == SERVER_TASK_TYPE_RERANK;
     }
 
-    bool can_batch_with(server_slot & other_slot) {
+    bool can_batch_with(server_slot & other_slot) const {
         return is_non_causal() == other_slot.is_non_causal()
             && are_lora_equal(lora, other_slot.lora);
     }
@@ -1900,6 +1904,7 @@ struct server_context {
         try {
             common_chat_format_example(chat_templates.get(), params.use_jinja);
         } catch (const std::exception & e) {
+            SRV_WRN("%s: Chat template parsing error: %s\n", __func__, e.what());
             SRV_WRN("%s: The chat template that comes with this model is not yet supported, falling back to chatml. This may cause the model to output suboptimal responses\n", __func__);
             chat_templates = common_chat_templates_init(model, "chatml");
         }
@@ -2156,14 +2161,6 @@ struct server_context {
         }
 
         if (slot.has_new_line) {
-            // if we have already seen a new line, we stop after a certain time limit
-            if (slot.params.t_max_predict_ms > 0 && (ggml_time_us() - slot.t_start_generation > 1000.0f*slot.params.t_max_predict_ms)) {
-                slot.stop           = STOP_TYPE_LIMIT;
-                slot.has_next_token = false;
-
-                SLT_DBG(slot, "stopped by time limit, n_decoded = %d, t_max_predict_ms = %d ms\n", slot.n_decoded, (int) slot.params.t_max_predict_ms);
-            }
-
             // require that each new line has a whitespace prefix (i.e. indentation) of at least slot.params.n_indent
             if (slot.params.n_indent > 0) {
                 // check the current indentation
@@ -2202,6 +2199,14 @@ struct server_context {
         // check if there is a new line in the generated text
         if (result.text_to_send.find('\n') != std::string::npos) {
             slot.has_new_line = true;
+
+            // if we have seen a new line, we stop after a certain time limit, but only upon another new line
+            if (slot.params.t_max_predict_ms > 0 && (ggml_time_us() - slot.t_start_generation > 1000.0f*slot.params.t_max_predict_ms)) {
+                slot.stop           = STOP_TYPE_LIMIT;
+                slot.has_next_token = false;
+
+                SLT_DBG(slot, "stopped by time limit, n_decoded = %d, t_max_predict_ms = %d ms\n", slot.n_decoded, (int) slot.params.t_max_predict_ms);
+            }
         }
 
         // if context shift is disabled, we stop when it reaches the context limit
