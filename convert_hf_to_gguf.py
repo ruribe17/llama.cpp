@@ -4146,7 +4146,7 @@ class DeepseekV2Model(Model):
         qk_nope_head_dim = self.hparams["qk_nope_head_dim"]
         qk_rope_head_dim = self.hparams["qk_rope_head_dim"]
         v_head_dim = self.hparams["v_head_dim"]
-        kv_lora_rank = self.hparams["kv_lora_rank"]        
+        kv_lora_rank = self.hparams["kv_lora_rank"]
 
         # (v2-lite) split q_proj into: q_proj and q_mqa_proj
         if name.endswith("q_proj.weight"):
@@ -4200,10 +4200,10 @@ class DeepseekV2Model(Model):
             assert data_torch.shape[0] == n_head_kv * (v_head_dim + qk_nope_head_dim)
             assert data_torch.shape[1] == kv_lora_rank
 
-            kv_b_proj = data_torch.view(n_head_kv, v_head_dim + qk_nope_head_dim, kv_lora_rank)            
+            kv_b_proj = data_torch.view(n_head_kv, v_head_dim + qk_nope_head_dim, kv_lora_rank)
             k_b_proj, v_b_proj = torch.split(kv_b_proj, [qk_nope_head_dim, v_head_dim], dim = 1)
 
-            k_b_trans_proj = k_b_proj.transpose(1, 2).reshape(n_head_kv * kv_lora_rank, qk_nope_head_dim)            
+            k_b_trans_proj = k_b_proj.transpose(1, 2).reshape(n_head_kv * kv_lora_rank, qk_nope_head_dim)
             k_b_proj = k_b_proj.reshape(n_head_kv * qk_nope_head_dim, kv_lora_rank)
             v_b_proj = v_b_proj.reshape(n_head_kv * v_head_dim, kv_lora_rank)
 
