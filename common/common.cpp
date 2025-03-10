@@ -1813,8 +1813,9 @@ void common_chat_grammar_to_sampler(const common_chat_params * src,
                 LOG_DBG("Grammar trigger token: %d (`%s`)\n", token, word.c_str());
                 common_grammar_trigger trigger;
                 trigger.type = COMMON_GRAMMAR_TRIGGER_TYPE_TOKEN;
-                trigger.value = (llama_token) token;
-                dst.grammar_triggers.push_back(trigger);
+                trigger.value = word;
+                trigger.token = token;
+                dst.grammar_triggers.push_back(std::move(trigger));
 
             } else {
                 LOG_DBG("Grammar trigger word: `%s`\n", word.c_str());
