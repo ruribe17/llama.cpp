@@ -928,6 +928,7 @@ int main(int argc, char ** argv) {
                         if (format_res.tool_was_called) {
                             auto format_res_tok = common_tokenize(ctx, format_res.formatted, false, true);
                             embd_inp.insert(embd_inp.end(), format_res_tok.begin(), format_res_tok.end());
+                            assistant_ss.str("");
 
                         } else {
                             is_interacting = true;
