@@ -6551,11 +6551,13 @@ struct llm_build_context {
                              0);
                      cb(k_nope_view, "k_nope_view", il);
 
-                     // {n_embd_head_qk_nope + n_embd_head_qk_rope, n_head, n_tokens}
+                     // TODO: build_k_shift() and build_defrag(); the RoPEed part is the first n_rot as they expect
+                     // {n_embd_head_qk_rope + n_embd_head_qk_nope, n_head, n_tokens}
                      struct ggml_tensor * q_states = ggml_concat(ctx0, q_mqa_view, q_nope_view, 0);
                      cb(q_states, "q_states", il);
 
-                     // {n_embd_head_qk_nope + n_embd_head_qk_rope, n_head, n_tokens}
+                     // TODO: build_k_shift() and build_defrag(); the RoPEed part is the first n_rot as they expect
+                     // {n_embd_head_qk_rope + n_embd_head_qk_nope, n_head, n_tokens}
                      struct ggml_tensor * k_states = ggml_concat(ctx0, ggml_repeat(ctx0, k_mqa_view, q_mqa_view), k_nope_view, 0);
                      cb(k_states, "k_states", il);
 
@@ -6563,6 +6565,7 @@ struct llm_build_context {
                      struct ggml_tensor * v_states = ggml_mul_mat(ctx0, model.layers[il].wv_b, kv_compressed);
                      cb(v_states, "v_states", il);
 
+                     // note: this has essentially converted MLA into MHA (with very large KV-cache overhead)
                      cur = llm_build_kv(ctx0, lctx, kv_self, gf,
                              nullptr, model.layers[il].wo, nullptr,
                              k_states, v_states, q_states, KQ_mask, n_tokens, kv_head, n_kv, kq_scale, cb, il);
@@ -6587,7 +6590,8 @@ struct llm_build_context {
                     q_nope_absorbed = ggml_permute(ctx0, q_nope_absorbed, 0, 2, 1, 3);
                     cb(q_nope_absorbed, "q_nope_absorbed_perm", il);
 
-                    // {kv_lora_rank + n_embd_head_qk_rope, n_head, n_tokens}
+                    // TODO: build_k_shift() and build_defrag(); the RoPEed part is the first n_rot as they expect
+                    // {n_embd_head_qk_rope + kv_lora_rank, n_head, n_tokens}
                     struct ggml_tensor * q_states = ggml_concat(ctx0, q_mqa_view, q_nope_absorbed, 0);
                     cb(q_states, "q_states", il);
 
@@ -6599,7 +6603,8 @@ struct llm_build_context {
                             0);
                     cb(kv_compressed_view, "kv_compressed_view", il);
 
-                    // {kv_lora_rank + n_embd_head_qk_rope, 1, n_tokens}
+                    // TODO: build_k_shift() and build_defrag(); the RoPEed part is the first n_rot as they expect
+                    // {n_embd_head_qk_rope + kv_lora_rank, 1, n_tokens}
                     struct ggml_tensor * k_states = ggml_concat(ctx0, k_mqa_view, kv_compressed_view, 0);
                     cb(k_states, "k_states", il);
 
@@ -6607,6 +6612,7 @@ struct llm_build_context {
                     struct ggml_tensor * v_states = kv_compressed;
                     cb(v_states, "v_states", il);
 
+                    // note: this has essentially converted MLA into MQA (with very low KV-cache overhead)
                     cur = llm_build_kv(ctx0, lctx, kv_self, gf,
                             model.layers[il].wv_b, model.layers[il].wo, nullptr,
                             k_states, v_states, q_states, KQ_mask, n_tokens, kv_head, n_kv, kq_scale, cb, il);
@@ -9683,7 +9689,7 @@ struct llama_context * llama_init_from_model(
     cparams.embeddings       = params.embeddings;
     cparams.offload_kqv      = params.offload_kqv;
     cparams.flash_attn       = params.flash_attn;
-    cparams.mla_attn       = params.mla_attn;
+    cparams.mla_attn         = params.mla_attn;
     cparams.no_perf          = params.no_perf;
     cparams.pooling_type     = params.pooling_type;
 
