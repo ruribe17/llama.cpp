@@ -1321,17 +1321,24 @@ struct server_slot {
             && are_lora_equal(lora, other_slot.lora);
     }
 
+    //  There are two caps on the budge of a single request:
+    //  * [params.n_predict]
+    //  * [global_params.n_predict]
+    // This function returns true if the request is not limited by either of them.
     bool has_budget(const common_params & global_params) {
         if (params.n_predict == -1 && global_params.n_predict == -1) {
             return true; // limitless
         }
+        n_remaining = INT32_MAX;
 
-        n_remaining = -1;
+        // The request or server have finite limits on the number of tokens to generate.
+        if ((params.n_predict != -1 && params.n_predict != -2) || (global_params.n_predict  != -1 && global_params.n_predict != -2)) {
+            n_remaining = std::min(n_remaining, params.n_predict - n_decoded);
+        }
 
-        if (params.n_predict != -1) {
-            n_remaining = params.n_predict - n_decoded;
-        } else if (global_params.n_predict != -1) {
-            n_remaining = global_params.n_predict - n_decoded;
+        // The request or server have limits based on the context window.
+        if (params.n_predict == -2 || global_params.n_predict == -2) {
+            n_remaining = std::min(n_remaining, n_ctx - n_decoded);
         }
 
         return n_remaining > 0; // no budget
