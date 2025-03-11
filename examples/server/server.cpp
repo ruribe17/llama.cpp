@@ -1331,8 +1331,8 @@ struct server_slot {
         }
         n_remaining = INT32_MAX;
 
-        // The request or server have finite limits on the number of tokens to generate.
-        if ((params.n_predict != -1 && params.n_predict != -2) || (global_params.n_predict  != -1 && global_params.n_predict != -2)) {
+        // The request or server have specified limits on the number of tokens to generate.
+        if ((params.n_predict >= 0) || (global_params.n_predict  >= 0)) {
             n_remaining = std::min(n_remaining, params.n_predict - n_decoded);
         }
 
