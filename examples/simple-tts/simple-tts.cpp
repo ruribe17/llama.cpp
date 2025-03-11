@@ -490,6 +490,10 @@ static void print_usage(int, char ** argv) {
 }
 
 int main(int argc, char ** argv) {
+    // NOTE: parallel processing is incomplete. We can either remove it to make the example simpler, 
+    // or we can extend the example to support it. The latter is relatively easy to do - just store 
+    // multiple sets of codes - one for each parallel sequence. And after that, generate multiple audio 
+    // files - one for each set of codes.
     const int n_parallel = 1;
     const int n_predict  = 4096;
 
