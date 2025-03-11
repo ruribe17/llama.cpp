@@ -495,7 +495,7 @@ static ggml_backend_reg_t ggml_backend_load_best(const char * name, bool silent,
     if (user_search_path == nullptr) {
         // default search paths: executable directory, current directory
         search_paths.push_back(get_executable_path());
-        search_paths.push_back(fs::current_path());
+        search_paths.push_back(fs::current_path() / "");
     } else {
         search_paths.push_back(user_search_path);
     }
