@@ -426,3 +426,18 @@ def test_cancel_request():
     time.sleep(1) # wait for HTTP_POLLING_SECONDS
     res = server.make_request("GET", "/slots")
     assert res.body[0]["is_processing"] == False
+
+
+def test_context_window_sized_completion():
+    global server
+    server.n_ctx = 16
+    server.n_predict = -1
+    server.start()
+    res = server.make_request("POST", "/completion", data={
+        "n_predict": -2,
+        "prompt": "The 50 states in the US are ",
+    })
+    assert res.status_code == 200
+    assert res.body["timings"]["predicted_n"] == server.n_ctx
+    assert res.body["stop_type"] == "limit"
+    assert type(res.body["has_new_line"]) == bool
