@@ -488,7 +488,7 @@ static fs::path backend_filename_extension() {
 static ggml_backend_reg_t ggml_backend_load_best(const char * name, bool silent, const char * user_search_path) {
     // enumerate all the files that match [lib]ggml-name-*.[so|dll] in the search paths
     const fs::path name_path = fs::u8path(name);
-    const fs::path file_prefix = backend_filename_prefix() / name_path / fs::u8path("-");
+    const fs::path file_prefix = backend_filename_prefix().native() + name_path.native() + fs::u8path("-").native();
     const fs::path file_extension = backend_filename_extension();
 
     std::vector<fs::path> search_paths;
@@ -543,7 +543,7 @@ static ggml_backend_reg_t ggml_backend_load_best(const char * name, bool silent,
     if (best_score == 0) {
         // try to load the base backend
         for (const auto & search_path : search_paths) {
-            fs::path filename = backend_filename_prefix() / name_path / backend_filename_extension();
+            fs::path filename = backend_filename_prefix().native() + name_path.native() + backend_filename_extension().native();
             fs::path path = search_path / filename;
             if (fs::exists(path)) {
                 return get_reg().load_backend(path, silent);
