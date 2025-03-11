@@ -460,8 +460,9 @@ llama_model_loader::llama_model_loader(
     // Load the main GGUF
     struct ggml_context * ctx = NULL;
     struct gguf_init_params params = {
-        /*.no_alloc = */ true,
-        /*.ctx      = */ &ctx,
+        /*.no_alloc           = */ true,
+        /*.ctx                = */ &ctx,
+        /*.allow_byteswapping = */ true,
     };
 
     meta.reset(gguf_init_from_file(fname.c_str(), params));
@@ -520,8 +521,9 @@ llama_model_loader::llama_model_loader(
             const char * fname_split = splits[idx].c_str();
 
             struct gguf_init_params split_params = {
-                /*.no_alloc = */ true,
-                /*.ctx      = */ &ctx,
+                /*.no_alloc           = */ true,
+                /*.ctx                = */ &ctx,
+                /*.allow_byteswapping = */ true,
             };
             gguf_context_ptr ctx_gguf { gguf_init_from_file(fname_split, split_params) };
             if (!ctx_gguf) {
