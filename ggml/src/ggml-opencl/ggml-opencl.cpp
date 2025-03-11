@@ -297,6 +297,12 @@ static int ggml_backend_opencl_n_devices = 0;
 struct ProfilingInfo {
     std::string op_name;
     std::string kernel_name;
+    cl_ulong cmd_queued;
+    cl_ulong cmd_submit;
+    cl_ulong cmd_start;
+    cl_ulong cmd_end;
+    cl_ulong overhead_start;
+    cl_ulong overhead_end;
     // For the times below, see spec for clGetEventProfilingInfo
     // The time kernel spent in cmd queue - SUBMIT - QUEUED
     cl_ulong cmd_queued_duration_ns;
@@ -930,6 +936,27 @@ static void ggml_cl2_free(void) {
     fclose(fperf);
 
     GGML_LOG_INFO("ggml_opencl: total kernel time: %f\n", total_kernel_time);
+
+    FILE* ftrace = fopen("cl_trace.json", "w");
+    if (!ftrace) {
+        GGML_LOG_ERROR("Failed to open cl_trace.json\n");
+        return;
+    }
+
+    fprintf(ftrace, "[\n");
+    for (const ProfilingInfo & info : g_profiling_info) {
+        fprintf(ftrace, "{\"name\": \"%s\", \"cat\": \"OpenCL\", \"ph\": \"B\", \"ts\": %lu, \"pid\": \"\", \"tid\": \"Host\"},\n",
+            info.kernel_name.c_str(), info.cmd_queued/1000);
+        fprintf(ftrace, "{\"name\": \"%s\", \"cat\": \"OpenCL\", \"ph\": \"E\", \"ts\": %lu, \"pid\": \"\", \"tid\": \"Host\"},\n",
+            info.kernel_name.c_str(), info.cmd_submit/1000);
+
+        fprintf(ftrace, "{\"name\": \"%s\", \"cat\": \"OpenCL\", \"ph\": \"B\", \"ts\": %lu, \"pid\": \"\", \"tid\": \"Device\"},\n",
+            info.kernel_name.c_str(), info.cmd_start/1000);
+        fprintf(ftrace, "{\"name\": \"%s\", \"cat\": \"OpenCL\", \"ph\": \"E\", \"ts\": %lu, \"pid\": \"\", \"tid\": \"Device\"},\n",
+            info.kernel_name.c_str(), info.cmd_end/1000);
+    }
+    fprintf(ftrace, "]\n");
+    fclose(ftrace);
 #endif
 }
 
@@ -2102,6 +2129,11 @@ static void populateProfilingInfo(
     char kernel_name[512];
     CL_CHECK(clGetKernelInfo(kernel, CL_KERNEL_FUNCTION_NAME,
         sizeof(kernel_name), kernel_name, NULL));
+
+    info.cmd_queued = cmd_queued;
+    info.cmd_submit = cmd_submit;
+    info.cmd_start  = cmd_start;
+    info.cmd_end    = cmd_end;
 
     info.cmd_queued_duration_ns     = cmd_submit    - cmd_queued;
     info.cmd_submit_duration_ns     = cmd_start     - cmd_submit;
