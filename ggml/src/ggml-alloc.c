@@ -982,6 +982,11 @@ static bool alloc_tensor_range(struct ggml_context * ctx,
 }
 
 ggml_backend_buffer_t ggml_backend_alloc_ctx_tensors_from_buft(struct ggml_context * ctx, ggml_backend_buffer_type_t buft) {
+
+    if (buft == NULL) {
+        // Fall back to CPU buffer type
+        return ggml_backend_alloc_ctx_tensors_from_buft(ctx, ggml_backend_cpu_buffer_type());
+    }
     GGML_ASSERT(ggml_get_no_alloc(ctx) == true);
 
     size_t alignment = ggml_backend_buft_get_alignment(buft);

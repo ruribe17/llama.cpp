@@ -9701,10 +9701,12 @@ struct llama_context * llama_init_from_model(
             ggml_backend_t backend = ggml_backend_dev_init(dev, nullptr);
             if (backend == nullptr) {
                 LLAMA_LOG_ERROR("%s: failed to initialize %s backend\n", __func__, ggml_backend_dev_name(dev));
-                llama_free(ctx);
-                return nullptr;
+                //llama_free(ctx);
+                //return nullptr;
             }
-            ctx->backends.emplace_back(backend);
+            else {
+                ctx->backends.emplace_back(backend);
+            }
         }
 
         // add ACCEL backends (such as BLAS)

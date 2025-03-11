@@ -293,30 +293,62 @@ struct vk_device_struct {
     std::unique_ptr<vk_perf_logger> perf_logger;
 #endif
 
-    ~vk_device_struct() {
-        VK_LOG_DEBUG("destroy device " << name);
+~vk_device_struct() {
+    VK_LOG_DEBUG("destroy device " << name);
 
-        device.destroyFence(fence);
-
-        ggml_vk_destroy_buffer(sync_staging);
-
-        device.destroyCommandPool(compute_queue.pool);
-        if (!single_queue) {
-            device.destroyCommandPool(transfer_queue.pool);
-        }
-
-        for (auto& pipeline : pipelines) {
-            if (pipeline.second.expired()) {
-                continue;
+    if (device != VK_NULL_HANDLE) {
+        try {
+            // Only destroy fence if it's valid
+            if (fence != VK_NULL_HANDLE) {
+                device.destroyFence(fence);
+                fence = VK_NULL_HANDLE;
             }
 
-            vk_pipeline pl = pipeline.second.lock();
-            ggml_vk_destroy_pipeline(device, pl);
-        }
-        pipelines.clear();
+            // Only destroy buffer if it exists
+            if (sync_staging != VK_NULL_HANDLE) {
+                ggml_vk_destroy_buffer(sync_staging);
+                sync_staging = VK_NULL_HANDLE;
+            }
 
-        device.destroy();
+            // Check if command pool is valid before destroying
+            if (compute_queue.pool != VK_NULL_HANDLE) {
+                device.destroyCommandPool(compute_queue.pool);
+                compute_queue.pool = VK_NULL_HANDLE;
+            }
+
+            // Only destroy transfer queue if using separate queues and it's valid
+            if (!single_queue && transfer_queue.pool != VK_NULL_HANDLE) {
+                device.destroyCommandPool(transfer_queue.pool);
+                transfer_queue.pool = VK_NULL_HANDLE;
+            }
+
+            // Clean up pipelines safely
+            for (auto& pipeline : pipelines) {
+                if (pipeline.second.expired()) {
+                    continue;
+                }
+
+                vk_pipeline pl = pipeline.second.lock();
+                if (pl != nullptr) {
+                    ggml_vk_destroy_pipeline(device, pl);
+                }
+            }
+            pipelines.clear();
+
+            // Finally destroy the device
+            device.destroy();
+            device = VK_NULL_HANDLE;
+        }
+        catch (const std::exception& e) {
+            std::cerr << "Warning: Exception during Vulkan device cleanup: " << e.what() << std::endl;
+            // Continue with destruction despite errors
+        }
+        catch (...) {
+            std::cerr << "Warning: Unknown exception during Vulkan device cleanup" << std::endl;
+            // Continue with destruction despite errors
+        }
     }
+}
 };
 
 struct vk_buffer_struct {
@@ -771,6 +803,8 @@ struct vk_instance_t {
 };
 
 static bool vk_instance_initialized = false;
+// Global flag to track if Vulkan initialization has failed
+static bool g_vulkan_init_failed = false;
 static vk_instance_t vk_instance;
 
 #ifdef GGML_VULKAN_CHECK_RESULTS
@@ -2252,32 +2286,37 @@ static bool ggml_vk_khr_cooperative_matrix_support(const vk::PhysicalDevicePrope
 static vk_device ggml_vk_get_device(size_t idx) {
     VK_LOG_DEBUG("ggml_vk_get_device(" << idx << ")");
 
-    if (vk_instance.devices[idx] == nullptr) {
-        VK_LOG_DEBUG("Initializing new vk_device");
-        vk_device device = std::make_shared<vk_device_struct>();
-        vk_instance.devices[idx] = device;
+    if (g_vulkan_init_failed) {
+        return nullptr;
+    }
+
+    try {
+        if (vk_instance.devices[idx] == nullptr) {
+            VK_LOG_DEBUG("Initializing new vk_device");
+            vk_device device = std::make_shared<vk_device_struct>();
+            vk_instance.devices[idx] = device;
 
 #ifdef GGML_VULKAN_MEMORY_DEBUG
-        device->memory_logger = std::unique_ptr<vk_memory_logger>(new vk_memory_logger());
+            device->memory_logger = std::unique_ptr<vk_memory_logger>(new vk_memory_logger());
 #endif
 #ifdef GGML_VULKAN_PERF
-        device->perf_logger = std::unique_ptr<vk_perf_logger>(new vk_perf_logger());
+            device->perf_logger = std::unique_ptr<vk_perf_logger>(new vk_perf_logger());
 #endif
 
         size_t dev_num = vk_instance.device_indices[idx];
 
-        std::vector<vk::PhysicalDevice> physical_devices = vk_instance.instance.enumeratePhysicalDevices();
+            std::vector<vk::PhysicalDevice> physical_devices = vk_instance.instance.enumeratePhysicalDevices();
 
-        if (dev_num >= physical_devices.size()) {
-            std::cerr << "ggml_vulkan: Device with index " << dev_num << " does not exist." << std::endl;
-            throw std::runtime_error("Device not found");
-        }
+            if (dev_num >= physical_devices.size()) {
+                std::cerr << "ggml_vulkan: Device with index " << dev_num << " does not exist." << std::endl;
+                throw std::runtime_error("Device not found");
+            }
 
-        device->physical_device = physical_devices[dev_num];
-        const std::vector<vk::ExtensionProperties> ext_props = device->physical_device.enumerateDeviceExtensionProperties();
+            device->physical_device = physical_devices[dev_num];
+            const std::vector<vk::ExtensionProperties> ext_props = device->physical_device.enumerateDeviceExtensionProperties();
 
-        const char* GGML_VK_PREFER_HOST_MEMORY = getenv("GGML_VK_PREFER_HOST_MEMORY");
-        device->prefer_host_memory = GGML_VK_PREFER_HOST_MEMORY != nullptr;
+            const char* GGML_VK_PREFER_HOST_MEMORY = getenv("GGML_VK_PREFER_HOST_MEMORY");
+            device->prefer_host_memory = GGML_VK_PREFER_HOST_MEMORY != nullptr;
 
         bool fp16_storage = false;
         bool fp16_compute = false;
@@ -2689,7 +2728,29 @@ static vk_device ggml_vk_get_device(size_t idx) {
             device_extensions
         };
         device_create_info.setPNext(&device_features2);
-        device->device = device->physical_device.createDevice(device_create_info);
+        try {
+            // Attempt to create device
+            device->device = device->physical_device.createDevice(device_create_info);
+        }
+        catch (const vk::ExtensionNotPresentError& ext_error) {
+            // Specific handling for extension not supported
+            std::cerr << "Vulkan Extension Error: " << ext_error.what() << std::endl;
+            std::cerr << "Critical extension not supported. Falling back to CPU backend." << std::endl;
+
+            return nullptr;
+        }
+        catch (const vk::SystemError& sys_error) {
+            // Catch any other Vulkan system errors
+            std::cerr << "Vulkan Device Creation Error: " << sys_error.what() << std::endl;
+            std::cerr << "Failed to create Vulkan device. Falling back to CPU backend." << std::endl;
+            return nullptr;
+        }
+        catch (const std::exception& general_error) {
+            // Catch any standard exceptions
+            std::cerr << "Unexpected error during Vulkan device creation: " << general_error.what() << std::endl;
+            std::cerr << "Falling back to CPU backend." << std::endl;
+            return nullptr;
+        }
 
         // Queues
         ggml_vk_create_queue(device, device->compute_queue, compute_queue_family_index, 0, { vk::PipelineStageFlagBits::eComputeShader | vk::PipelineStageFlagBits::eTransfer }, false);
@@ -2752,6 +2813,14 @@ static vk_device ggml_vk_get_device(size_t idx) {
     }
 
     return vk_instance.devices[idx];
+    }
+    catch (const std::exception& e) {
+        // Set global flag on error
+        g_vulkan_init_failed = true;
+        return nullptr;
+    }
+
+
 }
 
 static void ggml_vk_print_gpu_info(size_t idx) {
@@ -3043,22 +3112,74 @@ static void ggml_vk_instance_init() {
 }
 
 static void ggml_vk_init(ggml_backend_vk_context * ctx, size_t idx) {
-    VK_LOG_DEBUG("ggml_vk_init(" << ctx->name << ", " << idx << ")");
-    ggml_vk_instance_init();
-    GGML_ASSERT(idx < vk_instance.device_indices.size());
 
-    ctx->name = GGML_VK_NAME + std::to_string(idx);
+    if (g_vulkan_init_failed) {
+        ctx->device = nullptr;
+        return;
+    }
+    try {
+        VK_LOG_DEBUG("ggml_vk_init(" << ctx->name << ", " << idx << ")");
+        ctx->device = nullptr;
+        // Wrap instance initialization in a try-catch block
+        try {
+            ggml_vk_instance_init();
+        }
+        catch (const std::exception& instance_init_error) {
+            std::cerr << "Vulkan instance initialization failed: " 
+                      << instance_init_error.what() << std::endl;
 
-    ctx->device = ggml_vk_get_device(idx);
+            // Set device to nullptr to indicate initialization failure
+            ctx->device = nullptr;
+            return;
+        }
 
-    ctx->semaphore_idx = 0;
-    ctx->event_idx = 0;
+        // Check device index validity
+        if (idx >= vk_instance.device_indices.size()) {
+            std::cerr << "Invalid Vulkan device index: " << idx << std::endl;
+            ctx->device = nullptr;
+            return;
+        }
 
-    ctx->prealloc_size_x = 0;
-    ctx->prealloc_size_y = 0;
-    ctx->prealloc_size_split_k = 0;
+        ctx->name = GGML_VK_NAME + std::to_string(idx);
 
-    ctx->fence = ctx->device->device.createFence({});
+        // Attempt to get device with error handling
+        vk_device device = ggml_vk_get_device(idx);
+
+        // Check if device initialization failed
+        if (nullptr == device) {
+            std::cerr << "Failed to initialize Vulkan device at index " << idx << std::endl;
+            ctx->device = nullptr;
+            return;
+        }
+
+        ctx->device = device;
+        ctx->semaphore_idx = 0;
+        ctx->event_idx = 0;
+        ctx->prealloc_size_x = 0;
+        ctx->prealloc_size_y = 0;
+        ctx->prealloc_size_split_k = 0;
+
+         // CRITICAL: very explicit check before trying to create a fence
+        if (ctx->device == nullptr || ctx->device->device == VK_NULL_HANDLE) {
+            std::cerr << "WARNING: Device is null or invalid, skipping fence creation" << std::endl;
+            return;
+        }
+
+        if (ctx->device) {
+
+        // Wrap fence creation in try-catch to handle potential Vulkan errors
+        try {
+            ctx->fence = ctx->device->device.createFence({});
+        }
+        catch (const vk::SystemError& fence_error) {
+            std::cerr << "Failed to create Vulkan fence: " << fence_error.what() << std::endl;
+            // Optionally, you might want to reset the device or handle this differently
+            ctx->device = nullptr;
+            // Set global flag
+            g_vulkan_init_failed = true;
+            return;
+        }
+        }
 
 #ifdef GGML_VULKAN_CHECK_RESULTS
     const char* skip_checks = getenv("GGML_VULKAN_SKIP_CHECKS");
@@ -3066,6 +3187,15 @@ static void ggml_vk_init(ggml_backend_vk_context * ctx, size_t idx) {
     const char* output_tensor = getenv("GGML_VULKAN_OUTPUT_TENSOR");
     vk_output_tensor = (output_tensor == NULL ? 0 : atoi(output_tensor));
 #endif
+    }
+    catch (const std::exception& unexpected_error) {
+        // Catch-all for any unexpected errors
+        std::cerr << "Unexpected error during Vulkan initialization: " 
+                  << unexpected_error.what() << std::endl;
+        
+        // Ensure device is set to nullptr to indicate initialization failure
+        ctx->device = nullptr;
+    }
 }
 
 static vk_pipeline ggml_vk_get_to_fp16(ggml_backend_vk_context * ctx, ggml_type type) {
@@ -8032,11 +8162,28 @@ static size_t ggml_backend_vk_buffer_type_get_alloc_size(ggml_backend_buffer_typ
 }
 
 ggml_backend_buffer_type_t ggml_backend_vk_buffer_type(size_t dev_num) {
-    ggml_vk_instance_init();
+
+    // Check if Vulkan initialization previously failed
+    if (g_vulkan_init_failed) {
+        return nullptr;
+    }
+
+    try {
+        ggml_vk_instance_init();
+    } catch (const std::exception& e) {
+        VK_LOG_DEBUG("ggml_backend_vk_buffer_type: Vulkan instance init failed: " << e.what());
+        g_vulkan_init_failed = true;
+        return nullptr;
+    }
 
     VK_LOG_DEBUG("ggml_backend_vk_buffer_type(" << dev_num << ")");
-
+    
     vk_device dev = ggml_vk_get_device(dev_num);
+    if (!dev) {
+        VK_LOG_DEBUG("ggml_backend_vk_buffer_type: Failed to get device " << dev_num);
+        g_vulkan_init_failed = true;
+        return nullptr;
+    }
 
     return &dev->buffer_type;
 }
@@ -8092,6 +8239,13 @@ static size_t ggml_backend_vk_host_buffer_type_get_alignment(ggml_backend_buffer
 // Should be changed to return device-specific host buffer type
 // but that probably requires changes in llama.cpp
 ggml_backend_buffer_type_t ggml_backend_vk_host_buffer_type() {
+
+    // Check if Vulkan initialization previously failed
+    if (g_vulkan_init_failed) {
+        // Return CPU buffer type as fallback when Vulkan fails
+        return ggml_backend_cpu_buffer_type();
+    }
+
     static struct ggml_backend_buffer_type ggml_backend_vk_buffer_type_host = {
         /* .iface    = */ {
             /* .get_name         = */ ggml_backend_vk_host_buffer_type_name,
@@ -8105,11 +8259,24 @@ ggml_backend_buffer_type_t ggml_backend_vk_host_buffer_type() {
         /* .context  = */ nullptr,
     };
 
-    // Make sure device 0 is initialized
-    ggml_vk_instance_init();
-    ggml_vk_get_device(0);
+     // Make sure device 0 is initialized
+    try {
+        ggml_vk_instance_init();
+        vk_device dev = ggml_vk_get_device(0);
 
-    return &ggml_backend_vk_buffer_type_host;
+        if (!dev) {
+            g_vulkan_init_failed = true;
+            return ggml_backend_cpu_buffer_type();
+        }
+
+        // Only set the device if initialization succeeded
+        ggml_backend_vk_buffer_type_host.device = ggml_backend_reg_dev_get(ggml_backend_vk_reg(), 0);
+
+        return &ggml_backend_vk_buffer_type_host;
+    } catch (const std::exception& e) {
+        g_vulkan_init_failed = true;
+        return ggml_backend_cpu_buffer_type();
+    }
 }
 
 
@@ -8342,17 +8509,60 @@ static ggml_guid_t ggml_backend_vk_guid() {
 ggml_backend_t ggml_backend_vk_init(size_t dev_num) {
     VK_LOG_DEBUG("ggml_backend_vk_init(" << dev_num << ")");
 
-    ggml_backend_vk_context * ctx = new ggml_backend_vk_context;
-    ggml_vk_init(ctx, dev_num);
+        // First check if Vulkan initialization previously failed
+    if (g_vulkan_init_failed) {
+        std::cerr << "Vulkan initialization previously failed, skipping.\n";
+        return nullptr;
+    }
 
-    ggml_backend_t vk_backend = new ggml_backend {
-        /* .guid      = */ ggml_backend_vk_guid(),
-        /* .interface = */ ggml_backend_vk_interface,
-        /* .device    = */ ggml_backend_reg_dev_get(ggml_backend_vk_reg(), dev_num),
-        /* .context   = */ ctx,
-    };
+    VK_LOG_DEBUG("ggml_backend_vk_init(" << dev_num << ")");
 
-    return vk_backend;
+    ggml_backend_vk_context* ctx = new ggml_backend_vk_context;
+
+    try {
+        // Initialize Vulkan context
+        ggml_vk_init(ctx, dev_num);
+
+        // Check if device initialization failed
+        if (!ctx->device) {
+            std::cerr << "Vulkan device initialization failed. Falling back to CPU backend." << std::endl;
+
+            // Cleanup Vulkan context
+            delete ctx;
+            return nullptr;
+        }
+
+        // Create Vulkan backend
+        ggml_backend_t vk_backend = new ggml_backend {
+            /* .guid      = */ ggml_backend_vk_guid(),
+            /* .interface = */ ggml_backend_vk_interface,
+            /* .device    = */ ggml_backend_reg_dev_get(ggml_backend_vk_reg(), dev_num),
+            /* .context   = */ ctx,
+        };
+
+        return vk_backend;
+    }
+    catch (const std::exception& e) {
+
+        g_vulkan_init_failed = true;
+        // Catch any unexpected errors during initialization
+        std::cerr << "Critical error in Vulkan backend initialization: " 
+                  << e.what() << ". Falling back to CPU backend." << std::endl;
+
+        // Cleanup Vulkan context
+        delete ctx;
+        return nullptr;
+    }
+    catch (...) {
+
+        g_vulkan_init_failed = true;
+        // Catch any unknown errors
+        std::cerr << "Unknown error during Vulkan backend initialization. Falling back to CPU backend." << std::endl;
+
+        // Cleanup Vulkan context
+        delete ctx;
+        return nullptr;
+    }
 }
 
 bool ggml_backend_is_vk(ggml_backend_t backend) {
@@ -8739,6 +8949,12 @@ static size_t ggml_backend_vk_reg_get_device_count(ggml_backend_reg_t reg) {
 }
 
 static ggml_backend_dev_t ggml_backend_vk_reg_get_device(ggml_backend_reg_t reg, size_t device) {
+
+      // Check global flag first
+    if (g_vulkan_init_failed) {
+        return nullptr;
+    }
+
     static std::vector<ggml_backend_dev_t> devices;
 
     static bool initialized = false;
@@ -8763,6 +8979,9 @@ static ggml_backend_dev_t ggml_backend_vk_reg_get_device(ggml_backend_reg_t reg,
             initialized = true;
         }
     }
+    if (devices.empty() || device >= devices.size()) {
+        return nullptr;
+    }
 
     GGML_ASSERT(device < devices.size());
     return devices[device];
@@ -8776,6 +8995,10 @@ static const struct ggml_backend_reg_i ggml_backend_vk_reg_i = {
 };
 
 ggml_backend_reg_t ggml_backend_vk_reg() {
+
+    if (g_vulkan_init_failed) {
+        return nullptr;
+    }
     static ggml_backend_reg reg = {
         /* .api_version = */ GGML_BACKEND_API_VERSION,
         /* .iface       = */ ggml_backend_vk_reg_i,
@@ -8785,6 +9008,7 @@ ggml_backend_reg_t ggml_backend_vk_reg() {
         ggml_vk_instance_init();
         return &reg;
     } catch (const vk::SystemError& e) {
+         g_vulkan_init_failed = true;
         VK_LOG_DEBUG("ggml_backend_vk_reg() -> Error: System error: " << e.what());
         return nullptr;
     }
