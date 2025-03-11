@@ -303,11 +303,6 @@ function useOptimizedTextarea(initValue: string): OptimizedTextareaValue {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.value = savedInitValue;
-      console.log(
-        'useOptimizedTextarea: set initValue',
-        savedInitValue,
-        textareaRef.current
-      );
     }
   }, [textareaRef, savedInitValue]);
 
@@ -318,11 +313,6 @@ function useOptimizedTextarea(initValue: string): OptimizedTextareaValue {
     setValue: (value: string) => {
       if (textareaRef.current) {
         textareaRef.current.value = value;
-        console.log(
-          'useOptimizedTextarea: set value',
-          value,
-          textareaRef.current
-        );
       }
     },
     focus: () => {
@@ -330,7 +320,6 @@ function useOptimizedTextarea(initValue: string): OptimizedTextareaValue {
         // focus and move the cursor to the end
         textareaRef.current.focus();
         textareaRef.current.selectionStart = textareaRef.current.value.length;
-        console.log('useOptimizedTextarea: focus', textareaRef.current);
       }
     },
     ref: textareaRef,
