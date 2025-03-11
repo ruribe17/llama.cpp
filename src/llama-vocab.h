@@ -29,7 +29,6 @@ struct llama_vocab {
 
     std::string type_name() const;
 
-    bool is_valid       (llama_token id) const;
     bool is_normal      (llama_token id) const;
     bool is_unknown     (llama_token id) const;
     bool is_control     (llama_token id) const;

@@ -2040,6 +2040,18 @@ struct server_context {
         return ret;
     }
 
+    bool can_be_detokenized(const struct llama_context * ctx, const std::vector<llama_token> & tokens) {
+        const llama_model * model = llama_get_model(ctx);
+        const llama_vocab * vocab = llama_model_get_vocab(model);
+        const int32_t n_vocab = llama_vocab_n_tokens(vocab);
+        for (const auto& token : tokens) {
+            if (token < 0 || token >= n_vocab) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool launch_slot_with_task(server_slot & slot, const server_task & task) {
         slot.reset();
         slot.id_task       = task.id;
