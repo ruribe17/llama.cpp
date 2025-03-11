@@ -1531,6 +1531,15 @@ static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
         },
         32
     },
+    {
+        vk_device_architecture::AMD_RDNA3,
+        {
+            {"soft_max_f32", 64}, {"soft_max_f32_wg512", 64},
+            {"soft_max_f32_f16", 64}, {"soft_max_f32_f16_wg512", 64},
+            {"im2col_f32", 64}, {"im2col_f32_f16", 64},
+        },
+        32
+    },
 };
 
 static uint32_t get_subgroup_size(const std::string &pipeline_name, const vk_device_architecture &arch) {
@@ -1673,7 +1682,9 @@ static void ggml_vk_load_shaders(vk_device& device) {
                                               uint32_t parameter_count, uint32_t push_constant_size, std::array<uint32_t, 3> wg_denoms, const std::vector<uint32_t>& specialization_constants,
                                               uint32_t align, bool disable_robustness = false, bool require_full_subgroups = false, uint32_t required_subgroup_size = 0) {
 
-        required_subgroup_size = get_subgroup_size(name, device->architecture);
+        if (!require_full_subgroups) {
+            required_subgroup_size = get_subgroup_size(name, device->architecture);
+        }
 
         if (!pipeline) {
             pipeline = std::make_shared<vk_pipeline_struct>();
