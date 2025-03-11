@@ -1279,6 +1279,7 @@ struct llama_vocab::impl {
 
     std::string type_name() const;
 
+    bool is_valid       (llama_token id) const;
     bool is_normal      (llama_token id) const;
     bool is_unknown     (llama_token id) const;
     bool is_control     (llama_token id) const;
@@ -2068,6 +2069,11 @@ std::string llama_vocab::impl::type_name() const{
     }
 }
 
+bool llama_vocab::impl::is_valid(llama_token id) const {
+    GGML_ASSERT(type != LLAMA_VOCAB_TYPE_NONE);
+    return 0 <= id && id < (int32_t) id_to_token.size();
+}
+
 bool llama_vocab::impl::is_normal(llama_token id) const {
     GGML_ASSERT(type != LLAMA_VOCAB_TYPE_NONE);
     return id_to_token[id].attr & LLAMA_TOKEN_ATTR_NORMAL;
@@ -2760,6 +2766,10 @@ std::string llama_vocab::type_name() const{
     return pimpl->type_name();
 }
 
+bool llama_vocab::is_valid(llama_token id) const {
+    return pimpl->is_valid(id);
+}
+
 bool llama_vocab::is_normal(llama_token id) const {
     return pimpl->is_normal(id);
 }
@@ -3262,3 +3272,11 @@ int32_t llama_detokenize(
     return vocab->detokenize(tokens, n_tokens, text, text_len_max, remove_special, unparse_special);
 }
 
+bool can_detokenize(const struct llama_vocab * vocab, const llama_token * tokens, int32_t n_tokens) {
+    for (int32_t i = 0; i < n_tokens; ++i) {
+        if (!vocab->is_valid(tokens[i])) {
+            return false;
+        }
+    }
+    return true;
+}

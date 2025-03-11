@@ -593,6 +593,10 @@ size_t common_lcs(const llama_tokens & a, const llama_tokens & b);
 // Vocab utils
 //
 
+bool can_be_detokenized(
+    const struct llama_context * ctx,
+    const std::vector<llama_token> & tokens);
+
 // tokenizes a string into a vector of tokens
 // should work similar to Python's `tokenizer.encode`
 std::vector<llama_token> common_tokenize(

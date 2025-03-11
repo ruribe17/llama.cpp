@@ -1021,6 +1021,10 @@ extern "C" {
                                int32_t   lstrip,
                                   bool   special);
 
+    /// @details Determine whether the provided tokens are in the vocabulary.
+    /// @return Returns true if every token provided is in the vocabulary.
+    LLAMA_API bool can_detokenize(const struct llama_vocab * vocab, const llama_token * tokens, int32_t n_tokens);
+
     /// @details Convert the provided tokens into text (inverse of llama_tokenize()).
     /// @param text The char pointer must be large enough to hold the resulting text.
     /// @return Returns the number of chars/bytes on success, no more than text_len_max.

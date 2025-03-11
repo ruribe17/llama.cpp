@@ -2054,6 +2054,11 @@ struct server_context {
             slot.lora = task.params.lora;
         }
 
+        bool can_detokenize = can_be_detokenized(ctx, slot.prompt_tokens);
+        if (!can_detokenize) {
+            send_error(task, "Prompt contains invalid tokens", ERROR_TYPE_INVALID_REQUEST);
+            return false;
+        }
         SLT_DBG(slot, "launching slot : %s\n", safe_json_to_str(slot.to_json()).c_str());
 
         if (slot.n_predict > 0 && slot.params.n_predict > slot.n_predict) {
