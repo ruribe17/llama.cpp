@@ -2044,7 +2044,7 @@ struct server_context {
         const llama_model * model = llama_get_model(ctx);
         const llama_vocab * vocab = llama_model_get_vocab(model);
         const int32_t n_vocab = llama_vocab_n_tokens(vocab);
-        for (const auto& token : tokens) {
+        for (const auto & token : tokens) {
             if (token < 0 || token >= n_vocab) {
                 return false;
             }
