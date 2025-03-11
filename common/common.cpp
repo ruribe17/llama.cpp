@@ -1748,7 +1748,6 @@ std::string common_token_to_piece(const struct llama_vocab * vocab, llama_token 
     return piece;
 }
 
-
 std::string common_detokenize(const struct llama_context * ctx, const std::vector<llama_token> & tokens, bool special) {
     const llama_model * model = llama_get_model(ctx);
     const llama_vocab * vocab = llama_model_get_vocab(model);
