@@ -11,7 +11,7 @@ endif()
 
 # Find necessary packages
 find_package(CURL REQUIRED)
-find_package(OpenSSL REQUIRED)
+# find_package(OpenSSL REQUIRED)
 
 if (CURL_FOUND)
     message(STATUS "Found CURL: ${CURL_LIBRARIES}")

@@ -3880,17 +3880,17 @@ static std::string process_prompt(const std::string &prompt, Translator &transla
     std::vector<std::string> code_blocks;
     std::string text_only = prompt;
 
-    // 정규식: ``` 코드 블록 또는 { }, ; 포함된 코드 줄 찾기
-    std::regex code_regex(R"((```[\s\S]*?```|(^.*[;{}=<>].*$)))", std::regex::multiline);
-    std::sregex_iterator iter(prompt.begin(), prompt.end(), code_regex);
-    std::sregex_iterator end;
+    // // 정규식: ``` 코드 블록 또는 { }, ; 포함된 코드 줄 찾기
+    // std::regex code_regex(R"((```[\s\S]*?```|(^.*[;{}=<>].*$)))", std::regex::multiline);
+    // std::sregex_iterator iter(prompt.begin(), prompt.end(), code_regex);
+    // std::sregex_iterator end;
 
-    while (iter != end)
-    {
-        code_blocks.push_back(iter->str());                                                                   // 코드 블록 저장
-        text_only = std::regex_replace(text_only, code_regex, "\n", std::regex_constants::format_first_only); // 코드 삭제, 줄 개행 유지
-        ++iter;
-    }
+    // while (iter != end)
+    // {
+    //     code_blocks.push_back(iter->str());                                                                   // 코드 블록 저장
+    //     text_only = std::regex_replace(text_only, code_regex, "\n", std::regex_constants::format_first_only); // 코드 삭제, 줄 개행 유지
+    //     ++iter;
+    // }
 
     // 2. 한국어 텍스트만 번역 (코드 블록 제외)
     std::string translated_text = translator.translate_korean_to_english(text_only);
