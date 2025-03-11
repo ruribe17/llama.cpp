@@ -3930,13 +3930,13 @@ static std::vector<std::unique_ptr<test_case>> make_test_cases_eval() {
     }
 
     // same-type copy
-    for (int nr = 1; nr < 4; ++nr) {
+    for (int nb = 1; nb < 4; ++nb) {
         for (ggml_type type : all_types) {
             const auto neb = ggml_blck_size(type);
 
-            test_cases.emplace_back(new test_cpy(type, type, {4*neb, 2, 3, 4}, {0, 1, 2, 3}));
-            test_cases.emplace_back(new test_cpy(type, type, {4*neb, 2, 3, 4}, {0, 2, 1, 3}));
-            test_cases.emplace_back(new test_cpy(type, type, {4*neb, 2, 3, 4}, {0, 3, 1, 2}));
+            test_cases.emplace_back(new test_cpy(type, type, {nb*neb, 2, 3, 4}, {0, 1, 2, 3}));
+            test_cases.emplace_back(new test_cpy(type, type, {nb*neb, 2, 3, 4}, {0, 2, 1, 3}));
+            test_cases.emplace_back(new test_cpy(type, type, {nb*neb, 2, 3, 4}, {0, 3, 1, 2}));
         }
     }
 
