@@ -431,7 +431,7 @@ def test_cancel_request():
 
 
 def test_context_window_sized_completion():
-    global server
+    server = ServerPreset.tinyllama2()
     server.n_ctx = 16
     server.n_predict = -1
     server.start()
