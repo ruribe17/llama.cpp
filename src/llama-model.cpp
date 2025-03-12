@@ -7354,11 +7354,11 @@ struct llm_build_gemma2 : public llm_graph_context {
 };
 
 struct llm_build_gemma3 : public llm_graph_context {
-    llm_build_gemma3(const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
+    llm_build_gemma3(const llama_model & model, const llm_graph_params & params, ggml_cgraph * gf) : llm_graph_context(params) {
         const int64_t n_embd_head_k = hparams.n_embd_head_k;
 
-        struct ggml_tensor * cur;
-        struct ggml_tensor * inpL;
+        ggml_tensor * cur;
+        ggml_tensor * inpL;
 
         inpL = build_inp_embd(model.tok_embd);
 
@@ -7369,10 +7369,10 @@ struct llm_build_gemma3 : public llm_graph_context {
         }
 
         // inp_pos - contains the positions
-        struct ggml_tensor * inp_pos = build_inp_pos();
+        ggml_tensor * inp_pos = build_inp_pos();
 
         // TODO: is causal == true correct? might need some changes
-        auto inp_attn = build_attn_inp_kv_self(true, true);
+        auto * inp_attn = build_attn_inp_kv_unified(true, true);
 
         // "5-to-1 interleaved attention"
         // 5 layers of local attention followed by 1 layer of global attention
@@ -7381,8 +7381,8 @@ struct llm_build_gemma3 : public llm_graph_context {
         for (int il = 0; il < n_layer; ++il) {
             const bool is_sliding = il % sliding_window_pattern < (sliding_window_pattern - 1);
 
-            const float freq_base_l  = is_sliding ? 10000.0f    : freq_base;
-            const float freq_scale_l = is_sliding ? 1.0f        : freq_scale;
+            const float freq_base_l  = is_sliding ? 10000.0f : freq_base;
+            const float freq_scale_l = is_sliding ? 1.0f     : freq_scale;
 
             // norm
             cur = build_norm(inpL, model.layers[il].attn_norm, NULL, LLM_NORM_RMS, il);
@@ -7391,13 +7391,13 @@ struct llm_build_gemma3 : public llm_graph_context {
             // self-attention
             {
                 // compute Q and K and RoPE them
-                struct ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur);
+                ggml_tensor * Qcur = build_lora_mm(model.layers[il].wq, cur);
                 cb(Qcur, "Qcur", il);
 
-                struct ggml_tensor * Kcur = build_lora_mm(model.layers[il].wk, cur);
+                ggml_tensor * Kcur = build_lora_mm(model.layers[il].wk, cur);
                 cb(Kcur, "Kcur", il);
 
-                struct ggml_tensor * Vcur = build_lora_mm(model.layers[il].wv, cur);
+                ggml_tensor * Vcur = build_lora_mm(model.layers[il].wv, cur);
                 cb(Vcur, "Vcur", il);
 
                 Qcur = ggml_reshape_3d(ctx0, Qcur, n_embd_head_k, n_head,    n_tokens);
@@ -7420,7 +7420,7 @@ struct llm_build_gemma3 : public llm_graph_context {
                         ext_factor, attn_factor, beta_fast, beta_slow);
                 cb(Kcur, "Kcur", il);
 
-                cur = build_attn(inp_attn.get(), gf,
+                cur = build_attn(inp_attn, gf,
                         model.layers[il].wo, NULL,
                         Qcur, Kcur, Vcur, nullptr, hparams.f_attention_scale, il);
             }
@@ -7432,12 +7432,12 @@ struct llm_build_gemma3 : public llm_graph_context {
 
             if (il == n_layer - 1) {
                 // skip computing output for unused tokens
-                struct ggml_tensor * inp_out_ids = build_inp_out_ids();
+                ggml_tensor * inp_out_ids = build_inp_out_ids();
                 cur  = ggml_get_rows(ctx0,  cur, inp_out_ids);
                 inpL = ggml_get_rows(ctx0, inpL, inp_out_ids);
             }
 
-            struct ggml_tensor * sa_out = ggml_add(ctx0, cur, inpL);
+            ggml_tensor * sa_out = ggml_add(ctx0, cur, inpL);
             cb(sa_out, "sa_out", il);
 
             cur = build_norm(sa_out,
@@ -11017,7 +11017,7 @@ llm_graph_result_ptr llama_model::build_graph(
             } break;
         case LLM_ARCH_GEMMA3:
             {
-                llm = std::make_unique<llm_build_gemma3>(params, gf);
+                llm = std::make_unique<llm_build_gemma3>(*this, params, gf);
             } break;
         case LLM_ARCH_STARCODER2:
             {
