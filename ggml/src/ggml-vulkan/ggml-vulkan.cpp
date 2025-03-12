@@ -1520,25 +1520,36 @@ struct GpuPipelineConfig {
     uint32_t default_subgroup_size = 0;
 };
 
+// Common pipeline configuration for RDNA GPUs.
+static const std::unordered_map<std::string, uint32_t> rdna_pipelines = {
+    {"soft_max_f32", 64}, {"soft_max_f32_wg512", 64},
+    {"soft_max_f32_f16", 64}, {"soft_max_f32_f16_wg512", 64},
+    {"im2col_f32", 64}, {"im2col_f32_f16", 64},
+};
+static constexpr uint32_t RDNA_DEFAULT_SUBGROUP_SIZE = 32;
+
 // Define configurations for different GPUs.
 static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
     {
         vk_device_architecture::AMD_RDNA1,
         {
-            {"soft_max_f32", 64}, {"soft_max_f32_wg512", 64},
-            {"soft_max_f32_f16", 64}, {"soft_max_f32_f16_wg512", 64},
-            {"im2col_f32", 64}, {"im2col_f32_f16", 64},
+            rdna_pipelines,
         },
-        32
+        RDNA_DEFAULT_SUBGROUP_SIZE
+    },
+    {
+        vk_device_architecture::AMD_RDNA2,
+        {
+            rdna_pipelines,
+        },
+        RDNA_DEFAULT_SUBGROUP_SIZE
     },
     {
         vk_device_architecture::AMD_RDNA3,
         {
-            {"soft_max_f32", 64}, {"soft_max_f32_wg512", 64},
-            {"soft_max_f32_f16", 64}, {"soft_max_f32_f16_wg512", 64},
-            {"im2col_f32", 64}, {"im2col_f32_f16", 64},
+            rdna_pipelines,
         },
-        32
+        RDNA_DEFAULT_SUBGROUP_SIZE
     },
 };
 
