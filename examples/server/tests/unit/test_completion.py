@@ -143,6 +143,7 @@ def test_consistent_result_same_seed(n_slots: int):
 def test_different_result_different_seed(n_slots: int):
     global server
     server.n_slots = n_slots
+    server.n_predict = -1
     server.start()
     last_res = None
     for seed in range(4):
@@ -150,6 +151,7 @@ def test_different_result_different_seed(n_slots: int):
             "prompt": "I believe the meaning of life is",
             "seed": seed,
             "temperature": 1.0,
+            "n_predict": -1,
             "cache_prompt": False,  # TODO: remove this once test_cache_vs_nocache_prompt is fixed
         })
         if last_res is not None:
