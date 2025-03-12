@@ -1544,13 +1544,6 @@ static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
         },
         RDNA_DEFAULT_SUBGROUP_SIZE
     },
-    {
-        vk_device_architecture::AMD_RDNA3,
-        {
-            rdna_pipelines,
-        },
-        RDNA_DEFAULT_SUBGROUP_SIZE
-    },
 };
 
 static uint32_t get_subgroup_size(const std::string &pipeline_name, const vk_device_architecture &arch) {
