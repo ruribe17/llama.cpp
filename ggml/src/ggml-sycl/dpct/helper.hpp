@@ -98,9 +98,7 @@ inline auto get_onemath_backend(sycl::queue& queue)
 // If the backend is known at compile-time, use oneMath backend_selector to use
 // compile-time dispatching and avoid the need to dlopen libraries. Otherwise
 // fallback to runtime dispatching.
-#if defined(GGML_SYCL_INTEL_CPU)
-    return oneapi::math::backend_selector<oneapi::math::backend::mklcpu>{ queue };
-#elif defined(GGML_SYCL_INTEL_GPU)
+#if defined(GGML_SYCL_INTEL)
     return oneapi::math::backend_selector<oneapi::math::backend::mklgpu>{ queue };
 #elif defined(GGML_SYCL_NVIDIA)
     return oneapi::math::backend_selector<oneapi::math::backend::cublas>{ queue };

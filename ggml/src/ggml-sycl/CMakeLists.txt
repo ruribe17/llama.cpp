@@ -1,6 +1,6 @@
 message(STATUS  "GGML_SYCL_TARGET=${GGML_SYCL_TARGET}")
 
-if (NOT GGML_SYCL_TARGET MATCHES "^(INTEL.*|NVIDIA|AMD)$")
+if (NOT GGML_SYCL_TARGET MATCHES "^(INTEL|NVIDIA|AMD)$")
     message(FATAL_ERROR "Invalid backend chosen, supported options are INTEL, NVIDIA, or AMD")
 endif()
 
@@ -49,13 +49,13 @@ target_sources(ggml-sycl PRIVATE ${GGML_HEADERS_SYCL} ${GGML_SOURCES_SYCL})
 find_package(DNNL)
 message("-- DNNL found:" ${DNNL_FOUND})
 
-if (GGML_SYCL_TARGET MATCHES "INTEL.*")
+if (GGML_SYCL_TARGET STREQUAL "INTEL")
     add_compile_definitions(GGML_SYCL_DNNL=${DNNL_FOUND})
 else()
     add_compile_definitions(GGML_SYCL_DNNL=0)
 endif()
 
-if (${DNNL_FOUND} AND GGML_SYCL_TARGET MATCHES "INTEL.*")
+if (${DNNL_FOUND} AND GGML_SYCL_TARGET STREQUAL "INTEL")
     target_link_libraries(ggml-sycl PRIVATE DNNL::dnnl)
 endif()
 
@@ -116,12 +116,9 @@ if (NOT oneMath_FOUND)
 endif()
 
 # Below oneMath compile-time dispatching is used for better performance
-if (GGML_SYCL_TARGET STREQUAL "INTEL_CPU")
-    target_link_libraries(ggml-sycl PRIVATE ONEMATH::onemath_blas_mklcpu)
-    target_compile_definitions(ggml-sycl PRIVATE GGML_SYCL_INTEL GGML_SYCL_INTEL_CPU)
-elseif (GGML_SYCL_TARGET STREQUAL "INTEL_GPU")
+if (GGML_SYCL_TARGET STREQUAL "INTEL")
     target_link_libraries(ggml-sycl PRIVATE ONEMATH::onemath_blas_mklgpu)
-    target_compile_definitions(ggml-sycl PRIVATE GGML_SYCL_INTEL GGML_SYCL_INTEL_GPU)
+    target_compile_definitions(ggml-sycl PRIVATE GGML_SYCL_INTEL)
 elseif (GGML_SYCL_TARGET STREQUAL "NVIDIA")
     target_link_libraries(ggml-sycl PRIVATE ONEMATH::onemath_blas_cublas)
     target_compile_options(ggml-sycl PRIVATE "-fsycl-targets=nvptx64-nvidia-cuda")
