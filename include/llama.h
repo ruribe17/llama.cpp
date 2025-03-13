@@ -469,7 +469,7 @@ extern "C" {
 
     DEPRECATED(LLAMA_API int32_t llama_n_vocab    (const struct llama_vocab * vocab), "use llama_vocab_n_tokens instead");
 
-    LLAMA_API const struct llama_model * llama_get_model   (const struct llama_context * ctx); // TODO: remove const?
+    LLAMA_API const struct llama_model * llama_get_model   (const struct llama_context * ctx);
     LLAMA_API    struct llama_kv_cache * llama_get_kv_self (      struct llama_context * ctx);
     LLAMA_API  enum llama_pooling_type   llama_pooling_type(const struct llama_context * ctx); // TODO: rename to llama_get_pooling_type
 
@@ -665,9 +665,9 @@ extern "C" {
     // p1 < 0     : [p0, inf)
     LLAMA_API bool llama_kv_self_seq_rm(
             struct llama_context * ctx,
-                     llama_seq_id   seq_id,
-                        llama_pos   p0,
-                        llama_pos   p1);
+                    llama_seq_id   seq_id,
+                       llama_pos   p0,
+                       llama_pos   p1);
 
     // Copy all tokens that belong to the specified sequence to another sequence
     // Note that this does not allocate extra KV cache memory - it simply assigns the tokens to the new sequence
@@ -675,15 +675,15 @@ extern "C" {
     // p1 < 0 : [p0, inf)
     LLAMA_API void llama_kv_self_seq_cp(
             struct llama_context * ctx,
-                     llama_seq_id   seq_id_src,
-                     llama_seq_id   seq_id_dst,
-                        llama_pos   p0,
-                        llama_pos   p1);
+                    llama_seq_id   seq_id_src,
+                    llama_seq_id   seq_id_dst,
+                       llama_pos   p0,
+                       llama_pos   p1);
 
     // Removes all tokens that do not belong to the specified sequence
     LLAMA_API void llama_kv_self_seq_keep(
             struct llama_context * ctx,
-                     llama_seq_id   seq_id);
+                    llama_seq_id   seq_id);
 
     // Adds relative position "delta" to all tokens that belong to the specified sequence and have positions in [p0, p1)
     // If the KV cache is RoPEd, the KV data is updated accordingly:
@@ -693,10 +693,10 @@ extern "C" {
     // p1 < 0 : [p0, inf)
     LLAMA_API void llama_kv_self_seq_add(
             struct llama_context * ctx,
-                     llama_seq_id   seq_id,
-                        llama_pos   p0,
-                        llama_pos   p1,
-                        llama_pos   delta);
+                    llama_seq_id   seq_id,
+                       llama_pos   p0,
+                       llama_pos   p1,
+                       llama_pos   delta);
 
     // Integer division of the positions by factor of `d > 1`
     // If the KV cache is RoPEd, the KV data is updated accordingly:
@@ -706,10 +706,10 @@ extern "C" {
     // p1 < 0 : [p0, inf)
     LLAMA_API void llama_kv_self_seq_div(
             struct llama_context * ctx,
-                     llama_seq_id   seq_id,
-                        llama_pos   p0,
-                        llama_pos   p1,
-                              int   d);
+                    llama_seq_id   seq_id,
+                       llama_pos   p0,
+                       llama_pos   p1,
+                             int   d);
 
     // Returns the largest position present in the KV cache for the specified sequence
     LLAMA_API llama_pos llama_kv_self_seq_pos_max(
