@@ -1521,11 +1521,17 @@ struct GpuPipelineConfig {
 };
 
 // Common pipeline configuration for RDNA GPUs.
-static const std::unordered_map<std::string, uint32_t> rdna_pipelines = {
-    {"soft_max_f32", 64}, {"soft_max_f32_wg512", 64},
-    {"soft_max_f32_f16", 64}, {"soft_max_f32_f16_wg512", 64},
-    {"im2col_f32", 64}, {"im2col_f32_f16", 64},
+static const std::unordered_map<std::string, uint32_t> rdna_common_pipelines = {
+    {"soft_max", 64}, {"im2col", 64},
 };
+
+// RDNA1 pipeline configuration.
+static std::unordered_map<std::string, uint32_t> rdna1_pipelines = rdna_common_pipelines;
+static const bool rdna1_initialized = (rdna1_pipelines.insert({
+    {"argmax", 64}, {"mul_mat_vec", 64},
+    {"mul_mat_vec_f16", 32}, {"mul_mat_vec_f32_f16", 32}
+}), true);
+
 static constexpr uint32_t RDNA_DEFAULT_SUBGROUP_SIZE = 32;
 
 // Define configurations for different GPUs.
@@ -1533,14 +1539,14 @@ static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
     {
         vk_device_architecture::AMD_RDNA1,
         {
-            rdna_pipelines,
+            rdna1_pipelines,
         },
         RDNA_DEFAULT_SUBGROUP_SIZE
     },
     {
         vk_device_architecture::AMD_RDNA2,
         {
-            rdna_pipelines,
+            rdna_common_pipelines,
         },
         RDNA_DEFAULT_SUBGROUP_SIZE
     },
@@ -1550,14 +1556,21 @@ static uint32_t get_subgroup_size(const std::string &pipeline_name, const vk_dev
     for (const auto &config : gpu_pipeline_configs) {
         if (config.arch == arch) {
             auto pipIt = config.pipelines.find(pipeline_name);
-            if (pipIt != config.pipelines.end() && pipIt->second != 0) {
+            if (pipIt != config.pipelines.end()) {
                 return pipIt->second;
+            }
+            std::vector<std::pair<std::string, uint32_t>> sorted_pipelines(config.pipelines.begin(), config.pipelines.end());
+            std::sort(sorted_pipelines.begin(), sorted_pipelines.end(),
+                      [](const auto &a, const auto &b) { return a.first.size() > b.first.size(); });
+            for (const auto &entry : sorted_pipelines) {
+                if (pipeline_name.find(entry.first) != std::string::npos) {
+                    return entry.second;
+                }
             }
             return config.default_subgroup_size;
         }
     }
-    // If no matching configuration is found, return 0.
-    return 0;
+    return 0; // If no matching configuration is found
 }
 
 static void ggml_vk_load_shaders(vk_device& device) {
