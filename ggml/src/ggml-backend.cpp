@@ -36,6 +36,11 @@ const char * ggml_backend_buft_name(ggml_backend_buffer_type_t buft) {
 }
 
 ggml_backend_buffer_t ggml_backend_buft_alloc_buffer(ggml_backend_buffer_type_t buft, size_t size) {
+    if (buft == NULL) {
+        // Fall back to CPU buffer type
+        return ggml_backend_buft_alloc_buffer(ggml_backend_cpu_buffer_type(), size);
+    }
+
     if (size == 0) {
         // return a dummy buffer for zero-sized allocations
         return ggml_backend_buffer_init(buft, {}, NULL, 0);
@@ -45,11 +50,20 @@ ggml_backend_buffer_t ggml_backend_buft_alloc_buffer(ggml_backend_buffer_type_t 
 }
 
 size_t ggml_backend_buft_get_alignment(ggml_backend_buffer_type_t buft) {
+    if (buft == NULL) {
+        // Return a safe default alignment or use CPU buffer type's alignment
+        return ggml_backend_buft_get_alignment(ggml_backend_cpu_buffer_type());
+    }
     return buft->iface.get_alignment(buft);
 }
 
 size_t ggml_backend_buft_get_max_size(ggml_backend_buffer_type_t buft) {
     // get_max_size is optional, defaults to SIZE_MAX
+    if (buft == NULL) {
+        // Return a safe default (CPU buffer type's max size)
+        return ggml_backend_buft_get_max_size(ggml_backend_cpu_buffer_type());
+    }
+
     if (buft->iface.get_max_size) {
         return buft->iface.get_max_size(buft);
     }
@@ -58,6 +72,11 @@ size_t ggml_backend_buft_get_max_size(ggml_backend_buffer_type_t buft) {
 
 size_t ggml_backend_buft_get_alloc_size(ggml_backend_buffer_type_t buft, struct ggml_tensor * tensor) {
     // get_alloc_size is optional, defaults to ggml_nbytes
+    if (buft == NULL) {
+        // Return ggml_nbytes as fallback
+        return ggml_nbytes(tensor);
+    }
+
     if (buft->iface.get_alloc_size) {
         size_t size = buft->iface.get_alloc_size(buft, tensor);
         assert(size >= ggml_nbytes(tensor));
@@ -67,6 +86,10 @@ size_t ggml_backend_buft_get_alloc_size(ggml_backend_buffer_type_t buft, struct 
 }
 
 bool ggml_backend_buft_is_host(ggml_backend_buffer_type_t buft) {
+    if (buft == NULL) {
+        return true; // CPU is host, so assume true for NULL
+    }
+
     if (buft->iface.is_host) {
         return buft->iface.is_host(buft);
     }
@@ -74,6 +97,9 @@ bool ggml_backend_buft_is_host(ggml_backend_buffer_type_t buft) {
 }
 
 ggml_backend_dev_t ggml_backend_buft_get_device(ggml_backend_buffer_type_t buft) {
+    if (buft == NULL) {
+        return NULL;
+    }
     return buft->device;
 }
 

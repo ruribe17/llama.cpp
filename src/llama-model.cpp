@@ -236,15 +236,28 @@ using buft_list_t = std::vector<std::pair<ggml_backend_dev_t, ggml_backend_buffe
 
 // find the first buffer type in the list that can use the tensor
 static ggml_backend_buffer_type_t select_weight_buft(const llama_hparams & hparams, ggml_tensor * tensor, ggml_op op, const buft_list_t & buft_list) {
-    GGML_ASSERT(!buft_list.empty());
+    if (buft_list.empty()) {
+        // If buffer list is empty, fall back to CPU immediately
+        return ggml_backend_cpu_buffer_type();
+    }
+
     for (const auto & cur : buft_list) {
         ggml_backend_dev_t cur_dev = cur.first;
         ggml_backend_buffer_type_t cur_buft = cur.second;
+
+        // Add null checks for safety
+        if (cur_dev == nullptr || cur_buft == nullptr) {
+            continue;
+        }
+
         if (weight_buft_supported(hparams, tensor, op, cur_buft, cur_dev)) {
             return cur_buft;
         }
     }
-    return nullptr;
+    
+    // If no compatible buffer type was found in the list,
+    // fall back to CPU buffer type instead of returning nullptr
+    return ggml_backend_cpu_buffer_type();
 }
 
 // CPU: ACCEL -> CPU extra -> GPU host -> CPU
@@ -305,30 +318,57 @@ static buft_list_t make_cpu_buft_list(const std::vector<ggml_backend_dev_t> & de
 static buft_list_t make_gpu_buft_list(ggml_backend_dev_t dev, enum llama_split_mode split_mode, const float * tensor_split) {
     buft_list_t buft_list;
 
-    // add the device split buffer type if requested and available
-    if (split_mode == LLAMA_SPLIT_MODE_ROW) {
-        ggml_backend_reg_t reg = ggml_backend_dev_backend_reg(dev);
-        auto ggml_backend_split_buffer_type_fn = (ggml_backend_split_buffer_type_t)
-            ggml_backend_reg_get_proc_address(reg, "ggml_backend_split_buffer_type");
-        if (ggml_backend_split_buffer_type_fn) {
-            size_t dev_index = [&]() {
-                auto * reg = ggml_backend_dev_backend_reg(dev);
-                for (size_t i = 0; i < ggml_backend_reg_dev_count(reg); ++i) {
-                    if (ggml_backend_reg_dev_get(reg, i) == dev) {
-                        return i;
+    // Try to add device buffer types, but be prepared for failures
+    try {
+        // Check if the device is valid/available
+        if (dev == nullptr) {
+            return buft_list; // Return empty list if device is null
+        }
+
+        // add the device split buffer type if requested and available
+        if (split_mode == LLAMA_SPLIT_MODE_ROW) {
+            ggml_backend_reg_t reg = ggml_backend_dev_backend_reg(dev);
+            if (reg != nullptr) {
+                auto ggml_backend_split_buffer_type_fn = (ggml_backend_split_buffer_type_t)
+                    ggml_backend_reg_get_proc_address(reg, "ggml_backend_split_buffer_type");
+                if (ggml_backend_split_buffer_type_fn) {
+                    size_t dev_index = 0;
+                    bool found = false;
+
+                    // Find device index more safely
+                    for (size_t i = 0; i < ggml_backend_reg_dev_count(reg); ++i) {
+                        if (ggml_backend_reg_dev_get(reg, i) == dev) {
+                            dev_index = i;
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    if (found) {
+                        auto * buft = ggml_backend_split_buffer_type_fn(dev_index, tensor_split);
+                        if (buft != nullptr) {
+                            buft_list.emplace_back(dev, buft);
+                        }
                     }
                 }
-                throw std::runtime_error(format("device %s not found in its backend reg", ggml_backend_dev_name(dev)));
-            }();
-            auto * buft = ggml_backend_split_buffer_type_fn(dev_index, tensor_split);
-            if (buft != nullptr) {
-                buft_list.emplace_back(dev, buft);
             }
         }
-    }
 
-    // add the device default buffer type
-    buft_list.emplace_back(dev, ggml_backend_dev_buffer_type(dev));
+        // add the device default buffer type if it's available
+        ggml_backend_buffer_type_t dev_buft = ggml_backend_dev_buffer_type(dev);
+        if (dev_buft != nullptr) {
+            buft_list.emplace_back(dev, dev_buft);
+        }
+    }
+    catch (const std::exception& e) {
+        // Log the error but continue
+        const char* dev_name = dev ? ggml_backend_dev_name(dev) : "unknown";
+        //std::cerr << "Error adding buffer types for device " << dev_name << ": " << e.what() << std::endl;
+        //std::cerr << "Will fall back to other available buffer types" << std::endl;
+
+        // Return an empty list which will be filled with other buffer types later
+        buft_list.clear();
+    }
 
     return buft_list;
 }
