@@ -151,8 +151,9 @@ static void llama_adapter_lora_init_impl(struct llama_model & model, const char 
 
     ggml_context * ctx_init;
     struct gguf_init_params meta_gguf_params = {
-        /* .no_alloc = */ true,
-        /* .ctx      = */ &ctx_init,
+        /* .no_alloc           = */ true,
+        /* .ctx                = */ &ctx_init,
+        /* .allow_byteswapping = */ true,
     };
 
     gguf_context_ptr ctx_gguf { gguf_init_from_file(path_lora, meta_gguf_params) };

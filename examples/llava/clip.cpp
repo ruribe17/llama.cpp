@@ -1382,8 +1382,9 @@ struct clip_ctx * clip_init(const char * fname, struct clip_context_params ctx_p
     struct ggml_context * meta = NULL;
 
     struct gguf_init_params params = {
-        /*.no_alloc = */ true,
-        /*.ctx      = */ &meta,
+        /*.no_alloc           = */ true,
+        /*.ctx                = */ &meta,
+        /*.allow_byteswapping = */ true,
     };
 
     struct gguf_context * ctx = gguf_init_from_file(fname, params);

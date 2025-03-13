@@ -1421,8 +1421,9 @@ struct llama_model * common_load_model_from_url(
     int n_split = 0;
     {
         struct gguf_init_params gguf_params = {
-            /*.no_alloc = */ true,
-            /*.ctx      = */ NULL,
+            /*.no_alloc           = */ true,
+            /*.ctx                = */ NULL,
+            /*.allow_byteswapping = */ true,
         };
         auto * ctx_gguf = gguf_init_from_file(local_path.c_str(), gguf_params);
         if (!ctx_gguf) {
@@ -1916,8 +1917,9 @@ static common_control_vector_data common_control_vector_load_one(const common_co
 
     ggml_context * ctx = nullptr;
     struct gguf_init_params meta_gguf_params = {
-        /* .no_alloc = */ false,
-        /* .ctx      = */ &ctx,
+        /* .no_alloc           = */ false,
+        /* .ctx                = */ &ctx,
+        /* .allow_byteswapping = */ true,
     };
     struct gguf_context * ctx_gguf = gguf_init_from_file(load_info.fname.c_str(), meta_gguf_params);
     if (!ctx_gguf) {
