@@ -999,7 +999,6 @@ static void ggml_cl2_free(void) {
         fprintf(ftrace, "{\"name\": \"%s\", \"cat\": \"OpenCL\", \"ph\": \"E\", \"ts\": %lu, \"pid\": \"\", \"tid\": \"Device\"},\n",
             info.kernel_name.c_str(), info.cmd_end/1000);
     }
-    fprintf(ftrace, "]\n");
     fclose(ftrace);
 #endif
 }
