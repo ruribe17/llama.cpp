@@ -47,7 +47,6 @@ static constexpr __device__ int get_vdr_mmvq(ggml_type type) {
         1;
 }
 
-<<<<<<< HEAD
 enum mmvq_parameter_table_id {
     MMVQ_PARAMETERS_GENERIC = 0,
     MMVQ_PARAMETERS_GCN,
@@ -127,10 +126,8 @@ static constexpr __host__ __device__ int calc_rows_per_block(int ncols_y, int ta
     }
     return 1;
 }
-=======
-static __device__ uint64_t ticks_total = 0, ticks_vecdotq = 0, ticks_reduce_sum = 0;
->>>>>>> c9e3fd9c (MUSA: enable fastfp16, correct warp reduce impl and other changes)
 
+static __device__ uint64_t ticks_total = 0, ticks_vecdotq = 0, ticks_reduce_sum = 0;
 template <ggml_type type, int ncols_y>
 // tell the compiler to use as many registers as it wants, see nwarps definition below
 __launch_bounds__(calc_nwarps(ncols_y, get_device_table_id())*ggml_cuda_get_physical_warp_size(), 1)

@@ -1358,14 +1358,9 @@ static cudaError_t ggml_cuda_Memcpy2DPeerAsync(
 #endif // !defined(GGML_USE_HIP) && !defined(GGML_USE_MUSA)
 }
 
-// CLI:
-//   ./build_musa/bin/llama-cli -m ~/models/deepseek-r1-7B-Q4_K_M.gguf -ngl 28 -t 8 -p "摩尔线程是一家HQ北京的国产GPU 及 AI 公司，他们正在" -n 10 -no-cnv --cache-type-k q8_0 -fa
 static double ticks_total, ticks_quant, ticks_op;
 // stats:     |  ticks_total  |  ticks_quant  | ticks_mul_mat
-//   base     |               |               |  
-//            |               |               |    
-//   dnn-shfl |  2.119177099  |  0.019638826  |  2.096463255
-//            |               |     0.92%     |    98.93%
+//            |  2.119177099  |  0.019638826  |  2.096463255
 static void ggml_cuda_op_mul_mat(
     ggml_backend_cuda_context & ctx,
     const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst, ggml_cuda_op_mul_mat_t op,
