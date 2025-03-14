@@ -393,7 +393,7 @@ struct ggml_backend_sycl_context {
         return pool(device);
     }
 
-#ifdef GGML_USE_SYCL_GRAPH
+#ifdef GGML_SYCL_GRAPH
     std::unique_ptr<sycl_ex::command_graph<sycl_ex::graph_state::executable>> exec_graph = nullptr;
 #endif
 

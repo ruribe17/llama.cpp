@@ -46,7 +46,7 @@
 static bool g_sycl_loaded = false;
 int g_ggml_sycl_debug = 0;
 int g_ggml_sycl_disable_optimize = 0;
-int g_ggml_sycl_graphs = 0;
+int g_ggml_sycl_enable_graph = 0;
 
 static ggml_sycl_device_info ggml_sycl_init() {
     ggml_sycl_device_info info = {};
@@ -192,12 +192,12 @@ static void ggml_check_sycl() try {
     if (!initialized) {
         g_ggml_sycl_debug = get_sycl_env("GGML_SYCL_DEBUG", 0);
         g_ggml_sycl_disable_optimize= get_sycl_env("GGML_SYCL_DISABLE_OPT", 0);
-        g_ggml_sycl_graphs = get_sycl_env("GGML_SYCL_GRAPHS", 0);
+        g_ggml_sycl_enable_graph = get_sycl_env("GGML_SYCL_ENABLE_GRAPH", 0);
         GGML_SYCL_DEBUG("[SYCL] call ggml_check_sycl\n");
         GGML_LOG_INFO("Running with Environment Variables:\n");
         GGML_LOG_INFO("  GGML_SYCL_DEBUG: %d\n", g_ggml_sycl_debug);
         GGML_LOG_INFO("  GGML_SYCL_DISABLE_OPT: %d\n", g_ggml_sycl_disable_optimize);
-        GGML_LOG_INFO("  GGML_SYCL_GRAPHS: %d\n", g_ggml_sycl_graphs);
+        GGML_LOG_INFO("  GGML_SYCL_ENABLE_GRAPH: %d\n", g_ggml_sycl_enable_graph);
         GGML_LOG_INFO("Build with Macros:\n");
 #if defined(GGML_SYCL_FORCE_MMQ)
         GGML_LOG_INFO("  GGML_SYCL_FORCE_MMQ: yes\n");
@@ -3703,15 +3703,14 @@ static void ggml_backend_sycl_graph_compute_impl(ggml_backend_sycl_context * syc
 static ggml_status ggml_backend_sycl_graph_compute(ggml_backend_t backend, ggml_cgraph * cgraph) {
     auto * sycl_ctx = static_cast<ggml_backend_sycl_context *>(backend->context);
 
-#ifdef GGML_USE_SYCL_GRAPH
-    if (g_ggml_sycl_graphs) {
+#ifdef GGML_SYCL_GRAPH
+    if (g_ggml_sycl_enable_graph) {
         if (!sycl_ctx->exec_graph && !dpct::get_device(sycl_ctx->device).has(sycl::aspect::ext_oneapi_graph)) {
             GGML_SYCL_DEBUG("[SYCL-GRAPH] can not use graphs on device:%d\n", sycl_ctx->device);
             ggml_backend_sycl_graph_compute_impl(sycl_ctx, cgraph);
             return GGML_STATUS_SUCCESS;
         }
 
-        namespace sycl_ex = sycl::ext::oneapi::experimental;
         sycl_ex::command_graph model_sycl_graph(*(sycl_ctx->stream()));
         model_sycl_graph.begin_recording(*(sycl_ctx->stream()));
         ggml_backend_sycl_graph_compute_impl(sycl_ctx, cgraph);
