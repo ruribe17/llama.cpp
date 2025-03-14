@@ -946,7 +946,7 @@ extern "C" {
     LLAMA_API void llama_set_causal_attn(struct llama_context * ctx, bool causal_attn);
 
     // Set whether the model is in warmup mode or not
-    // If true, all model tensors are activated during llama_encode() to load and cache their weights.
+    // If true, all model tensors are activated during llama_decode() to load and cache their weights.
     LLAMA_API void llama_set_warmup(struct llama_context * ctx, bool warmup);
 
     // Set abort callback
