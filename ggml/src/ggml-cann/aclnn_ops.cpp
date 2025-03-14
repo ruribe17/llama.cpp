@@ -2790,7 +2790,6 @@ static void ggml_cann_mul_mat_quant(ggml_backend_cann_context& ctx,
                 (char*)output_buffer + batch1 * output_stride, ACL_FLOAT16,
                 output_elem_size, output_ne, output_nb, 2, ACL_FORMAT_ND,
                 output_ne_offset);
-            
             int64_t antiquantGroupSize = 0;
             if (src0->ne[0] > QK8_0) {
                 antiquantGroupSize = QK8_0;
