@@ -1388,10 +1388,10 @@ static common_chat_params common_chat_params_init_phi_4(const common_chat_templa
         data.grammar_triggers.push_back({COMMON_GRAMMAR_TRIGGER_TYPE_WORD, "<|tool_call|>"});
         data.preserved_tokens = {
             "<|tool_call|>",
-            "</|tool_call|>",
+            "<|/tool_call|>",
             "<|tool_response|>",
             "<|tool|>",
-            "</|tool|>",
+            "<|/tool|>",
         };
     });
 
@@ -1451,7 +1451,7 @@ static common_chat_params common_chat_params_init_phi_4(const common_chat_templa
 
 static common_chat_msg common_chat_parse_phi_4(const std::string & input) {
     static std::regex function_regex("<\\|tool_call\\|>\\s*\\{\\s*\"name\"\\s*:\\s*\"([^\"]+)\"\\s*,\\s*\"arguments\"\\s*:");
-    static std::regex close_regex(R"(\}\s*(</\|tool_call\|>)?)");
+    static std::regex close_regex(R"(\}\s*(<\|/tool_call\|>)?)");
     return parse_json_tool_calls(input, std::nullopt, function_regex, close_regex);
 }
 
