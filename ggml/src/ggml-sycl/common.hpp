@@ -643,6 +643,8 @@ struct bin_bcast_sycl {
             size_t s02 = nb02 / sizeof(src0_t);
             size_t s03 = nb03 / sizeof(src0_t);
 
+            GGML_UNUSED(s00);
+
             GGML_ASSERT(nb0 % sizeof(dst_t) == 0);
             GGML_ASSERT(nb1 % sizeof(dst_t) == 0);
             GGML_ASSERT(nb2 % sizeof(dst_t) == 0);
