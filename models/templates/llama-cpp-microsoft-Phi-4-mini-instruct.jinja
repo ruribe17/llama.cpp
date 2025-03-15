@@ -16,7 +16,7 @@
 {%- endif -%}
 {%- for message in messages -%}
     {%- if message['role'] == 'tool' -%}
-        {{- '<|tool_response|>' + (message['content'] | tojson) + '<|/tool_response|>' -}}
+        {{- '<|tool_response|>' + (message['content'] | tojson) + '<|end|>' -}}
     {%- elif message['role'] != 'system' -%}
         {{- '<|' + message['role'] + '|>' -}}
         {%- if message.content -%}
