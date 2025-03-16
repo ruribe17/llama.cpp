@@ -1520,17 +1520,18 @@ struct GpuPipelineConfig {
     uint32_t default_subgroup_size = 0;
 };
 
-// Common pipeline configuration for RDNA GPUs.
-static const std::unordered_map<std::string, uint32_t> rdna_common_pipelines = {
+// Pipeline configuration for RDNA1 GPUs.
+static const std::unordered_map<std::string, uint32_t> rdna1_pipelines = {
     {"soft_max", 64}, {"im2col", 64},
-};
-
-// RDNA1 pipeline configuration.
-static std::unordered_map<std::string, uint32_t> rdna1_pipelines = rdna_common_pipelines;
-static const bool rdna1_initialized = (rdna1_pipelines.insert({
     {"argmax", 64}, {"mul_mat_vec", 64},
     {"mul_mat_vec_f16", 32}, {"mul_mat_vec_f32_f16", 32}
-}), true);
+};
+
+// Pipeline configuration for RDNA2 GPUs.
+static const std::unordered_map<std::string, uint32_t> rdna2_pipelines = {
+    {"soft_max", 64}, {"im2col", 64},
+    {"argmax", 64},
+};
 
 static constexpr uint32_t RDNA_DEFAULT_SUBGROUP_SIZE = 32;
 
@@ -1546,7 +1547,7 @@ static std::vector<GpuPipelineConfig> gpu_pipeline_configs = {
     {
         vk_device_architecture::AMD_RDNA2,
         {
-            rdna_common_pipelines,
+            rdna2_pipelines,
         },
         RDNA_DEFAULT_SUBGROUP_SIZE
     },
