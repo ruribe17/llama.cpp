@@ -1271,7 +1271,12 @@ void llama_model::load_hparams(llama_model_loader & ml) {
                             case 2048: type = LLM_TYPE_1_5B; break;
                             default: type = LLM_TYPE_UNKNOWN;
                         } break;
-                    case 28: type = LLM_TYPE_7B;   break; // ARWKV7
+                    case 28:
+                        switch (hparams.n_embd) {
+                            case 1536: type = LLM_TYPE_1_5B; break;
+                            case 3584: type = LLM_TYPE_7B; break;
+                            default: type = LLM_TYPE_UNKNOWN;
+                        } break;
                     case 32: type = LLM_TYPE_2_9B; break; // RWKV-7-World
                     default: type = LLM_TYPE_UNKNOWN;
                 }
