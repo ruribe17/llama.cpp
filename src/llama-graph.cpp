@@ -43,7 +43,7 @@ void llm_graph_input_embd::set_input(const llama_ubatch * ubatch) {
         ggml_backend_tensor_set(tokens, ubatch->token, 0, n_tokens*ggml_element_size(tokens));
     }
 
-    if (ubatch->embd) {
+    if (ubatch->embd && !ubatch->embd_tensor) {
         const int64_t n_embd   = embd->ne[0];
         const int64_t n_tokens = ubatch->n_tokens;
 
