@@ -1194,7 +1194,10 @@ int llama_context::decode(llama_batch & inp_batch) {
 
     batch_guard bg(*kv_self);
 
-    GGML_ASSERT((!batch.token && batch.embd) || (batch.token && !batch.embd)); // NOLINT
+    // TODO @ngxson : we can do better than this
+    GGML_ASSERT((batch.token && !batch.embd && !batch.embd_tensor)
+             || (!batch.token &&  batch.embd && !batch.embd_tensor)
+             || (!batch.token && !batch.embd &&  batch.embd_tensor)); // NOLINT
 
     if (batch.token) {
         for (int64_t i = 0; i < n_tokens_all; ++i) {

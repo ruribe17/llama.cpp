@@ -983,6 +983,10 @@ ggml_tensor * llm_graph_context::build_inp_embd(ggml_tensor * tok_embd) const {
 
             cur = ggml_add(ctx0, cur, inpL_delta);
         }
+    } else if (ubatch.embd_tensor) {
+        inp->embd = ubatch.embd_tensor;
+        ggml_set_input(ubatch.embd_tensor);
+
     } else {
         inp->embd = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, ubatch.n_tokens);
         ggml_set_input(inp->embd);

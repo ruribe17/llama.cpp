@@ -57,6 +57,7 @@ void llama_sbatch::add_seq_to_ubatch(llama_ubatch & ubatch, llama_sbatch_seq & s
         ubatch.token = nullptr;
     }
     if (batch->embd_tensor) {
+        // TODO @ngxson : we also need to split the tensor by doing a ggml_view
         ubatch.embd_tensor = batch->embd_tensor;
     } else if (batch->embd) {
         if (ubatch.equal_seqs) {
