@@ -1,5 +1,9 @@
 # Function Calling
 
+- [Function Calling](#function-calling)
+  - [Universal support w/ Native \& Generic handlers](#universal-support-w-native--generic-handlers)
+- [Usage - need tool-aware Jinja template](#usage---need-tool-aware-jinja-template)
+
 [chat.h](../common/chat.h) (https://github.com/ggml-org/llama.cpp/pull/9639) adds support for [OpenAI-style function calling](https://platform.openai.com/docs/guides/function-calling) and is used in:
 - `llama-server` when started w/ `--jinja` flag
 - `llama-cli` (WIP: https://github.com/ggml-org/llama.cpp/pull/11556)

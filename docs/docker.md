@@ -1,5 +1,16 @@
 # Docker
 
+- [Docker](#docker)
+  - [Prerequisites](#prerequisites)
+  - [Images](#images)
+  - [Usage](#usage)
+  - [Docker With CUDA](#docker-with-cuda)
+  - [Building Docker locally](#building-docker-locally)
+  - [Usage](#usage-1)
+  - [Docker With MUSA](#docker-with-musa)
+  - [Building Docker locally](#building-docker-locally-1)
+  - [Usage](#usage-2)
+
 ## Prerequisites
 * Docker must be installed and running on your system.
 * Create a folder to store big models & intermediate files (ex. /llama/models)

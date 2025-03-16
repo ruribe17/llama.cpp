@@ -1,5 +1,12 @@
 # Add a new model architecture to `llama.cpp`
 
+- [Add a new model architecture to `llama.cpp`](#add-a-new-model-architecture-to-llamacpp)
+    - [1. Convert the model to GGUF](#1-convert-the-model-to-gguf)
+    - [2. Define the model architecture in `llama.cpp`](#2-define-the-model-architecture-in-llamacpp)
+    - [3. Build the GGML graph implementation](#3-build-the-ggml-graph-implementation)
+  - [GGUF specification](#gguf-specification)
+  - [Resources](#resources)
+
 Adding a model requires few steps:
 
 1. Convert the model to GGUF

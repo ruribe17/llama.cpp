@@ -1,5 +1,39 @@
 # Build llama.cpp locally
 
+- [Build llama.cpp locally](#build-llamacpp-locally)
+  - [CPU Build](#cpu-build)
+  - [BLAS Build](#blas-build)
+    - [Accelerate Framework](#accelerate-framework)
+    - [OpenBLAS](#openblas)
+    - [BLIS](#blis)
+    - [Intel oneMKL](#intel-onemkl)
+    - [Other BLAS libraries](#other-blas-libraries)
+  - [Metal Build](#metal-build)
+  - [SYCL](#sycl)
+  - [CUDA](#cuda)
+      - [Download directly from NVIDIA](#download-directly-from-nvidia)
+      - [Compile and run inside a Fedora Toolbox Container](#compile-and-run-inside-a-fedora-toolbox-container)
+    - [Compilation](#compilation)
+    - [Override Compute Capability Specifications](#override-compute-capability-specifications)
+    - [Runtime CUDA environmental variables](#runtime-cuda-environmental-variables)
+    - [Unified Memory](#unified-memory)
+    - [Performance Tuning](#performance-tuning)
+  - [MUSA](#musa)
+      - [Download directly from Moore Threads](#download-directly-from-moore-threads)
+    - [Compilation](#compilation-1)
+      - [Override Compute Capability Specifications](#override-compute-capability-specifications-1)
+      - [Compilation options](#compilation-options)
+    - [Runtime MUSA environmental variables](#runtime-musa-environmental-variables)
+    - [Unified Memory](#unified-memory-1)
+  - [HIP](#hip)
+  - [Vulkan](#vulkan)
+    - [w64devkit](#w64devkit)
+    - [Git Bash MINGW64](#git-bash-mingw64)
+    - [MSYS2](#msys2)
+  - [CANN](#cann)
+  - [Android](#android)
+  - [Notes about GPU-accelerated backends](#notes-about-gpu-accelerated-backends)
+
 **To get the Code:**
 
 ```bash
@@ -156,19 +190,19 @@ nvcc warning : Cannot find valid GPU for '-arch=native', default arch is used
 
 To override the `native` GPU detection:
 
-#### 1. Take note of the `Compute Capability` of your NVIDIA devices: ["CUDA: Your GPU Compute > Capability"](https://developer.nvidia.com/cuda-gpus).
+1. Take note of the `Compute Capability` of your NVIDIA devices: ["CUDA: Your GPU Compute > Capability"](https://developer.nvidia.com/cuda-gpus).
 
-```text
-GeForce RTX 4090      8.9
-GeForce RTX 3080 Ti   8.6
-GeForce RTX 3070      8.6
-```
+   ```text
+   GeForce RTX 4090      8.9
+   GeForce RTX 3080 Ti   8.6
+   GeForce RTX 3070      8.6
+   ```
 
-#### 2. Manually list each varying `Compute Capability` in the `CMAKE_CUDA_ARCHITECTURES` list.
+2. Manually list each varying `Compute Capability` in the `CMAKE_CUDA_ARCHITECTURES` list.
 
-```bash
-cmake -B build -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES="86;89"
-```
+   ```bash
+   cmake -B build -DGGML_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES="86;89"
+   ```
 
 ### Runtime CUDA environmental variables
 
@@ -216,6 +250,7 @@ By default, all supported compute capabilities are enabled. To customize this be
 
 ```bash
 cmake -B build -DGGML_MUSA=ON -DMUSA_ARCHITECTURES="21"
+cmake --build build --config Release
 ```
 
 This configuration enables only compute capability `2.1` (MTT S80) during compilation, which can help reduce compilation time.

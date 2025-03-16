@@ -1,6 +1,10 @@
 
 # Android
 
+- [Android](#android)
+  - [Build on Android using Termux](#build-on-android-using-termux)
+  - [Cross-compile using Android NDK](#cross-compile-using-android-ndk)
+
 ## Build on Android using Termux
 
 [Termux](https://termux.dev/en/) is an Android terminal emulator and Linux environment app (no root required). As of writing, Termux is available experimentally in the Google Play Store; otherwise, it may be obtained directly from the project repo or on F-Droid.

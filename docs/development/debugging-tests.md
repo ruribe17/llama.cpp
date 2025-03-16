@@ -1,5 +1,14 @@
 # Debugging Tests Tips
 
+- [Debugging Tests Tips](#debugging-tests-tips)
+  - [How to run \& execute or debug a specific test without anything else to keep the feedback loop short?](#how-to-run--execute-or-debug-a-specific-test-without-anything-else-to-keep-the-feedback-loop-short)
+    - [How does the script work?](#how-does-the-script-work)
+      - [Step 1: Reset and Setup folder context](#step-1-reset-and-setup-folder-context)
+      - [Step 2: Setup Build Environment and Compile Test Binaries](#step-2-setup-build-environment-and-compile-test-binaries)
+      - [Step 3: Find all tests available that matches REGEX](#step-3-find-all-tests-available-that-matches-regex)
+      - [Step 4: Identify Test Command for Debugging](#step-4-identify-test-command-for-debugging)
+      - [Step 5: Run GDB on test command](#step-5-run-gdb-on-test-command)
+
 ## How to run & execute or debug a specific test without anything else to keep the feedback loop short?
 
 There is a script called debug-test.sh in the scripts folder whose parameter takes a REGEX and an optional test number.

@@ -1,5 +1,13 @@
 # LLGuidance Support in llama.cpp
 
+- [LLGuidance Support in llama.cpp](#llguidance-support-in-llamacpp)
+  - [Building](#building)
+  - [Interface](#interface)
+  - [Performance](#performance)
+  - [JSON Schema](#json-schema)
+  - [Why Not Reuse GBNF Format?](#why-not-reuse-gbnf-format)
+  - [Error Handling](#error-handling)
+
 [LLGuidance](https://github.com/guidance-ai/llguidance) is a library for constrained decoding (also called constrained sampling or structured outputs) for Large Language Models (LLMs). Initially developed as the backend for the [Guidance](https://github.com/guidance-ai/guidance) library, it can also be used independently.
 
 LLGuidance supports JSON Schemas and arbitrary context-free grammars (CFGs) written in a [variant](https://github.com/guidance-ai/llguidance/blob/main/docs/syntax.md) of Lark syntax. It is [very fast](https://github.com/guidance-ai/jsonschemabench/tree/main/maskbench) and has [excellent](https://github.com/guidance-ai/llguidance/blob/main/docs/json_schema.md) JSON Schema coverage but requires the Rust compiler, which complicates the llama.cpp build process.

@@ -1,5 +1,10 @@
 # Install pre-built version of llama.cpp
 
+- [Install pre-built version of llama.cpp](#install-pre-built-version-of-llamacpp)
+  - [Homebrew](#homebrew)
+  - [Nix](#nix)
+  - [Flox](#flox)
+
 ## Homebrew
 
 On Mac and Linux, the homebrew package manager can be used via
