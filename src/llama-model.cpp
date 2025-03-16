@@ -10648,8 +10648,6 @@ struct llm_build_rwkv6qwen2 : public llm_build_rwkv6_base {
         const auto n_seq_tokens = ubatch.n_seq_tokens;
         const auto n_seqs = ubatch.n_seqs;
 
-        inpL = build_inp_embd(model.tok_embd);
-
         for (int il = 0; il < n_layer; ++il) {
             const llama_layer * layer = &model.layers[il];
 
@@ -11000,8 +10998,6 @@ struct llm_build_arwkv7 : public llm_build_rwkv7_base {
         const auto n_embd = hparams.n_embd;
         const auto n_seq_tokens = ubatch.n_seq_tokens;
         const auto n_seqs = ubatch.n_seqs;
-
-        inpL = build_inp_embd(model.tok_embd);
 
         for (int il = 0; il < n_layer; ++il) {
             const llama_layer * layer = &model.layers[il];
