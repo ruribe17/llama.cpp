@@ -4,8 +4,8 @@ on:
   workflow_call:
 
 jobs:
-  ubuntu-22-riscv64-vulkan-cross:
-    runs-on: ubuntu-22.04
+  ubuntu-latest-riscv64-vulkan-cross:
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
