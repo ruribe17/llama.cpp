@@ -1,5 +1,5 @@
-find_package (Threads REQUIRED)
-
+project(vulkan-shaders-gen)
+find_package(Threads REQUIRED)
 set(TARGET vulkan-shaders-gen)
 add_executable(${TARGET} vulkan-shaders-gen.cpp)
 install(TARGETS ${TARGET} RUNTIME)
