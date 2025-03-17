@@ -845,3 +845,25 @@ struct ggml_backend_cuda_context {
         return pool(device);
     }
 };
+
+// #define GGML_PERF_ON
+
+#ifdef GGML_PERF_ON
+#define GGML_PERF_CLOCK(t)                  std::chrono::system_clock::time_point t = std::chrono::system_clock::now()
+#define GGML_PERF_CLOCK_NOW(t)              t = std::chrono::system_clock::now()
+#define GGML_PERF_CLOCK_COUNT(t)            std::chrono::duration<double>(std::chrono::system_clock::now() - t).count()
+#define GGML_PERF_CLOCK_COUNT_ADD(s, t)     s += std::chrono::duration<double>(std::chrono::system_clock::now() - t).count()
+#define GGML_PERF_GPU_CLOCK(t)              uint64_t t = clock64()
+#define GGML_PERF_GPU_CLOCK_NOW(t)          t = clock64()
+#define GGML_PERF_GPU_CLOCK_COUNT(t)        clock64() - t
+#define GGML_PERF_GPU_CLOCK_COUNT_ADD(s, t) s += (clock64() - t)
+#else
+#define GGML_PERF_CLOCK(t)
+#define GGML_PERF_CLOCK_NOW(t)
+#define GGML_PERF_CLOCK_COUNT(t)
+#define GGML_PERF_CLOCK_COUNT_ADD(s, t)
+#define GGML_PERF_GPU_CLOCK(t)
+#define GGML_PERF_GPU_CLOCK_NOW(t)
+#define GGML_PERF_GPU_CLOCK_COUNT(t)
+#define GGML_PERF_GPU_CLOCK_COUNT_ADD(s, t)
+#endif // GGML_PERF_ON

@@ -668,21 +668,15 @@ static __device__ __forceinline__ float vec_dot_q3_K_q8_1(
     return vec_dot_q3_K_q8_1_impl_mmvq(vl, vh, u, bq3_K->scales, scale_offset, d, d8);
 }
 
-static __device__ uint64_t __ticks_total = 0, __ticks1 = 0, __ticks2 = 0;
+static __device__ uint64_t __ticks_total = 0, __ticks1 = 0, __ticks2 = 0, __ticks3 = 0, __ticks4 = 0;
 static __device__ void atomicAddUint64(uint64_t *address, uint64_t val) {
     atomicAdd((unsigned long long*)address, (unsigned long long)val);
 }
 static __device__ __forceinline__ float vec_dot_q4_K_q8_1(
     const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs) {
 
-    uint64_t tick_start = clock64();
+    GGML_PERF_GPU_CLOCK(tick_start);
 
-    // __shared__ block_q4_K bq4_K_shm;
-    // if (threadIdx.x == 0) {
-    //     bq4_K_shm = *((const block_q4_K *)vbq + kbx);
-    // }
-    // __syncthreads();
-    // const block_q4_K * bq4_K = &bq4_K_shm;
     const block_q4_K * bq4_K = (const block_q4_K *) vbq + kbx;
 
     int    v[2];
@@ -697,9 +691,13 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1(
     // iqs = 8...11 -> bq8_offset = 4, want q4_offset = 64, 68, 72, 76
     // iqs = 12..15 -> bq8_offset = 6, want q4_offset = 96, 100, 104, 108
 
+    GGML_PERF_GPU_CLOCK(_tick1);
+
     const int * q4 = (const int *)(bq4_K->qs + 16 * bq8_offset + 4 * ((iqs/2)%4));
     v[0] = q4[0];
     v[1] = q4[4];
+
+    GGML_PERF_GPU_CLOCK(_tick2);
 
     const uint16_t * scales = (const uint16_t *)bq4_K->scales;
     uint16_t aux[2];
@@ -714,6 +712,8 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1(
     const uint8_t * sc = (const uint8_t *)aux;
     const uint8_t * m  = sc + 2;
 
+    GGML_PERF_GPU_CLOCK(_tick3);
+
     for (int i = 0; i < QR4_K; ++i) {
         const block_q8_1 * bq8i = bq8_1 + bq8_offset + i;
         d8[i] = __low2float(bq8i->ds);
@@ -722,17 +722,23 @@ static __device__ __forceinline__ float vec_dot_q4_K_q8_1(
         u[2*i+0] = q8[0];
         u[2*i+1] = q8[4];
     }
-    uint64_t _tick1 = clock64();
+    GGML_PERF_GPU_CLOCK(_tick4);
 
     float ret = vec_dot_q4_K_q8_1_impl_vmmq(v, u, sc, m, bq4_K->dm, d8);
 
-    // uint64_t tick_end = clock64();
+    GGML_PERF_GPU_CLOCK(tick_end);
 
+    // Stats: __ticks_total  |  __ticks1  |  __ticks2  |  __ticks3  |  __ticks4  |  vmmq
+    //          161989088    |   5698656  |   1895872  |   68142496 |  14016416  | 72235648
+    //                       |    3.52%   |    1.17%   |    42.07%  |    8.65%   |  44.59%
+    // ----------------------------------------------------------------------------------------
     // atomicAddUint64(&__ticks1,      _tick1   - tick_start);
-    // atomicAddUint64(&__ticks2,      tick_end - _tick1);
+    // atomicAddUint64(&__ticks2,      _tick2   - _tick1);
+    // atomicAddUint64(&__ticks3,      _tick3   - _tick2);
+    // atomicAddUint64(&__ticks4,      _tick4   - _tick3);
     // atomicAddUint64(&__ticks_total, tick_end - tick_start);
-    // printf(">> __ticks_total = %12llu, __ticks1 = %12llu, __ticks2 = %12llu\n",
-    //     __ticks_total, __ticks1, __ticks2
+    // printf(">> [dotq] __ticks_total = %12llu, __ticks1 = %12llu, __ticks2 = %12llu, __ticks3 = %12llu, __ticks4 = %12llu\n",
+    //     __ticks_total, __ticks1, __ticks2, __ticks3, __ticks4
     // );
 
     return ret;

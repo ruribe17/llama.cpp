@@ -135,7 +135,9 @@ static __global__ void mul_mat_vec_q(
     const void * __restrict__ vx, const void * __restrict__ vy, float * __restrict__ dst,
     const int ncols_x, const int nrows_x, const int nrows_y, const int nrows_dst) {
 
-    uint64_t tick_start = clock64(), _clock, _ticks_vecdotq;
+    GGML_PERF_GPU_CLOCK(tick_start);
+    GGML_PERF_GPU_CLOCK(_clock);
+    GGML_PERF_GPU_CLOCK(_ticks_vecdotq);
 
     constexpr int qk  = ggml_cuda_type_traits<type>::qk;
     constexpr int qi  = ggml_cuda_type_traits<type>::qi;
@@ -158,7 +160,7 @@ static __global__ void mul_mat_vec_q(
 
     const block_q8_1 * y = (const block_q8_1 *) vy;
 
-    _clock = clock64();
+    GGML_PERF_GPU_CLOCK_NOW(_clock);
     for (int kbx = tid / (qi/vdr); kbx < blocks_per_row_x; kbx += blocks_per_iter) {
         const int kby = kbx * (qk/QK8_1); // y block index that aligns with kbx
 
@@ -173,7 +175,7 @@ static __global__ void mul_mat_vec_q(
             }
         }
     }
-    _ticks_vecdotq = clock64() - _clock;
+    GGML_PERF_GPU_CLOCK_COUNT_ADD(_ticks_vecdotq, _clock);
 
     __shared__ float tmp_shared[nwarps-1 > 0 ? nwarps-1 : 1][ncols_y][rows_per_cuda_block][warp_size];
     if (threadIdx.y > 0) {
@@ -190,7 +192,7 @@ static __global__ void mul_mat_vec_q(
         return;
     }
 
-    _clock = clock64();
+    GGML_PERF_GPU_CLOCK_NOW(_clock);
     // sum up partial sums and write back result
 #pragma unroll
     for (int j = 0; j < ncols_y; ++j) {
@@ -208,10 +210,15 @@ static __global__ void mul_mat_vec_q(
         }
     }
 
+    // Stats: ticks_total  |  ticks_vecdotq  |  ticks_reduce_sum
+    //        267342976    |  211809728      |  45522960
+    //                     |  79.23%         |  17.03%
+    // -------------------------------------------------------------------------------------------
+    // GGML_PERF_GPU_CLOCK(tick_end);
     // atomicAddUint64(&ticks_vecdotq,    _ticks_vecdotq);
-    // atomicAddUint64(&ticks_reduce_sum, clock64() - _clock);
-    // atomicAddUint64(&ticks_total,      clock64() - tick_start);
-    // printf(">> ticks_total = %12llu, ticks_vecdotq = %12llu, ticks_reduce_sum = %12llu\n",
+    // atomicAddUint64(&ticks_reduce_sum, tick_end - _clock);
+    // atomicAddUint64(&ticks_total,      tick_end - tick_start);
+    // printf(">> [mmvq] ticks_total = %12llu, ticks_vecdotq = %12llu, ticks_reduce_sum = %12llu\n",
     //     ticks_total, ticks_vecdotq, ticks_reduce_sum
     // );
 }

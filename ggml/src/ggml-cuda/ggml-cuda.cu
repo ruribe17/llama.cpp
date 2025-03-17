@@ -1366,8 +1366,8 @@ static void ggml_cuda_op_mul_mat(
     const ggml_tensor * src0, const ggml_tensor * src1, ggml_tensor * dst, ggml_cuda_op_mul_mat_t op,
     quantize_cuda_t quantize_src1) {
 
-    std::chrono::system_clock::time_point tick_start = std::chrono::system_clock::now();
-    std::chrono::system_clock::time_point _tick;
+    GGML_PERF_CLOCK(tick_start);
+    GGML_PERF_CLOCK(_tick);
 
     const int64_t ne00 = src0->ne[0];
     const int64_t ne01 = src0->ne[1];
@@ -1510,7 +1510,7 @@ static void ggml_cuda_op_mul_mat(
             dev[id].src1_ddf = dev[id].src1_ddf_alloc.alloc(ctx.pool(id), ggml_nelements(src1));
         }
 
-        _tick = std::chrono::system_clock::now();
+        GGML_PERF_CLOCK_NOW(_tick);
         if (quantize_src1) {
             size_t src_1_ddq_size = nrows1*src1_padded_col_size*q8_1_ts/q8_1_bs;
             if (quantize_src1 == quantize_mmq_q8_1_cuda) {
@@ -1523,7 +1523,7 @@ static void ggml_cuda_op_mul_mat(
                 CUDA_CHECK(cudaGetLastError());
             }
         }
-        ticks_quant += std::chrono::duration<double>(std::chrono::system_clock::now() - _tick).count();
+        GGML_PERF_CLOCK_COUNT_ADD(ticks_quant, _tick);
 
         if (dst_on_device) {
             dev[id].dst_dd = (float *) dst->data;
@@ -1614,24 +1614,24 @@ static void ggml_cuda_op_mul_mat(
                     GGML_ABORT("fatal error");
                 }
 
-                _tick = std::chrono::system_clock::now();
+                GGML_PERF_CLOCK_NOW(_tick);
                 if (quantize_src1 && !src1_is_contiguous) {
                     quantize_src1(src1_ddf_i, src1_ddq_i, ne10, src1_ncols, 1, src1_padded_col_size, src0->type, stream);
                     CUDA_CHECK(cudaGetLastError());
                 }
-                ticks_quant += std::chrono::duration<double>((std::chrono::system_clock::now() - _tick)).count();
+                GGML_PERF_CLOCK_COUNT_ADD(ticks_quant, _tick);
 
                 if (src1_col_0 == 0 && !src0_is_contiguous && i03 % i03_divisor == 0 && i02 % i02_divisor == 0) {
                     CUDA_CHECK(ggml_cuda_cpy_tensor_2d(
                         src0_dd_i, src0, i03/i03_divisor, i02/i02_divisor, dev[id].row_low, dev[id].row_high, stream));
                 }
 
-                _tick = std::chrono::system_clock::now();
+                GGML_PERF_CLOCK_NOW(_tick);
                 // do the computation
                 op(ctx, src0, src1, dst, src0_dd_i, src1_ddf_i, src1_ddq_i, dst_dd_i,
                     dev[id].row_low, dev[id].row_high, src1_ncols, src1_padded_col_size, stream);
                 CUDA_CHECK(cudaGetLastError());
-                ticks_op += std::chrono::duration<double>((std::chrono::system_clock::now() - _tick)).count();
+                GGML_PERF_CLOCK_COUNT_ADD(ticks_op, _tick);
 
                 // copy dst to host or other device if necessary
                 if (!dst_on_device) {
@@ -1679,7 +1679,7 @@ static void ggml_cuda_op_mul_mat(
         }
     }
 
-    // ticks_total += std::chrono::duration<double>(std::chrono::system_clock::now() - tick_start).count();
+    // GGML_PERF_CLOCK_COUNT_ADD(ticks_total, tick_start);
     // FILE *stat_file = fopen("cuda_op_mul_mat_stats.log", "a");
     // fprintf(stat_file,
     //     ">> ticks_total = %2.9f, ticks_quant = %2.9f, ticks_op = %2.9f\n",
@@ -1904,9 +1904,9 @@ static void ggml_cuda_mul_mat(ggml_backend_cuda_context & ctx, const ggml_tensor
     //printf("src0 is contiguous %d, transposed %d, type = %s, name = %s\n", ggml_is_contiguous(src0), ggml_is_transposed(src0), ggml_type_name(src0->type), src0->name);
     //printf("src1 is contiguous %d, transposed %d, type = %s, name = %s\n", ggml_is_contiguous(src1), ggml_is_transposed(src1), ggml_type_name(src1->type), src1->name);
 
-    // stats:    | mmv_cnt | mm_batched_cublas_cnt | op_mmv_cnt | op_mmvq_cnt | op_mmq_cnt | op_mm_cublas_cnt
-    //   FA=ON:  |   0.0K  |         0.0K          |    0.0K    |    7.2K     |    0.0K    |       0.0K
-    //   FA=OFF: | 1.016K  |         0.0K          |    0.0K    |    8.256K   |    0.0K    |       0.016K
+    // stats(Q4_K/Q8):    | mmv_cnt | mm_batched_cublas_cnt | op_mmv_cnt | op_mmvq_cnt | op_mmq_cnt | op_mm_cublas_cnt
+    //        FA=ON       |   0.0K  |         0.0K          |    0.0K    |    7.2K     |    0.0K    |       0.0K
+    //        FA=OFF      | 1.016K  |         0.0K          |    0.0K    |    8.256K   |    0.0K    |       0.016K
     static int mmv_cnt = 0, mm_batched_cublas_cnt = 0, op_mmv_cnt = 0, op_mmvq_cnt = 0, op_mmq_cnt = 0, op_mm_cublas_cnt = 0;
 
     if (!split && use_mul_mat_vec && (src0->ne[1] < MMV_MAX_ROWS || any_gpus_without_fp16_mma)) {
