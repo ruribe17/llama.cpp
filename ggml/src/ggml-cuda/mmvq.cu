@@ -1,5 +1,6 @@
 #include "mmvq.cuh"
 #include "vecdotq.cuh"
+#include "__mp.cuh"
 
 typedef float (*vec_dot_q_cuda_t)(const void * __restrict__ vbq, const block_q8_1 * __restrict__ bq8_1, const int & kbx, const int & iqs);
 
@@ -11,7 +12,8 @@ static constexpr __device__ vec_dot_q_cuda_t get_vec_dot_q_cuda(ggml_type type) 
         type == GGML_TYPE_Q8_0 ? vec_dot_q8_0_q8_1 :
         type == GGML_TYPE_Q2_K ? vec_dot_q2_K_q8_1 :
         type == GGML_TYPE_Q3_K ? vec_dot_q3_K_q8_1 :
-        type == GGML_TYPE_Q4_K ? vec_dot_q4_K_q8_1 :
+        // type == GGML_TYPE_Q4_K ? vec_dot_q4_K_q8_1 :
+        type == GGML_TYPE_Q4_K ? __vec_dot_q4_K_q8_1 :
         type == GGML_TYPE_Q5_K ? vec_dot_q5_K_q8_1 :
         type == GGML_TYPE_Q6_K ? vec_dot_q6_K_q8_1 :
         type == GGML_TYPE_IQ2_XXS ? vec_dot_iq2_xxs_q8_1 :

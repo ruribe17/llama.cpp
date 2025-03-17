@@ -38,6 +38,7 @@
 #include "ggml-cuda/upscale.cuh"
 #include "ggml-cuda/wkv6.cuh"
 #include "ggml-cuda/gla.cuh"
+#include "ggml-cuda/__mp.cuh"
 #include "ggml.h"
 
 #include <algorithm>
