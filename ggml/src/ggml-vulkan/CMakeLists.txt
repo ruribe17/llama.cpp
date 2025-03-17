@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 cmake_policy(SET CMP0114 NEW)
 
-find_package(Vulkan COMPONENTS glslc REQUIRED)
+find_package(Vulkan COMPONENTS glslc)
 
 function(detect_host_compiler)
     if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
@@ -18,6 +18,15 @@ endfunction()
 if (Vulkan_FOUND)
     message(STATUS "Vulkan found")
 
+    set (GLSLC_PROGRAM ${Vulkan_GLSLC_EXECUTABLE})
+    if (NOT GLSLC_PROGRAM)
+        # When cross-compiling the glslc program needs to be runnable on
+        # build-system architecture but the Vulkan SDK will be for the
+        # target architecture.
+
+        find_program(GLSLC_PROGRAM glslc REQUIRED NO_CMAKE_FIND_ROOT_PATH)
+    endif()
+
     ggml_add_backend_library(ggml-vulkan
                              ggml-vulkan.cpp
                              ../../include/ggml-vulkan.h
@@ -26,7 +35,7 @@ if (Vulkan_FOUND)
     # Compile a test shader to determine whether GL_KHR_cooperative_matrix is supported.
     # If it's not, there will be an error to stderr.
     # If it's supported, set a define to indicate that we should compile those shaders
-    execute_process(COMMAND ${Vulkan_GLSLC_EXECUTABLE} -o - -fshader-stage=compute --target-env=vulkan1.3 "${CMAKE_CURRENT_SOURCE_DIR}/vulkan-shaders/test_coopmat_support.comp"
+    execute_process(COMMAND ${GLSLC_PROGRAM} -o - -fshader-stage=compute --target-env=vulkan1.3 "${CMAKE_CURRENT_SOURCE_DIR}/vulkan-shaders/test_coopmat_support.comp"
                     OUTPUT_VARIABLE glslc_output
                     ERROR_VARIABLE glslc_error)
 
@@ -40,7 +49,7 @@ if (Vulkan_FOUND)
     # Compile a test shader to determine whether GL_NV_cooperative_matrix2 is supported.
     # If it's not, there will be an error to stderr.
     # If it's supported, set a define to indicate that we should compile those shaders
-    execute_process(COMMAND ${Vulkan_GLSLC_EXECUTABLE} -o - -fshader-stage=compute --target-env=vulkan1.3 "${CMAKE_CURRENT_SOURCE_DIR}/vulkan-shaders/test_coopmat2_support.comp"
+    execute_process(COMMAND ${GLSLC_PROGRAM} -o - -fshader-stage=compute --target-env=vulkan1.3 "${CMAKE_CURRENT_SOURCE_DIR}/vulkan-shaders/test_coopmat2_support.comp"
                     OUTPUT_VARIABLE glslc_output
                     ERROR_VARIABLE glslc_error)
 
@@ -144,7 +153,7 @@ if (Vulkan_FOUND)
                 ${_ggml_vk_source}
 
         COMMAND ${_ggml_vk_genshaders_cmd}
-            --glslc      ${Vulkan_GLSLC_EXECUTABLE}
+            --glslc      ${GLSLC_PROGRAM}
             --input-dir  ${_ggml_vk_input_dir}
             --output-dir ${_ggml_vk_output_dir}
             --target-hpp ${_ggml_vk_header}
