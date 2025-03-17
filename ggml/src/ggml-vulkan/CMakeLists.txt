@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.19)
 cmake_policy(SET CMP0114 NEW)
 
-find_package(Vulkan COMPONENTS glslc)
+find_package(Vulkan)
 
 function(detect_host_compiler)
     if (CMAKE_HOST_SYSTEM_NAME STREQUAL "Windows")
@@ -21,7 +21,7 @@ if (Vulkan_FOUND)
     set (GLSLC_PROGRAM ${Vulkan_GLSLC_EXECUTABLE})
     if (NOT GLSLC_PROGRAM)
         # When cross-compiling the glslc program needs to be runnable on
-        # build-system architecture but the Vulkan SDK will be for the
+        # the build-system architecture but the Vulkan SDK will be for the
         # target architecture.
 
         find_program(GLSLC_PROGRAM glslc REQUIRED NO_CMAKE_FIND_ROOT_PATH)
