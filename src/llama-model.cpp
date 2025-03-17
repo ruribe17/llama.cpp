@@ -10381,6 +10381,7 @@ struct llm_build_rwkv6_base : public llm_graph_context {
 
         const auto n_tokens = ubatch.n_tokens;
         const auto n_seqs = ubatch.n_seqs;
+        const auto n_seq_tokens = ubatch.n_seq_tokens;
         const auto n_embd = hparams.n_embd;
         const auto head_size = hparams.wkv_head_size;
         const auto n_head = n_embd / head_size;
@@ -10393,6 +10394,10 @@ struct llm_build_rwkv6_base : public llm_graph_context {
         bool is_qrwkv = layer.time_mix_first == nullptr;
 
         ggml_tensor * sx = ggml_sub(ctx0, x_prev, cur);
+
+        sx  = ggml_reshape_2d(ctx0, sx,  n_embd, n_tokens);
+        cur = ggml_reshape_2d(ctx0, cur, n_embd, n_tokens);
+
         ggml_tensor * xxx = ggml_add(ctx0, ggml_mul(ctx0, sx, layer.time_mix_lerp_x), cur);
 
         xxx = ggml_reshape_4d(
@@ -10535,7 +10540,7 @@ struct llm_build_rwkv6_base : public llm_graph_context {
         cur = ggml_mul(ctx0, cur, g);
         cur = build_lora_mm(layer.time_mix_output, cur);
 
-        return cur;
+        return ggml_reshape_3d(ctx0, cur, n_embd, n_seq_tokens, n_seqs);
     }
 };
 
@@ -10558,6 +10563,7 @@ struct llm_build_rwkv6 : public llm_build_rwkv6_base {
 
         for (int il = 0; il < n_layer; ++il) {
             const llama_layer * layer = &model.layers[il];
+            inpL = ggml_reshape_3d(ctx0, inpL, n_embd, n_seq_tokens, n_seqs);
 
             ggml_tensor * token_shift = build_rwkv_token_shift_load(
                     gf, state_copy, state_mask, ubatch, il
@@ -10655,6 +10661,7 @@ struct llm_build_rwkv6qwen2 : public llm_build_rwkv6_base {
 
         for (int il = 0; il < n_layer; ++il) {
             const llama_layer * layer = &model.layers[il];
+            inpL = ggml_reshape_3d(ctx0, inpL, n_embd, n_seq_tokens, n_seqs);
 
             ggml_tensor * token_shift = build_rwkv_token_shift_load(
                     gf, state_copy, state_mask, ubatch, il
@@ -10681,8 +10688,8 @@ struct llm_build_rwkv6qwen2 : public llm_build_rwkv6_base {
             if (il == n_layer - 1) {
                 // skip computing output for unused tokens
                 struct ggml_tensor * inp_out_ids = build_inp_out_ids();
-                cur     = ggml_get_rows(ctx0, cur, inp_out_ids);
-                ffn_inp = ggml_get_rows(ctx0, ffn_inp, inp_out_ids);
+                cur     = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, cur, n_embd, n_tokens), inp_out_ids);
+                ffn_inp = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, ffn_inp, n_embd, n_tokens), inp_out_ids);
             }
 
             // feed-forward network
@@ -10912,6 +10919,7 @@ struct llm_build_rwkv7 : public llm_build_rwkv7_base {
 
         for (int il = 0; il < n_layer; ++il) {
             const llama_layer * layer = &model.layers[il];
+            inpL = ggml_reshape_3d(ctx0, inpL, n_embd, n_seq_tokens, n_seqs);
 
             ggml_tensor * token_shift = build_rwkv_token_shift_load(
                     gf, state_copy, state_mask, ubatch, il
@@ -10958,7 +10966,6 @@ struct llm_build_rwkv7 : public llm_build_rwkv7_base {
                 ffn_inp  = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, ffn_inp,  n_embd, n_tokens), inp_out_ids);
                 ffn_norm = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, ffn_norm, n_embd, n_tokens), inp_out_ids);
                 x_prev   = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, x_prev,   n_embd, n_tokens), inp_out_ids);
-                cur      = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, cur,      n_embd, n_tokens), inp_out_ids);
             }
 
             cur = build_rwkv7_channel_mix(layer, ffn_norm, x_prev, LLM_ARCH_RWKV7);
@@ -11006,6 +11013,7 @@ struct llm_build_arwkv7 : public llm_build_rwkv7_base {
 
         for (int il = 0; il < n_layer; ++il) {
             const llama_layer * layer = &model.layers[il];
+            inpL = ggml_reshape_3d(ctx0, inpL, n_embd, n_seq_tokens, n_seqs);
 
             ggml_tensor * token_shift = build_rwkv_token_shift_load(
                     gf, state_copy, state_mask, ubatch, il
@@ -11032,8 +11040,8 @@ struct llm_build_arwkv7 : public llm_build_rwkv7_base {
             if (il == n_layer - 1) {
                 // skip computing output for unused tokens
                 struct ggml_tensor * inp_out_ids = build_inp_out_ids();
-                cur     = ggml_get_rows(ctx0, cur, inp_out_ids);
-                ffn_inp = ggml_get_rows(ctx0, ffn_inp, inp_out_ids);
+                cur     = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, cur, n_embd, n_tokens), inp_out_ids);
+                ffn_inp = ggml_get_rows(ctx0, ggml_reshape_2d(ctx0, ffn_inp, n_embd, n_tokens), inp_out_ids);
             }
 
             // feed-forward network
