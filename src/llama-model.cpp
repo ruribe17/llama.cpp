@@ -8159,7 +8159,7 @@ struct llm_build_command_r : public llm_graph_context {
                         ext_factor, attn_factor, beta_fast, beta_slow
                         );
 
-                if (model.layers[il].attn_q_norm) {
+                if (model.layers[il].attn_k_norm) {
                     Kcur = build_norm(Kcur,
                             model.layers[il].attn_k_norm,
                             NULL,
