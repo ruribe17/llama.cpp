@@ -70,6 +70,7 @@ enum llm_arch {
     LLM_ARCH_CHAMELEON,
     LLM_ARCH_WAVTOKENIZER_DEC,
     LLM_ARCH_UNKNOWN,
+    LLM_ARCH_PLM,
 };
 
 enum llm_kv {
