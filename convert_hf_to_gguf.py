@@ -1099,13 +1099,6 @@ class BloomModel(Model):
 
         tensors.append((self.map_tensor_name(name), data_torch))
 
-        if name == "word_embeddings.weight":
-            assert self.tensor_names is not None
-
-            # TODO: tie them at runtime, don't duplicate in the model file
-            if all(s not in self.tensor_names for s in ("lm_head.weight", "output.weight")):
-                tensors.append((self.format_tensor_name(gguf.MODEL_TENSOR.OUTPUT), data_torch))
-
         return tensors
 
 
@@ -2404,10 +2397,6 @@ class GPT2Model(Model):
 
         tensors.append((new_name, data_torch))
 
-        # note: GPT2 output is tied to (same as) wte in original model
-        if new_name == self.format_tensor_name(gguf.MODEL_TENSOR.TOKEN_EMBD):
-            tensors.append((self.format_tensor_name(gguf.MODEL_TENSOR.OUTPUT), data_torch))
-
         return tensors
 
 
@@ -2736,22 +2725,6 @@ class CodeShellModel(Model):
         self.gguf_writer.add_rope_freq_base(10000.0)
         self.gguf_writer.add_rope_scaling_type(gguf.RopeScalingType.LINEAR)
         self.gguf_writer.add_rope_scaling_factor(1.0)
-
-    def modify_tensors(self, data_torch: Tensor, name: str, bid: int | None) -> Iterable[tuple[str, Tensor]]:
-        del bid  # unused
-
-        new_name = self.map_tensor_name(name)
-
-        tensors: list[tuple[str, Tensor]] = [(new_name, data_torch)]
-
-        if new_name == self.format_tensor_name(gguf.MODEL_TENSOR.TOKEN_EMBD):
-            assert self.tensor_names is not None
-
-            if all(s not in self.tensor_names for s in ("lm_head.weight", "output.weight")):
-                # copy tok_embd.weight to output.weight
-                tensors.append((self.format_tensor_name(gguf.MODEL_TENSOR.OUTPUT), data_torch))
-
-        return tensors
 
 
 @Model.register("InternLM2ForCausalLM")
