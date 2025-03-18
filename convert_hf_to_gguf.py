@@ -659,8 +659,8 @@ class Model:
             # ref: https://huggingface.co/core42/jais-13b
             res = "jais"
         if chkhsh == "7b3e7548e4308f52a76e8229e4e6cc831195d0d1df43aed21ac6c93da05fec5f":
-            # ref: https://huggingface.co/WisdomShell/CodeShell-7B
-            res = "codeshell"
+            # ref: https://huggingface.co/WisdomShell/-7B
+            res = ""
         if chkhsh == "63b97e4253352e6f357cc59ea5b583e3a680eaeaf2632188c2b952de2588485e":
             # ref: https://huggingface.co/mistralai/Mistral-Nemo-Base-2407
             res = "tekken"
@@ -2740,7 +2740,7 @@ class CodeShellModel(Model):
         # assuming token_embd.weight is seen before output.weight
         if not self._has_tok_embd and new_name == self.format_tensor_name(gguf.MODEL_TENSOR.OUTPUT):
             # even though the tensor file(s) does not contain the word embeddings they are still in the weight map
-            if "transformer.wte.weight" in self.tensor_names:
+            if self.tensor_names and "transformer.wte.weight" in self.tensor_names:
                 logger.debug(f"{tok_embd_name} not found before {output_name}, assuming they are tied")
                 self.tensor_names.remove("transformer.wte.weight")
         elif new_name == tok_embd_name:
