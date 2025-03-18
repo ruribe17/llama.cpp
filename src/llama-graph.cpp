@@ -43,7 +43,7 @@ void llm_graph_input_embd::set_input(const llama_ubatch * ubatch) {
         ggml_backend_tensor_set(tokens, ubatch->token, 0, n_tokens*ggml_element_size(tokens));
     }
 
-    if (ubatch->embd) {
+    if (ubatch->embd && !ubatch->embd_tensor) {
         const int64_t n_embd   = embd->ne[0];
         const int64_t n_tokens = ubatch->n_tokens;
 
@@ -983,6 +983,10 @@ ggml_tensor * llm_graph_context::build_inp_embd(ggml_tensor * tok_embd) const {
 
             cur = ggml_add(ctx0, cur, inpL_delta);
         }
+    } else if (ubatch.embd_tensor) {
+        inp->embd = ubatch.embd_tensor;
+        ggml_set_input(ubatch.embd_tensor);
+
     } else {
         inp->embd = ggml_new_tensor_2d(ctx0, GGML_TYPE_F32, n_embd, ubatch.n_tokens);
         ggml_set_input(inp->embd);

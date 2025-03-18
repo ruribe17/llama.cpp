@@ -27,9 +27,10 @@ add_library(llama
             llama-quant.cpp
             llama-sampling.cpp
             llama-vocab.cpp
-            unicode-data.cpp
-            unicode.cpp
+            llama-vision.cpp
             unicode.h
+            unicode.cpp
+            unicode-data.cpp
             )
 
 target_include_directories(llama PUBLIC . ../include ../common)

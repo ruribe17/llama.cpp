@@ -5,6 +5,7 @@
 #include "llama-cparams.h"
 #include "llama-graph.h"
 #include "llama-adapter.h"
+#include "llama-vision.h"
 
 #include "ggml-cpp.h"
 
