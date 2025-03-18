@@ -68,6 +68,10 @@ endif()
 
 target_compile_options(ggml-sycl PRIVATE "-Wno-narrowing")
 
+if (GGML_SYCL_GRAPH)
+    target_compile_definitions(ggml-sycl PRIVATE GGML_SYCL_GRAPH)
+endif()
+
 find_package(oneMath QUIET)
 if (NOT oneMath_FOUND)
     message("-- oneMath not found: oneMath will be automatically downloaded")
